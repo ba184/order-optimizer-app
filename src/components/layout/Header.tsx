@@ -1,4 +1,4 @@
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, Search, User, MapPin } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 
@@ -10,8 +10,6 @@ export function Header() {
     asm: 'Area Sales Manager',
     rsm: 'Regional Sales Manager',
     admin: 'Administrator',
-    credit_team: 'Credit Team',
-    distributor: 'Distributor',
   };
 
   return (
@@ -30,6 +28,16 @@ export function Header() {
 
       {/* Right Section */}
       <div className="flex items-center gap-4">
+        {/* Geo Hierarchy Badge */}
+        {user?.geoHierarchy && (
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg">
+            <MapPin size={14} className="text-primary" />
+            <span className="text-xs text-muted-foreground">
+              {user.geoHierarchy.zone} {user.geoHierarchy.city && `• ${user.geoHierarchy.city}`}
+            </span>
+          </div>
+        )}
+
         {/* Notifications */}
         <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
           <Bell size={20} className="text-muted-foreground" />

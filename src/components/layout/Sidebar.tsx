@@ -20,9 +20,7 @@ import {
   Target,
   UserPlus,
   Building2,
-  Truck,
   Package,
-  CreditCard,
   ClipboardList,
   GitBranch,
   Wallet,
@@ -30,6 +28,8 @@ import {
   Calendar,
   GraduationCap,
   Layers,
+  Navigation,
+  CalendarDays,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types';
@@ -47,7 +47,7 @@ const navigationItems: NavItem[] = [
     label: 'Dashboard',
     icon: LayoutDashboard,
     path: '/dashboard',
-    roles: ['sales_executive', 'asm', 'rsm', 'admin', 'credit_team', 'distributor'],
+    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
   },
   {
     label: 'Sales Team',
@@ -58,7 +58,8 @@ const navigationItems: NavItem[] = [
       { label: 'Beat Plans', path: '/sales-team/beat-plans', icon: Target },
       { label: 'Daily Reports', path: '/sales-team/dsr', icon: FileText },
       { label: 'Leads', path: '/sales-team/leads', icon: UserPlus },
-      { label: 'Leave Management', path: '/sales-team/leaves', icon: ClipboardList },
+      { label: 'Leave Management', path: '/sales-team/leaves', icon: CalendarDays },
+      { label: 'Live Tracking', path: '/sales-team/tracking', icon: Navigation },
     ],
   },
   {
@@ -70,6 +71,7 @@ const navigationItems: NavItem[] = [
       { label: 'My Beat Plan', path: '/my-work/beat-plan', icon: Target },
       { label: 'Submit DSR', path: '/my-work/dsr', icon: FileText },
       { label: 'My Leads', path: '/my-work/leads', icon: UserPlus },
+      { label: 'My Expenses', path: '/my-work/expenses', icon: Wallet },
     ],
   },
   {
@@ -84,20 +86,9 @@ const navigationItems: NavItem[] = [
     ],
   },
   {
-    label: 'Distributor Portal',
-    icon: Building2,
-    roles: ['distributor'],
-    children: [
-      { label: 'My Stock', path: '/portal/stock', icon: Package },
-      { label: 'Place Order', path: '/portal/order', icon: ShoppingCart },
-      { label: 'Secondary Sales', path: '/portal/secondary-sales', icon: Truck },
-      { label: 'Claims & Returns', path: '/portal/claims', icon: CreditCard },
-    ],
-  },
-  {
     label: 'Orders',
     icon: ShoppingCart,
-    roles: ['sales_executive', 'asm', 'rsm', 'admin', 'credit_team'],
+    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
     children: [
       { label: 'All Orders', path: '/orders/list', icon: ClipboardList },
       { label: 'Pending Approval', path: '/orders/pending', icon: FileText },
@@ -109,7 +100,7 @@ const navigationItems: NavItem[] = [
     label: 'Inventory',
     icon: Box,
     path: '/inventory',
-    roles: ['asm', 'rsm', 'admin', 'distributor'],
+    roles: ['asm', 'rsm', 'admin'],
   },
   {
     label: 'Schemes',
@@ -124,13 +115,13 @@ const navigationItems: NavItem[] = [
     label: 'Approvals',
     icon: GitBranch,
     path: '/approvals',
-    roles: ['asm', 'rsm', 'admin', 'credit_team'],
+    roles: ['asm', 'rsm', 'admin'],
   },
   {
     label: 'Expenses',
     icon: Wallet,
     path: '/expenses',
-    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
+    roles: ['asm', 'rsm', 'admin'],
   },
   {
     label: 'Samples & Gifts',
@@ -148,13 +139,7 @@ const navigationItems: NavItem[] = [
     label: 'Reports',
     icon: BarChart3,
     path: '/reports',
-    roles: ['asm', 'rsm', 'admin', 'credit_team'],
-  },
-  {
-    label: 'Credit Management',
-    icon: CreditCard,
-    path: '/credit',
-    roles: ['credit_team', 'admin'],
+    roles: ['asm', 'rsm', 'admin'],
   },
   {
     label: 'Master Data',
@@ -165,6 +150,8 @@ const navigationItems: NavItem[] = [
       { label: 'Schemes', path: '/master/schemes', icon: Gift },
       { label: 'Territories', path: '/master/territories', icon: MapPin },
       { label: 'Users', path: '/master/users', icon: Users },
+      { label: 'Presentations', path: '/master/presentations', icon: GraduationCap },
+      { label: 'Workflows', path: '/master/workflows', icon: GitBranch },
     ],
   },
   {
@@ -200,8 +187,6 @@ export function Sidebar() {
     asm: 'Area Sales Manager',
     rsm: 'Regional Sales Manager',
     admin: 'Administrator',
-    credit_team: 'Credit Team',
-    distributor: 'Distributor',
   };
 
   return (
@@ -219,8 +204,8 @@ export function Sidebar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <h1 className="text-xl font-bold text-sidebar-foreground">SalesForce</h1>
-              <p className="text-xs text-sidebar-foreground/60">Automation Suite</p>
+              <h1 className="text-xl font-bold text-sidebar-foreground">TOAGOSEI</h1>
+              <p className="text-xs text-sidebar-foreground/60">Sales Automation</p>
             </motion.div>
           )}
           <button
@@ -313,6 +298,11 @@ export function Sidebar() {
             <p className="text-xs text-sidebar-foreground/60 truncate">
               {roleLabels[user.role]}
             </p>
+            {user.geoHierarchy && (
+              <p className="text-xs text-sidebar-foreground/40 truncate">
+                {user.geoHierarchy.zone} • {user.geoHierarchy.city || user.geoHierarchy.state}
+              </p>
+            )}
           </div>
         )}
         <button

@@ -14,6 +14,7 @@ import BeatPlansPage from "./pages/sales-team/BeatPlansPage";
 import DSRSubmissionPage from "./pages/sales-team/DSRSubmissionPage";
 import LeaveManagementPage from "./pages/sales-team/LeaveManagementPage";
 import LeadsPage from "./pages/sales-team/LeadsPage";
+import LiveTrackingPage from "./pages/sales-team/LiveTrackingPage";
 import DistributorsPage from "./pages/outlets/DistributorsPage";
 import RetailersPage from "./pages/outlets/RetailersPage";
 import NewDistributorPage from "./pages/outlets/NewDistributorPage";
@@ -57,6 +58,7 @@ function AppRoutes() {
       <Route path="/sales-team/dsr" element={<ProtectedRoute><DSRSubmissionPage /></ProtectedRoute>} />
       <Route path="/sales-team/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
       <Route path="/sales-team/leaves" element={<ProtectedRoute><LeaveManagementPage /></ProtectedRoute>} />
+      <Route path="/sales-team/tracking" element={<ProtectedRoute><LiveTrackingPage /></ProtectedRoute>} />
       
       {/* My Work (Sales Executive) */}
       <Route path="/my-work/attendance" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />

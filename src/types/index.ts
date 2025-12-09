@@ -1,4 +1,12 @@
-export type UserRole = 'sales_executive' | 'asm' | 'rsm' | 'admin' | 'credit_team' | 'distributor';
+export type UserRole = 'sales_executive' | 'asm' | 'rsm' | 'admin';
+
+export interface GeoHierarchy {
+  country: string;
+  state: string;
+  zone: string;
+  city: string;
+  area: string;
+}
 
 export interface User {
   id: string;
@@ -9,6 +17,8 @@ export interface User {
   phone: string;
   territory?: string;
   region?: string;
+  geoHierarchy?: GeoHierarchy;
+  reportingTo?: string;
 }
 
 export interface Distributor {
@@ -20,6 +30,8 @@ export interface Distributor {
   address: string;
   city: string;
   state: string;
+  zone: string;
+  area: string;
   pincode: string;
   phone: string;
   email: string;
@@ -31,6 +43,8 @@ export interface Distributor {
   kycDocuments: KYCDocument[];
   createdAt: Date;
   approvedBy?: string;
+  assignedSE?: string;
+  assignedASM?: string;
 }
 
 export interface Retailer {
@@ -41,6 +55,8 @@ export interface Retailer {
   address: string;
   city: string;
   state: string;
+  zone: string;
+  area: string;
   pincode: string;
   phone: string;
   category: 'A' | 'B' | 'C';
@@ -53,6 +69,7 @@ export interface Retailer {
   lastOrderDate?: Date;
   status: 'active' | 'pending' | 'inactive';
   createdAt: Date;
+  assignedSE?: string;
 }
 
 export interface KYCDocument {
@@ -128,17 +145,19 @@ export interface Scheme {
 export interface Attendance {
   id: string;
   userId: string;
+  userName: string;
   date: Date;
   loginTime: Date;
   logoutTime?: Date;
-  loginLocation: { lat: number; lng: number };
-  logoutLocation?: { lat: number; lng: number };
+  loginLocation: { lat: number; lng: number; address: string };
+  logoutLocation?: { lat: number; lng: number; address: string };
   loginSelfie: string;
   logoutSelfie?: string;
   totalDistance: number;
   visitCount: number;
   ordersPlaced: number;
   dsrSubmitted: boolean;
+  liveLocation?: { lat: number; lng: number; timestamp: Date }[];
 }
 
 export interface BeatPlan {
@@ -147,17 +166,22 @@ export interface BeatPlan {
   userName: string;
   month: string;
   year: number;
+  planType: 'journey' | 'monthly';
   routes: BeatRoute[];
   status: 'draft' | 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
   createdAt: Date;
   approvedBy?: string;
+  approvedAt?: Date;
 }
 
 export interface BeatRoute {
   dayOfWeek: number;
+  date?: string;
   retailers: string[];
   plannedVisits: number;
   area: string;
+  zone: string;
 }
 
 export interface Lead {
@@ -165,19 +189,29 @@ export interface Lead {
   name: string;
   shopName: string;
   phone: string;
+  email?: string;
   address: string;
   city: string;
+  state: string;
+  zone: string;
+  area: string;
   type: 'retailer' | 'distributor';
-  status: 'new' | 'contacted' | 'interested' | 'converted' | 'lost';
+  status: 'new' | 'contacted' | 'interested' | 'converted' | 'lost' | 'pending_approval';
   notes: string;
   createdBy: string;
   createdAt: Date;
   assignedTo: string;
+  followUpDate?: Date;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  approvalReason?: string;
+  potentialValue?: number;
+  source?: string;
 }
 
 export interface DailySalesReport {
   id: string;
   userId: string;
+  userName: string;
   date: Date;
   totalCalls: number;
   productiveCalls: number;
@@ -188,6 +222,128 @@ export interface DailySalesReport {
   complaints: number;
   remarks: string;
   submittedAt: Date;
+  visitType: 'call' | 'visit';
+  distributorId?: string;
+  distributorName?: string;
+  retailerId?: string;
+  retailerName?: string;
+  zone: string;
+  city: string;
+  area: string;
+  marketIntelligence?: string;
+  status: 'draft' | 'submitted';
+}
+
+export interface Leave {
+  id: string;
+  userId: string;
+  userName: string;
+  leaveType: 'casual' | 'sick' | 'earned' | 'compensatory';
+  startDate: Date;
+  endDate: Date;
+  days: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedAt?: Date;
+  rejectionReason?: string;
+  createdAt: Date;
+}
+
+export interface Expense {
+  id: string;
+  userId: string;
+  userName: string;
+  expenseType: 'da' | 'ta' | 'hotel' | 'fuel' | 'other';
+  date: Date;
+  amount: number;
+  cityCategory: 'A' | 'B' | 'C';
+  distance?: number;
+  description: string;
+  billUrl?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedAt?: Date;
+  rejectionReason?: string;
+  createdAt: Date;
+}
+
+export interface PreOrder {
+  id: string;
+  orderNumber: string;
+  distributorId: string;
+  distributorName: string;
+  items: OrderItem[];
+  totalAmount: number;
+  expectedDeliveryDate: Date;
+  paymentCollected: number;
+  status: 'booked' | 'pending_approval' | 'approved' | 'confirmed' | 'delivered' | 'cancelled';
+  createdBy: string;
+  createdAt: Date;
+  approvedBy?: string;
+  schemeName?: string;
+  launchName?: string;
+}
+
+export interface Presentation {
+  id: string;
+  title: string;
+  productId: string;
+  productName: string;
+  type: 'ppt' | 'pdf' | 'video';
+  fileUrl: string;
+  description: string;
+  duration: number;
+  hasQuiz: boolean;
+  quizQuestions?: QuizQuestion[];
+  createdAt: Date;
+  createdBy: string;
+  isActive: boolean;
+}
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+}
+
+export interface PresentationLog {
+  id: string;
+  presentationId: string;
+  presentedBy: string;
+  presentedTo: string;
+  retailerId?: string;
+  distributorId?: string;
+  presentedAt: Date;
+  completed: boolean;
+  quizScore?: number;
+  feedback?: string;
+}
+
+export interface Inventory {
+  id: string;
+  warehouseId: string;
+  warehouseName: string;
+  warehouseType: 'company' | 'distributor';
+  productId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  batchNumber: string;
+  manufacturingDate: Date;
+  expiryDate: Date;
+  lastUpdated: Date;
+}
+
+export interface StockTransfer {
+  id: string;
+  fromWarehouse: string;
+  toWarehouse: string;
+  items: { productId: string; productName: string; quantity: number }[];
+  status: 'pending' | 'approved' | 'in_transit' | 'completed';
+  createdAt: Date;
+  createdBy: string;
 }
 
 export interface Claim {
@@ -218,8 +374,74 @@ export interface ClaimItem {
 export interface Territory {
   id: string;
   name: string;
-  type: 'state' | 'region' | 'area' | 'hq';
+  type: 'country' | 'state' | 'zone' | 'city' | 'area';
   parentId?: string;
   managerId?: string;
   managerName?: string;
+}
+
+export interface ApprovalWorkflow {
+  id: string;
+  name: string;
+  type: 'distributor' | 'order' | 'expense' | 'leave' | 'beat_plan' | 'lead' | 'pre_order';
+  steps: ApprovalStep[];
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface ApprovalStep {
+  order: number;
+  role: UserRole;
+  canApprove: boolean;
+  canReject: boolean;
+  autoEscalateHours?: number;
+  condition?: string;
+}
+
+export interface ApprovalRequest {
+  id: string;
+  workflowId: string;
+  entityType: string;
+  entityId: string;
+  currentStep: number;
+  status: 'pending' | 'approved' | 'rejected';
+  history: ApprovalHistory[];
+  createdAt: Date;
+}
+
+export interface ApprovalHistory {
+  step: number;
+  action: 'approved' | 'rejected' | 'escalated';
+  actionBy: string;
+  actionAt: Date;
+  comments?: string;
+}
+
+export interface Sample {
+  id: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  costPrice: number;
+  quantity: number;
+  issuedTo: string;
+  issuedToType: 'retailer' | 'distributor';
+  issuedBy: string;
+  issuedAt: Date;
+  acknowledgement?: string;
+  converted: boolean;
+  conversionOrderId?: string;
+}
+
+export interface EmployeeLocation {
+  id: string;
+  userId: string;
+  userName: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+  timestamp: Date;
+  accuracy: number;
+  batteryLevel?: number;
+  isMoving: boolean;
 }
