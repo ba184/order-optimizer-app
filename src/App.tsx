@@ -2,25 +2,97 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { MainLayout } from "@/components/layout/MainLayout";
+
+// Pages
+import LoginPage from "./pages/LoginPage";
+import Dashboard from "./pages/Dashboard";
+import AttendancePage from "./pages/sales-team/AttendancePage";
+import BeatPlansPage from "./pages/sales-team/BeatPlansPage";
+import DistributorsPage from "./pages/outlets/DistributorsPage";
+import RetailersPage from "./pages/outlets/RetailersPage";
+import NewDistributorPage from "./pages/outlets/NewDistributorPage";
+import NewRetailerPage from "./pages/outlets/NewRetailerPage";
+import OrdersListPage from "./pages/orders/OrdersListPage";
+import CreateOrderPage from "./pages/orders/CreateOrderPage";
+import SchemesPage from "./pages/SchemesPage";
+import ReportsPage from "./pages/ReportsPage";
+import ProductsPage from "./pages/master/ProductsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <MainLayout>{children}</MainLayout>;
+}
+
+function AppRoutes() {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <Routes>
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />} />
+      <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
+      
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      
+      {/* Sales Team */}
+      <Route path="/sales-team/attendance" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
+      <Route path="/sales-team/beat-plans" element={<ProtectedRoute><BeatPlansPage /></ProtectedRoute>} />
+      <Route path="/sales-team/dsr" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
+      <Route path="/sales-team/leads" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
+      <Route path="/sales-team/leaves" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
+      
+      {/* My Work (Sales Executive) */}
+      <Route path="/my-work/attendance" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
+      <Route path="/my-work/beat-plan" element={<ProtectedRoute><BeatPlansPage /></ProtectedRoute>} />
+      <Route path="/my-work/dsr" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
+      <Route path="/my-work/leads" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
+      
+      {/* Outlets */}
+      <Route path="/outlets/distributors" element={<ProtectedRoute><DistributorsPage /></ProtectedRoute>} />
+      <Route path="/outlets/retailers" element={<ProtectedRoute><RetailersPage /></ProtectedRoute>} />
+      <Route path="/outlets/new-distributor" element={<ProtectedRoute><NewDistributorPage /></ProtectedRoute>} />
+      <Route path="/outlets/new-retailer" element={<ProtectedRoute><NewRetailerPage /></ProtectedRoute>} />
+      
+      {/* Orders */}
+      <Route path="/orders/list" element={<ProtectedRoute><OrdersListPage /></ProtectedRoute>} />
+      <Route path="/orders/pending" element={<ProtectedRoute><OrdersListPage /></ProtectedRoute>} />
+      <Route path="/orders/new" element={<ProtectedRoute><CreateOrderPage /></ProtectedRoute>} />
+      
+      {/* Others */}
+      <Route path="/schemes" element={<ProtectedRoute><SchemesPage /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+      <Route path="/credit" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+      
+      {/* Master Data */}
+      <Route path="/master/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
+      <Route path="/master/schemes" element={<ProtectedRoute><SchemesPage /></ProtectedRoute>} />
+      <Route path="/master/territories" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
+      <Route path="/master/users" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
+      
+      <Route path="/settings" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
