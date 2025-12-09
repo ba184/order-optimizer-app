@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserRole } from '@/types';
 import {
-  Users,
   MapPin,
   BarChart3,
   Shield,
@@ -14,17 +12,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const roles: { value: UserRole; label: string; icon: React.ElementType; description: string }[] = [
-  { value: 'sales_executive', label: 'Sales Executive', icon: Users, description: 'Field sales operations' },
-  { value: 'asm', label: 'Area Sales Manager', icon: MapPin, description: 'Area management & team' },
-  { value: 'rsm', label: 'Regional Sales Manager', icon: BarChart3, description: 'Regional oversight' },
-  { value: 'admin', label: 'Admin / Back Office', icon: Shield, description: 'Full system access' },
-];
-
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [selectedRole, setSelectedRole] = useState<UserRole>('sales_executive');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -38,7 +28,7 @@ export default function LoginPage() {
     }
     
     setIsLoading(true);
-    const success = await login(email, password, selectedRole);
+    const success = await login(email, password);
     setIsLoading(false);
 
     if (success) {
@@ -111,40 +101,9 @@ export default function LoginPage() {
               transition={{ delay: 0.3 }}
             >
               <h2 className="text-2xl font-bold text-foreground mb-2">Welcome Back</h2>
-              <p className="text-muted-foreground mb-6">Select your role and sign in to continue</p>
+              <p className="text-muted-foreground mb-6">Sign in to continue to your dashboard</p>
 
               <form onSubmit={handleLogin} className="space-y-6">
-                {/* Role Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-3">
-                    Select Your Role
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {roles.map(role => (
-                      <button
-                        key={role.value}
-                        type="button"
-                        onClick={() => setSelectedRole(role.value)}
-                        className={`p-3 rounded-xl border-2 text-left transition-all ${
-                          selectedRole === role.value
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                      >
-                        <role.icon
-                          size={20}
-                          className={selectedRole === role.value ? 'text-primary' : 'text-muted-foreground'}
-                        />
-                        <p className={`text-sm font-medium mt-1 ${
-                          selectedRole === role.value ? 'text-primary' : 'text-foreground'
-                        }`}>
-                          {role.label}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Email */}
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">

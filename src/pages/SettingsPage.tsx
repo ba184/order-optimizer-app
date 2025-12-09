@@ -1,0 +1,185 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Building,
+  Save,
+  Camera,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+export default function SettingsPage() {
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({
+    name: user?.name || 'Admin User',
+    email: user?.email || 'admin@toagosei.com',
+    phone: user?.phone || '+91 98765 00000',
+    designation: 'System Administrator',
+    department: 'IT & Operations',
+    address: 'Corporate Office, New Delhi',
+  });
+
+  const handleSave = () => {
+    toast.success('Profile updated successfully');
+  };
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      {/* Header */}
+      <div className="module-header">
+        <div>
+          <h1 className="module-title">Admin Settings</h1>
+          <p className="text-muted-foreground">Manage your profile and account settings</p>
+        </div>
+      </div>
+
+      {/* Profile Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-card rounded-xl border border-border p-6"
+      >
+        <div className="flex items-start gap-6 mb-8">
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+              <User size={40} className="text-primary" />
+            </div>
+            <button className="absolute bottom-0 right-0 p-2 bg-primary rounded-full text-primary-foreground shadow-lg hover:opacity-90 transition-opacity">
+              <Camera size={16} />
+            </button>
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">{formData.name}</h2>
+            <p className="text-muted-foreground">{formData.designation}</p>
+            <p className="text-sm text-muted-foreground mt-1">{formData.department}</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">
+            Profile Information
+          </h3>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                <User size={14} className="inline mr-2" />
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="input-field"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                <Mail size={14} className="inline mr-2" />
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="input-field"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                <Phone size={14} className="inline mr-2" />
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="input-field"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                <Building size={14} className="inline mr-2" />
+                Designation
+              </label>
+              <input
+                type="text"
+                value={formData.designation}
+                onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                className="input-field"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                <Building size={14} className="inline mr-2" />
+                Department
+              </label>
+              <input
+                type="text"
+                value={formData.department}
+                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                className="input-field"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                <MapPin size={14} className="inline mr-2" />
+                Office Address
+              </label>
+              <input
+                type="text"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="input-field"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t border-border">
+            <button onClick={handleSave} className="btn-primary flex items-center gap-2">
+              <Save size={18} />
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Company Info */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-card rounded-xl border border-border p-6"
+      >
+        <h3 className="text-lg font-semibold text-foreground mb-4">Company Information</h3>
+        <div className="grid md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-muted-foreground">Company Name</p>
+            <p className="font-medium text-foreground">TOAGOSEI India Pvt. Ltd.</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Industry</p>
+            <p className="font-medium text-foreground">Manufacturing & Distribution</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Headquarters</p>
+            <p className="font-medium text-foreground">New Delhi, India</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Active Since</p>
+            <p className="font-medium text-foreground">January 2024</p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

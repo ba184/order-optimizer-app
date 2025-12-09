@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { GeoFilter } from '@/components/ui/GeoFilter';
+import { geoHierarchy } from '@/data/geoData';
 import {
   Plus,
   Users,
@@ -13,6 +16,10 @@ import {
   Trash2,
   Shield,
   Key,
+  Navigation,
+  Eye,
+  X,
+  Target,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserRole } from '@/types';
@@ -36,7 +43,7 @@ const mockUsers: UserData[] = [
   { id: 'admin-001', name: 'Suresh Patel', email: 'suresh@toagosei.com', phone: '+91 98765 43213', role: 'admin', zone: '', city: '', area: '', status: 'active', createdAt: '2024-01-01' },
   { id: 'rsm-001', name: 'Vikram Singh', email: 'vikram@toagosei.com', phone: '+91 98765 43212', role: 'rsm', zone: 'North Zone', city: '', area: '', reportingTo: 'admin-001', reportingToName: 'Suresh Patel', status: 'active', createdAt: '2024-01-15' },
   { id: 'asm-001', name: 'Priya Sharma', email: 'priya@toagosei.com', phone: '+91 98765 43211', role: 'asm', zone: 'North Zone', city: 'New Delhi', area: '', reportingTo: 'rsm-001', reportingToName: 'Vikram Singh', status: 'active', createdAt: '2024-02-01' },
-  { id: 'asm-002', name: 'Rahul Mehta', email: 'rahul@toagosei.com', phone: '+91 98765 43214', role: 'asm', zone: 'South Zone', city: 'New Delhi', area: '', reportingTo: 'rsm-001', reportingToName: 'Vikram Singh', status: 'active', createdAt: '2024-02-15' },
+  { id: 'asm-002', name: 'Rahul Mehta', email: 'rahul@toagosei.com', phone: '+91 98765 43214', role: 'asm', zone: 'South Zone', city: 'Mumbai', area: '', reportingTo: 'rsm-001', reportingToName: 'Vikram Singh', status: 'active', createdAt: '2024-02-15' },
   { id: 'se-001', name: 'Rajesh Kumar', email: 'rajesh@toagosei.com', phone: '+91 98765 43210', role: 'sales_executive', zone: 'North Zone', city: 'New Delhi', area: 'Connaught Place', reportingTo: 'asm-001', reportingToName: 'Priya Sharma', status: 'active', createdAt: '2024-03-01' },
   { id: 'se-002', name: 'Amit Sharma', email: 'amit@toagosei.com', phone: '+91 98765 43215', role: 'sales_executive', zone: 'North Zone', city: 'New Delhi', area: 'Karol Bagh', reportingTo: 'asm-001', reportingToName: 'Priya Sharma', status: 'active', createdAt: '2024-03-15' },
   { id: 'se-003', name: 'Priya Singh', email: 'priyasingh@toagosei.com', phone: '+91 98765 43216', role: 'sales_executive', zone: 'North Zone', city: 'New Delhi', area: 'Lajpat Nagar', reportingTo: 'asm-001', reportingToName: 'Priya Sharma', status: 'active', createdAt: '2024-04-01' },
@@ -57,8 +64,11 @@ const roleColors: Record<UserRole, string> = {
 };
 
 export default function UsersPage() {
+  const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showTargetModal, setShowTargetModal] = useState<UserData | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [geoFilter, setGeoFilter] = useState({ zone: '', city: '', area: '' });
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -69,10 +79,21 @@ export default function UsersPage() {
     area: '',
     reportingTo: '',
   });
+  const [targetData, setTargetData] = useState({
+    salesTarget: '',
+    collectionTarget: '',
+    visitTarget: '',
+    newOutletTarget: '',
+    startDate: '',
+    endDate: '',
+  });
 
-  const filteredUsers = roleFilter === 'all' 
-    ? mockUsers 
-    : mockUsers.filter(u => u.role === roleFilter);
+  const filteredUsers = mockUsers.filter(u => {
+    if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+    if (geoFilter.zone && u.zone !== geoFilter.zone) return false;
+    if (geoFilter.city && u.city !== geoFilter.city) return false;
+    return true;
+  });
 
   const handleCreate = () => {
     if (!formData.name || !formData.email || !formData.role) {
@@ -82,6 +103,16 @@ export default function UsersPage() {
     toast.success('User created successfully');
     setShowCreateModal(false);
     setFormData({ name: '', email: '', phone: '', role: 'sales_executive', zone: '', city: '', area: '', reportingTo: '' });
+  };
+
+  const handleSetTarget = () => {
+    if (!targetData.salesTarget || !targetData.startDate || !targetData.endDate) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    toast.success(`Target set for ${showTargetModal?.name}`);
+    setShowTargetModal(null);
+    setTargetData({ salesTarget: '', collectionTarget: '', visitTarget: '', newOutletTarget: '', startDate: '', endDate: '' });
   };
 
   const columns = [
@@ -159,6 +190,25 @@ export default function UsersPage() {
       header: 'Actions',
       render: (item: UserData) => (
         <div className="flex items-center gap-1">
+          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="View">
+            <Eye size={16} className="text-muted-foreground" />
+          </button>
+          {item.role === 'sales_executive' && (
+            <button 
+              onClick={() => navigate('/sales-team/tracking')}
+              className="p-2 hover:bg-primary/10 rounded-lg transition-colors" 
+              title="Track Location"
+            >
+              <Navigation size={16} className="text-primary" />
+            </button>
+          )}
+          <button 
+            onClick={() => setShowTargetModal(item)}
+            className="p-2 hover:bg-success/10 rounded-lg transition-colors" 
+            title="Set Target"
+          >
+            <Target size={16} className="text-success" />
+          </button>
           <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="Permissions">
             <Shield size={16} className="text-muted-foreground" />
           </button>
@@ -190,13 +240,16 @@ export default function UsersPage() {
       <div className="module-header">
         <div>
           <h1 className="module-title">User Management</h1>
-          <p className="text-muted-foreground">Manage users, roles, and permissions</p>
+          <p className="text-muted-foreground">Manage users, roles, permissions, and targets</p>
         </div>
         <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-2">
           <Plus size={18} />
           Add User
         </button>
       </div>
+
+      {/* Geo Filter */}
+      <GeoFilter geoHierarchy={geoHierarchy} value={geoFilter} onChange={setGeoFilter} />
 
       {/* Stats */}
       <div className="grid grid-cols-5 gap-4">
@@ -239,7 +292,12 @@ export default function UsersPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-6">Add User</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">Add User</h2>
+              <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
             
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -345,6 +403,101 @@ export default function UsersPage() {
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => setShowCreateModal(false)} className="btn-outline">Cancel</button>
               <button onClick={handleCreate} className="btn-primary">Create User</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Set Target Modal */}
+      {showTargetModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Set Target</h2>
+                <p className="text-sm text-muted-foreground">{showTargetModal.name} - {roleLabels[showTargetModal.role]}</p>
+              </div>
+              <button onClick={() => setShowTargetModal(null)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Start Date *</label>
+                  <input
+                    type="date"
+                    value={targetData.startDate}
+                    onChange={(e) => setTargetData({ ...targetData, startDate: e.target.value })}
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">End Date *</label>
+                  <input
+                    type="date"
+                    value={targetData.endDate}
+                    onChange={(e) => setTargetData({ ...targetData, endDate: e.target.value })}
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Sales Target (₹) *</label>
+                  <input
+                    type="number"
+                    value={targetData.salesTarget}
+                    onChange={(e) => setTargetData({ ...targetData, salesTarget: e.target.value })}
+                    placeholder="500000"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Collection Target (₹)</label>
+                  <input
+                    type="number"
+                    value={targetData.collectionTarget}
+                    onChange={(e) => setTargetData({ ...targetData, collectionTarget: e.target.value })}
+                    placeholder="450000"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Visit Target</label>
+                  <input
+                    type="number"
+                    value={targetData.visitTarget}
+                    onChange={(e) => setTargetData({ ...targetData, visitTarget: e.target.value })}
+                    placeholder="300"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">New Outlet Target</label>
+                  <input
+                    type="number"
+                    value={targetData.newOutletTarget}
+                    onChange={(e) => setTargetData({ ...targetData, newOutletTarget: e.target.value })}
+                    placeholder="10"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button onClick={() => setShowTargetModal(null)} className="btn-outline">Cancel</button>
+              <button onClick={handleSetTarget} className="btn-primary">Set Target</button>
             </div>
           </motion.div>
         </div>
