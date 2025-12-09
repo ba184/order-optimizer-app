@@ -28,6 +28,8 @@ const mockLocations: EmployeeLocation[] = [
     latitude: 28.6139,
     longitude: 77.209,
     address: "Connaught Place, Delhi",
+    Distributor: "Max Company",
+    Product: "alpha",
     timestamp: "2 mins ago",
     batteryLevel: 85,
     isMoving: true,
