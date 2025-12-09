@@ -8,8 +8,6 @@ import {
   MapPin,
   BarChart3,
   Shield,
-  CreditCard,
-  Building2,
   Eye,
   EyeOff,
   Loader2,
@@ -21,8 +19,6 @@ const roles: { value: UserRole; label: string; icon: React.ElementType; descript
   { value: 'asm', label: 'Area Sales Manager', icon: MapPin, description: 'Area management & team' },
   { value: 'rsm', label: 'Regional Sales Manager', icon: BarChart3, description: 'Regional oversight' },
   { value: 'admin', label: 'Admin / Back Office', icon: Shield, description: 'Full system access' },
-  { value: 'credit_team', label: 'Credit Team', icon: CreditCard, description: 'Credit management' },
-  { value: 'distributor', label: 'Distributor Portal', icon: Building2, description: 'Self-service portal' },
 ];
 
 export default function LoginPage() {
@@ -69,7 +65,7 @@ export default function LoginPage() {
               transition={{ delay: 0.2 }}
             >
               <h1 className="text-3xl md:text-4xl font-bold mb-4">
-                SalesForce<br />Automation Suite
+                TOAGOSEI<br />Sales Automation
               </h1>
               <p className="text-primary-foreground/80 text-lg mb-8">
                 Complete sales force automation with geo-tracking, order management, and real-time analytics.
@@ -99,8 +95,8 @@ export default function LoginPage() {
                     <Shield size={20} />
                   </div>
                   <div>
-                    <p className="font-medium">Secure & Compliant</p>
-                    <p className="text-sm text-primary-foreground/70">Role-based access control</p>
+                    <p className="font-medium">Hierarchy Based Access</p>
+                    <p className="text-sm text-primary-foreground/70">Zone / City / Area controls</p>
                   </div>
                 </div>
               </div>
@@ -158,7 +154,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    placeholder="you@company.com"
+                    placeholder="you@toagosei.com"
                     className="input-field"
                   />
                 </div>

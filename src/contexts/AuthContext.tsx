@@ -14,50 +14,67 @@ const mockUsers: Record<UserRole, User> = {
   sales_executive: {
     id: 'se-001',
     name: 'Rajesh Kumar',
-    email: 'rajesh@company.com',
+    email: 'rajesh@toagosei.com',
     role: 'sales_executive',
     phone: '+91 98765 43210',
     territory: 'North Delhi',
     region: 'Delhi NCR',
+    geoHierarchy: {
+      country: 'India',
+      state: 'Delhi',
+      zone: 'North Zone',
+      city: 'New Delhi',
+      area: 'Connaught Place',
+    },
+    reportingTo: 'asm-001',
   },
   asm: {
     id: 'asm-001',
     name: 'Priya Sharma',
-    email: 'priya@company.com',
+    email: 'priya@toagosei.com',
     role: 'asm',
     phone: '+91 98765 43211',
     territory: 'Delhi',
     region: 'Delhi NCR',
+    geoHierarchy: {
+      country: 'India',
+      state: 'Delhi',
+      zone: 'North Zone',
+      city: 'New Delhi',
+      area: '',
+    },
+    reportingTo: 'rsm-001',
   },
   rsm: {
     id: 'rsm-001',
-    name: 'Amit Verma',
-    email: 'amit@company.com',
+    name: 'Vikram Singh',
+    email: 'vikram@toagosei.com',
     role: 'rsm',
     phone: '+91 98765 43212',
-    region: 'North India',
+    territory: 'North India',
+    region: 'North Zone',
+    geoHierarchy: {
+      country: 'India',
+      state: '',
+      zone: 'North Zone',
+      city: '',
+      area: '',
+    },
+    reportingTo: 'admin-001',
   },
   admin: {
     id: 'admin-001',
-    name: 'Admin User',
-    email: 'admin@company.com',
+    name: 'Suresh Patel',
+    email: 'suresh@toagosei.com',
     role: 'admin',
     phone: '+91 98765 43213',
-  },
-  credit_team: {
-    id: 'credit-001',
-    name: 'Sneha Gupta',
-    email: 'sneha@company.com',
-    role: 'credit_team',
-    phone: '+91 98765 43214',
-  },
-  distributor: {
-    id: 'dist-001',
-    name: 'Krishna Traders',
-    email: 'krishna@traders.com',
-    role: 'distributor',
-    phone: '+91 98765 43215',
-    territory: 'South Delhi',
+    geoHierarchy: {
+      country: 'India',
+      state: '',
+      zone: '',
+      city: '',
+      area: '',
+    },
   },
 };
 
@@ -65,7 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     if (password.length >= 4) {
