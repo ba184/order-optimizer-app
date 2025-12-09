@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { GeoFilter } from '@/components/ui/GeoFilter';
-import { geoHierarchy, employees } from '@/data/geoData';
+import { GeoFilter as GeoFilterType, employees } from '@/data/geoData';
 import {
   Plus,
   Calendar,
@@ -48,7 +48,7 @@ const mockBeatPlans: BeatPlan[] = [
 
 export default function BeatPlansPage() {
   const [selectedMonth, setSelectedMonth] = useState('December 2024');
-  const [geoFilter, setGeoFilter] = useState({ zone: '', city: '', area: '' });
+  const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState<BeatPlan | null>(null);
   const [showApprovalModal, setShowApprovalModal] = useState<{ plan: BeatPlan; action: 'approve' | 'reject' } | null>(null);
@@ -216,7 +216,7 @@ export default function BeatPlansPage() {
       </div>
 
       {/* Geo Filter */}
-      <GeoFilter geoHierarchy={geoHierarchy} value={geoFilter} onChange={setGeoFilter} />
+      <GeoFilter value={geoFilter} onChange={setGeoFilter} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

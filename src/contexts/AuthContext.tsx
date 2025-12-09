@@ -4,7 +4,7 @@ import { User, UserRole } from '@/types';
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string, role: UserRole) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -81,11 +81,12 @@ const mockUsers: Record<UserRole, User> = {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     if (password.length >= 4) {
-      setUser(mockUsers[role]);
+      // Default to admin role for demo
+      setUser(mockUsers['admin']);
       return true;
     }
     return false;
