@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import {
   ArrowLeft,
   Building2,
@@ -42,7 +42,7 @@ const mockDistributor = {
   creditLimit: 500000,
   creditDays: 30,
   outstandingAmount: 125000,
-  status: 'active',
+  status: 'active' as StatusType,
   assignedSE: 'Rajesh Kumar',
   assignedASM: 'Priya Sharma',
   createdAt: '2024-01-15',
@@ -52,32 +52,32 @@ const mockDistributor = {
   avgMonthlyBusiness: 375000,
 };
 
-const mockOrders = [
+const mockOrders: { id: string; orderNumber: string; date: string; items: number; amount: number; status: StatusType }[] = [
   { id: 'ord-001', orderNumber: 'ORD-2024-1234', date: '2024-12-08', items: 12, amount: 45000, status: 'delivered' },
   { id: 'ord-002', orderNumber: 'ORD-2024-1189', date: '2024-12-05', items: 8, amount: 32000, status: 'dispatched' },
   { id: 'ord-003', orderNumber: 'ORD-2024-1145', date: '2024-12-01', items: 15, amount: 58000, status: 'delivered' },
   { id: 'ord-004', orderNumber: 'ORD-2024-1098', date: '2024-11-28', items: 6, amount: 24000, status: 'delivered' },
 ];
 
-const mockClaims = [
+const mockClaims: { id: string; claimNumber: string; date: string; type: string; items: number; amount: number; status: StatusType }[] = [
   { id: 'clm-001', claimNumber: 'CLM-2024-045', date: '2024-12-05', type: 'return', items: 3, amount: 4500, status: 'pending' },
   { id: 'clm-002', claimNumber: 'CLM-2024-032', date: '2024-11-28', type: 'damage', items: 2, amount: 2800, status: 'approved' },
   { id: 'clm-003', claimNumber: 'CLM-2024-018', date: '2024-11-15', type: 'expiry', items: 5, amount: 8500, status: 'settled' },
 ];
 
-const mockSchemes = [
+const mockSchemes: { id: string; name: string; type: string; discount: string; validity: string; status: StatusType }[] = [
   { id: 'sch-001', name: 'Winter Bonanza', type: 'volume', discount: '10%', validity: 'Dec 1-31, 2024', status: 'active' },
   { id: 'sch-002', name: 'Buy 10 Get 1', type: 'product', discount: 'Free Goods', validity: 'Dec 1-15, 2024', status: 'active' },
   { id: 'sch-003', name: 'Opening Scheme', type: 'opening', discount: '15%', validity: 'On New Counters', status: 'active' },
 ];
 
-const mockSecondarySales = [
+const mockSecondarySales: { id: string; retailer: string; date: string; amount: number; status: StatusType }[] = [
   { id: 'ss-001', retailer: 'Sharma Store', date: '2024-12-08', amount: 15500, status: 'verified' },
   { id: 'ss-002', retailer: 'Gupta General', date: '2024-12-07', amount: 8200, status: 'verified' },
   { id: 'ss-003', retailer: 'Jain Provisions', date: '2024-12-06', amount: 22000, status: 'pending' },
 ];
 
-const mockDispatches = [
+const mockDispatches: { id: string; invoiceNo: string; date: string; items: number; amount: number; vehicleNo: string; status: StatusType }[] = [
   { id: 'dsp-001', invoiceNo: 'INV-2024-4567', date: '2024-12-08', items: 12, amount: 45000, vehicleNo: 'DL-01-AB-1234', status: 'validated' },
   { id: 'dsp-002', invoiceNo: 'INV-2024-4498', date: '2024-12-05', items: 8, amount: 32000, vehicleNo: 'DL-02-CD-5678', status: 'pending' },
 ];

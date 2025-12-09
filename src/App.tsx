@@ -12,11 +12,15 @@ import Dashboard from "./pages/Dashboard";
 import AttendancePage from "./pages/sales-team/AttendancePage";
 import BeatPlansPage from "./pages/sales-team/BeatPlansPage";
 import DSRSubmissionPage from "./pages/sales-team/DSRSubmissionPage";
+import DSRListPage from "./pages/sales-team/DSRListPage";
+import DSRViewPage from "./pages/sales-team/DSRViewPage";
 import LeaveManagementPage from "./pages/sales-team/LeaveManagementPage";
 import LeadsPage from "./pages/sales-team/LeadsPage";
 import LiveTrackingPage from "./pages/sales-team/LiveTrackingPage";
 import DistributorsPage from "./pages/outlets/DistributorsPage";
+import DistributorDetailPage from "./pages/outlets/DistributorDetailPage";
 import RetailersPage from "./pages/outlets/RetailersPage";
+import RetailerDetailPage from "./pages/outlets/RetailerDetailPage";
 import NewDistributorPage from "./pages/outlets/NewDistributorPage";
 import NewRetailerPage from "./pages/outlets/NewRetailerPage";
 import OrdersListPage from "./pages/orders/OrdersListPage";
@@ -25,7 +29,9 @@ import SchemesPage from "./pages/SchemesPage";
 import AdvancedSchemesPage from "./pages/AdvancedSchemesPage";
 import ReportsPage from "./pages/ReportsPage";
 import ProductsPage from "./pages/master/ProductsPage";
-import ApprovalWorkflowPage from "./pages/ApprovalWorkflowPage";
+import PresentationsPage from "./pages/master/PresentationsPage";
+import TerritoriesPage from "./pages/master/TerritoriesPage";
+import UsersPage from "./pages/master/UsersPage";
 import ExpenseManagementPage from "./pages/ExpenseManagementPage";
 import SampleGiftManagementPage from "./pages/SampleGiftManagementPage";
 import InventoryManagementPage from "./pages/InventoryManagementPage";
@@ -55,7 +61,10 @@ function AppRoutes() {
       {/* Sales Team */}
       <Route path="/sales-team/attendance" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
       <Route path="/sales-team/beat-plans" element={<ProtectedRoute><BeatPlansPage /></ProtectedRoute>} />
-      <Route path="/sales-team/dsr" element={<ProtectedRoute><DSRSubmissionPage /></ProtectedRoute>} />
+      <Route path="/sales-team/dsr" element={<ProtectedRoute><DSRListPage /></ProtectedRoute>} />
+      <Route path="/sales-team/dsr/new" element={<ProtectedRoute><DSRSubmissionPage /></ProtectedRoute>} />
+      <Route path="/sales-team/dsr/:id" element={<ProtectedRoute><DSRViewPage /></ProtectedRoute>} />
+      <Route path="/sales-team/dsr/:id/edit" element={<ProtectedRoute><DSRSubmissionPage /></ProtectedRoute>} />
       <Route path="/sales-team/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
       <Route path="/sales-team/leaves" element={<ProtectedRoute><LeaveManagementPage /></ProtectedRoute>} />
       <Route path="/sales-team/tracking" element={<ProtectedRoute><LiveTrackingPage /></ProtectedRoute>} />
@@ -65,10 +74,13 @@ function AppRoutes() {
       <Route path="/my-work/beat-plan" element={<ProtectedRoute><BeatPlansPage /></ProtectedRoute>} />
       <Route path="/my-work/dsr" element={<ProtectedRoute><DSRSubmissionPage /></ProtectedRoute>} />
       <Route path="/my-work/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
+      <Route path="/my-work/expenses" element={<ProtectedRoute><ExpenseManagementPage /></ProtectedRoute>} />
       
       {/* Outlets */}
       <Route path="/outlets/distributors" element={<ProtectedRoute><DistributorsPage /></ProtectedRoute>} />
+      <Route path="/outlets/distributors/:id" element={<ProtectedRoute><DistributorDetailPage /></ProtectedRoute>} />
       <Route path="/outlets/retailers" element={<ProtectedRoute><RetailersPage /></ProtectedRoute>} />
+      <Route path="/outlets/retailers/:id" element={<ProtectedRoute><RetailerDetailPage /></ProtectedRoute>} />
       <Route path="/outlets/new-distributor" element={<ProtectedRoute><NewDistributorPage /></ProtectedRoute>} />
       <Route path="/outlets/new-retailer" element={<ProtectedRoute><NewRetailerPage /></ProtectedRoute>} />
       
@@ -77,27 +89,21 @@ function AppRoutes() {
       <Route path="/orders/pending" element={<ProtectedRoute><OrdersListPage /></ProtectedRoute>} />
       <Route path="/orders/new" element={<ProtectedRoute><CreateOrderPage /></ProtectedRoute>} />
       
-      {/* Schemes */}
-      <Route path="/schemes" element={<ProtectedRoute><SchemesPage /></ProtectedRoute>} />
-      <Route path="/schemes/advanced" element={<ProtectedRoute><AdvancedSchemesPage /></ProtectedRoute>} />
-      
-      {/* Reports & Analytics */}
-      <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
-      
-      {/* Approval Workflow */}
-      <Route path="/approvals" element={<ProtectedRoute><ApprovalWorkflowPage /></ProtectedRoute>} />
-      
-      {/* Expense Management */}
-      <Route path="/expenses" element={<ProtectedRoute><ExpenseManagementPage /></ProtectedRoute>} />
-      
-      {/* Sample & Gift */}
-      <Route path="/samples" element={<ProtectedRoute><SampleGiftManagementPage /></ProtectedRoute>} />
+      {/* Pre-Orders */}
+      <Route path="/pre-orders" element={<ProtectedRoute><PreOrderBookingPage /></ProtectedRoute>} />
       
       {/* Inventory */}
       <Route path="/inventory" element={<ProtectedRoute><InventoryManagementPage /></ProtectedRoute>} />
       
-      {/* Pre-Orders */}
-      <Route path="/pre-orders" element={<ProtectedRoute><PreOrderBookingPage /></ProtectedRoute>} />
+      {/* Schemes */}
+      <Route path="/schemes" element={<ProtectedRoute><SchemesPage /></ProtectedRoute>} />
+      <Route path="/schemes/advanced" element={<ProtectedRoute><AdvancedSchemesPage /></ProtectedRoute>} />
+      
+      {/* Expenses */}
+      <Route path="/expenses" element={<ProtectedRoute><ExpenseManagementPage /></ProtectedRoute>} />
+      
+      {/* Sample & Gift */}
+      <Route path="/samples" element={<ProtectedRoute><SampleGiftManagementPage /></ProtectedRoute>} />
       
       {/* Training */}
       <Route path="/training" element={<ProtectedRoute><ProductTrainingPage /></ProtectedRoute>} />
@@ -105,11 +111,15 @@ function AppRoutes() {
       {/* Credit Management */}
       <Route path="/credit" element={<ProtectedRoute><CreditManagementPage /></ProtectedRoute>} />
       
+      {/* Reports & Analytics */}
+      <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+      
       {/* Master Data */}
       <Route path="/master/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
       <Route path="/master/schemes" element={<ProtectedRoute><AdvancedSchemesPage /></ProtectedRoute>} />
-      <Route path="/master/territories" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
-      <Route path="/master/users" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
+      <Route path="/master/territories" element={<ProtectedRoute><TerritoriesPage /></ProtectedRoute>} />
+      <Route path="/master/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
+      <Route path="/master/presentations" element={<ProtectedRoute><PresentationsPage /></ProtectedRoute>} />
       
       <Route path="/settings" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       

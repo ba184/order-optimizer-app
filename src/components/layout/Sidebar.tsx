@@ -22,7 +22,6 @@ import {
   Building2,
   Package,
   ClipboardList,
-  GitBranch,
   Wallet,
   Box,
   Calendar,
@@ -81,8 +80,6 @@ const navigationItems: NavItem[] = [
     children: [
       { label: 'Distributors', path: '/outlets/distributors', icon: Building2 },
       { label: 'Retailers', path: '/outlets/retailers', icon: Store },
-      { label: 'New Distributor', path: '/outlets/new-distributor', icon: UserPlus },
-      { label: 'New Retailer', path: '/outlets/new-retailer', icon: UserPlus },
     ],
   },
   {
@@ -110,12 +107,6 @@ const navigationItems: NavItem[] = [
       { label: 'Active Schemes', path: '/schemes', icon: Gift },
       { label: 'Advanced Schemes', path: '/schemes/advanced', icon: Layers },
     ],
-  },
-  {
-    label: 'Approvals',
-    icon: GitBranch,
-    path: '/approvals',
-    roles: ['asm', 'rsm', 'admin'],
   },
   {
     label: 'Expenses',
@@ -151,7 +142,6 @@ const navigationItems: NavItem[] = [
       { label: 'Territories', path: '/master/territories', icon: MapPin },
       { label: 'Users', path: '/master/users', icon: Users },
       { label: 'Presentations', path: '/master/presentations', icon: GraduationCap },
-      { label: 'Workflows', path: '/master/workflows', icon: GitBranch },
     ],
   },
   {

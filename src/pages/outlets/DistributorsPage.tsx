@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { GeoFilter } from '@/components/ui/GeoFilter';
+import { GeoFilter as GeoFilterType } from '@/data/geoData';
 import {
   Plus,
   Building2,
@@ -204,12 +207,21 @@ const columns = [
 ];
 
 export default function DistributorsPage() {
+  const navigate = useNavigate();
+  const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
+
+  const filteredDistributors = mockDistributors.filter(d => {
+    if (geoFilter.state && d.state !== geoFilter.state) return false;
+    if (geoFilter.zone && d.city !== geoFilter.zone) return false;
+    return true;
+  });
+
   const stats = {
-    total: mockDistributors.length,
-    active: mockDistributors.filter(d => d.status === 'active').length,
-    pending: mockDistributors.filter(d => d.status === 'pending').length,
-    totalCredit: mockDistributors.reduce((sum, d) => sum + d.creditLimit, 0),
-    totalOutstanding: mockDistributors.reduce((sum, d) => sum + d.outstandingAmount, 0),
+    total: filteredDistributors.length,
+    active: filteredDistributors.filter(d => d.status === 'active').length,
+    pending: filteredDistributors.filter(d => d.status === 'pending').length,
+    totalCredit: filteredDistributors.reduce((sum, d) => sum + d.creditLimit, 0),
+    totalOutstanding: filteredDistributors.reduce((sum, d) => sum + d.outstandingAmount, 0),
   };
 
   return (
@@ -220,10 +232,15 @@ export default function DistributorsPage() {
           <h1 className="module-title">Distributors</h1>
           <p className="text-muted-foreground">Manage distributor network and credit</p>
         </div>
-        <a href="/outlets/new-distributor" className="btn-primary flex items-center gap-2">
+        <button onClick={() => navigate('/outlets/new-distributor')} className="btn-primary flex items-center gap-2">
           <Plus size={18} />
           Add Distributor
-        </a>
+        </button>
+      </div>
+
+      {/* Geo Filter */}
+      <div className="bg-card rounded-xl border border-border p-4">
+        <GeoFilter value={geoFilter} onChange={setGeoFilter} showArea={false} />
       </div>
 
       {/* Stats */}
@@ -298,9 +315,10 @@ export default function DistributorsPage() {
 
       {/* Data Table */}
       <DataTable
-        data={mockDistributors}
+        data={filteredDistributors}
         columns={columns}
         searchPlaceholder="Search by name, code, city..."
+        onRowClick={(item) => navigate(`/outlets/distributors/${item.id}`)}
       />
     </div>
   );

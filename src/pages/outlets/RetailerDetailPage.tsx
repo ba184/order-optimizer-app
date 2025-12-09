@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import {
   ArrowLeft,
   Store,
@@ -37,7 +37,7 @@ const mockRetailer = {
   category: 'A',
   distributorId: 'd-001',
   distributorName: 'Krishna Traders',
-  status: 'active',
+  status: 'active' as StatusType,
   assignedSE: 'Rajesh Kumar',
   createdAt: '2024-03-15',
   lastVisit: '2024-12-08',
@@ -51,7 +51,7 @@ const mockRetailer = {
   photos: ['/placeholder.svg', '/placeholder.svg', '/placeholder.svg'],
 };
 
-const mockOrders = [
+const mockOrders: { id: string; orderNumber: string; date: string; items: number; amount: number; status: StatusType }[] = [
   { id: 'ord-001', orderNumber: 'ORD-2024-4567', date: '2024-12-08', items: 5, amount: 15500, status: 'delivered' },
   { id: 'ord-002', orderNumber: 'ORD-2024-4234', date: '2024-12-01', items: 4, amount: 12000, status: 'delivered' },
   { id: 'ord-003', orderNumber: 'ORD-2024-3987', date: '2024-11-24', items: 6, amount: 18500, status: 'delivered' },
@@ -64,7 +64,7 @@ const mockVisits = [
   { id: 'v-003', date: '2024-11-24', visitedBy: 'Rajesh Kumar', duration: '20 mins', orderPlaced: true, notes: 'Quick visit' },
 ];
 
-const mockSchemes = [
+const mockSchemes: { id: string; name: string; type: string; benefit: string; status: StatusType }[] = [
   { id: 'sch-001', name: 'Winter Bonanza', type: 'volume', benefit: '10% Discount', status: 'active' },
   { id: 'sch-002', name: 'Display Scheme', type: 'display', benefit: 'Free Stand', status: 'active' },
 ];
