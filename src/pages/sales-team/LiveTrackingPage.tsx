@@ -1,7 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Navigation, MapPin, Clock, Battery, Users, Signal, AlertCircle, Key } from 'lucide-react';
-import { toast } from 'sonner';
+import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import { Navigation, MapPin, Clock, Battery, Users, Signal, AlertCircle, Key } from "lucide-react";
+import { toast } from "sonner";
+
+// FIX: Ensure Mapbox CSS import at top-level (needed for proper loading)
+import "mapbox-gl/dist/mapbox-gl.css";
 
 interface EmployeeLocation {
   id: string;
@@ -18,15 +21,63 @@ interface EmployeeLocation {
 }
 
 const mockLocations: EmployeeLocation[] = [
-  { id: '1', userId: 'se-001', userName: 'Rajesh Kumar', latitude: 28.6139, longitude: 77.2090, address: 'Connaught Place, Delhi', timestamp: '2 mins ago', batteryLevel: 85, isMoving: true, zone: 'North Zone', city: 'New Delhi' },
-  { id: '2', userId: 'se-002', userName: 'Amit Sharma', latitude: 28.5355, longitude: 77.2500, address: 'Lajpat Nagar, Delhi', timestamp: '5 mins ago', batteryLevel: 62, isMoving: false, zone: 'North Zone', city: 'New Delhi' },
-  { id: '3', userId: 'se-003', userName: 'Priya Singh', latitude: 28.6519, longitude: 77.2315, address: 'Karol Bagh, Delhi', timestamp: '1 min ago', batteryLevel: 91, isMoving: true, zone: 'North Zone', city: 'New Delhi' },
-  { id: '4', userId: 'se-004', userName: 'Vikram Patel', latitude: 28.7041, longitude: 77.1025, address: 'Rohini, Delhi', timestamp: '8 mins ago', batteryLevel: 45, isMoving: false, zone: 'North Zone', city: 'New Delhi' },
+  {
+    id: "1",
+    userId: "se-001",
+    userName: "Rajesh Kumar",
+    latitude: 28.6139,
+    longitude: 77.209,
+    address: "Connaught Place, Delhi",
+    timestamp: "2 mins ago",
+    batteryLevel: 85,
+    isMoving: true,
+    zone: "North Zone",
+    city: "New Delhi",
+  },
+  {
+    id: "2",
+    userId: "se-002",
+    userName: "Amit Sharma",
+    latitude: 28.5355,
+    longitude: 77.25,
+    address: "Lajpat Nagar, Delhi",
+    timestamp: "5 mins ago",
+    batteryLevel: 62,
+    isMoving: false,
+    zone: "North Zone",
+    city: "New Delhi",
+  },
+  {
+    id: "3",
+    userId: "se-003",
+    userName: "Priya Singh",
+    latitude: 28.6519,
+    longitude: 77.2315,
+    address: "Karol Bagh, Delhi",
+    timestamp: "1 min ago",
+    batteryLevel: 91,
+    isMoving: true,
+    zone: "North Zone",
+    city: "New Delhi",
+  },
+  {
+    id: "4",
+    userId: "se-004",
+    userName: "Vikram Patel",
+    latitude: 28.7041,
+    longitude: 77.1025,
+    address: "Rohini, Delhi",
+    timestamp: "8 mins ago",
+    batteryLevel: 45,
+    isMoving: false,
+    zone: "North Zone",
+    city: "New Delhi",
+  },
 ];
 
 export default function LiveTrackingPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
-  const [mapboxToken, setMapboxToken] = useState('');
+  const [mapboxToken, setMapboxToken] = useState("");
   const [showTokenInput, setShowTokenInput] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -35,34 +86,31 @@ export default function LiveTrackingPage() {
 
   const initializeMap = async () => {
     if (!mapboxToken || !mapContainer.current) return;
-    
+
     try {
-      const mapboxgl = (await import('mapbox-gl')).default;
-      await import('mapbox-gl/dist/mapbox-gl.css');
-      
+      const mapboxgl = (await import("mapbox-gl")).default;
       mapboxgl.accessToken = mapboxToken;
-      
+
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [77.2090, 28.6139], // Delhi center
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [77.209, 28.6139],
         zoom: 11,
       });
 
-      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-      map.current.on('load', () => {
+      map.current.on("load", () => {
         setMapLoaded(true);
-        
-        // Add markers for each employee
+
         mockLocations.forEach((loc) => {
-          const el = document.createElement('div');
-          el.className = 'employee-marker';
+          const el = document.createElement("div");
+          el.className = "employee-marker";
           el.style.cssText = `
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: ${loc.isMoving ? 'hsl(142, 71%, 45%)' : 'hsl(38, 92%, 50%)'};
+            background: ${loc.isMoving ? "hsl(142, 71%, 45%)" : "hsl(38, 92%, 50%)"};
             border: 3px solid white;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             cursor: pointer;
@@ -73,45 +121,43 @@ export default function LiveTrackingPage() {
             font-weight: bold;
             font-size: 12px;
           `;
-          el.innerHTML = loc.userName.split(' ').map(n => n[0]).join('');
-          
+          el.innerHTML = loc.userName
+            .split(" ")
+            .map((n) => n[0])
+            .join("");
+
           const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
             <div style="padding: 8px;">
               <strong>${loc.userName}</strong><br/>
               <span style="color: #666;">${loc.address}</span><br/>
-              <span style="color: ${loc.isMoving ? '#22c55e' : '#f59e0b'};">
-                ${loc.isMoving ? '● Moving' : '● Stationary'}
+              <span style="color: ${loc.isMoving ? "#22c55e" : "#f59e0b"};">
+                ${loc.isMoving ? "● Moving" : "● Stationary"}
               </span><br/>
               <small>Last updated: ${loc.timestamp}</small>
             </div>
           `);
-          
+
           const marker = new mapboxgl.Marker(el)
             .setLngLat([loc.longitude, loc.latitude])
             .setPopup(popup)
             .addTo(map.current);
-          
-          el.addEventListener('click', () => {
-            setSelectedEmployee(loc.id);
-          });
-          
+
+          el.addEventListener("click", () => setSelectedEmployee(loc.id));
           markers.current.push(marker);
         });
       });
-      
+
       setShowTokenInput(false);
-      toast.success('Map loaded successfully!');
+      toast.success("Map loaded successfully!");
     } catch (error) {
-      console.error('Error initializing map:', error);
-      toast.error('Failed to load map. Please check your token.');
+      console.error("Error initializing map:", error);
+      toast.error("Failed to load map. Please check your token.");
     }
   };
 
   useEffect(() => {
     return () => {
-      if (map.current) {
-        map.current.remove();
-      }
+      if (map.current) map.current.remove();
     };
   }, []);
 
@@ -170,25 +216,28 @@ export default function LiveTrackingPage() {
                     <div className="flex items-start gap-2 p-3 bg-info/10 rounded-lg">
                       <AlertCircle size={16} className="text-info mt-0.5" />
                       <p className="text-xs text-muted-foreground">
-                        Get your free token from{' '}
-                        <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                        Get your free token from{" "}
+                        <a
+                          href="https://mapbox.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline"
+                        >
                           mapbox.com
-                        </a>{' '}
+                        </a>{" "}
                         → Account → Tokens
                       </p>
                     </div>
-                    <button
-                      onClick={initializeMap}
-                      disabled={!mapboxToken}
-                      className="btn-primary w-full"
-                    >
+                    <button onClick={initializeMap} disabled={!mapboxToken} className="btn-primary w-full">
                       Load Map
                     </button>
                   </div>
                 </motion.div>
               </div>
             ) : null}
+
             <div ref={mapContainer} className="absolute inset-0" />
+
             {!mapLoaded && !showTokenInput && (
               <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
                 <div className="text-center">
@@ -207,24 +256,28 @@ export default function LiveTrackingPage() {
             Field Executives
           </h3>
           <div className="space-y-3">
-            {mockLocations.map(loc => (
+            {mockLocations.map((loc) => (
               <motion.div
                 key={loc.id}
                 whileHover={{ scale: 1.02 }}
                 onClick={() => focusOnEmployee(loc)}
                 className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                  selectedEmployee === loc.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                  selectedEmployee === loc.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="font-medium text-foreground">{loc.userName}</p>
-                    <p className="text-xs text-muted-foreground">{loc.zone} • {loc.city}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {loc.zone} • {loc.city}
+                    </p>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    loc.isMoving ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
-                  }`}>
-                    {loc.isMoving ? 'Moving' : 'Stationary'}
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      loc.isMoving ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+                    }`}
+                  >
+                    {loc.isMoving ? "Moving" : "Stationary"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -237,7 +290,7 @@ export default function LiveTrackingPage() {
                     {loc.timestamp}
                   </div>
                   <div className="flex items-center gap-1">
-                    <Battery size={12} className={loc.batteryLevel < 50 ? 'text-warning' : 'text-success'} />
+                    <Battery size={12} className={loc.batteryLevel < 50 ? "text-warning" : "text-success"} />
                     {loc.batteryLevel}%
                   </div>
                 </div>
