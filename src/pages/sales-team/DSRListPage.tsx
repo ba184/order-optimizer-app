@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import { GeoFilter } from '@/components/ui/GeoFilter';
 import { GeoFilter as GeoFilterType, employees } from '@/data/geoData';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,7 +39,7 @@ interface DSR {
   orderValue: number;
   collectionAmount: number;
   marketIntelligence: string;
-  status: 'draft' | 'submitted';
+  status: StatusType;
   submittedAt?: string;
 }
 

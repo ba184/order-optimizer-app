@@ -1,12 +1,14 @@
 import { cn } from '@/lib/utils';
 
-type StatusType = 
+export type StatusType = 
   | 'active' | 'inactive' | 'pending'
   | 'approved' | 'rejected' | 'draft'
   | 'dispatched' | 'delivered' | 'cancelled'
   | 'paid' | 'partial' | 'overdue'
   | 'new' | 'contacted' | 'interested' | 'converted' | 'lost'
-  | 'booked' | 'confirmed' | 'completed';
+  | 'booked' | 'confirmed' | 'completed'
+  | 'submitted' | 'settled' | 'verified' | 'validated' | 'in_transit' | 'pending_approval'
+  | 'return' | 'damage' | 'expiry' | 'scheme';
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -34,6 +36,16 @@ const statusStyles: Record<StatusType, string> = {
   booked: 'bg-info/10 text-info border-info/20',
   confirmed: 'bg-success/10 text-success border-success/20',
   completed: 'bg-success/10 text-success border-success/20',
+  submitted: 'bg-success/10 text-success border-success/20',
+  settled: 'bg-success/10 text-success border-success/20',
+  verified: 'bg-success/10 text-success border-success/20',
+  validated: 'bg-success/10 text-success border-success/20',
+  in_transit: 'bg-info/10 text-info border-info/20',
+  pending_approval: 'bg-warning/10 text-warning border-warning/20',
+  return: 'bg-warning/10 text-warning border-warning/20',
+  damage: 'bg-destructive/10 text-destructive border-destructive/20',
+  expiry: 'bg-destructive/10 text-destructive border-destructive/20',
+  scheme: 'bg-secondary/10 text-secondary border-secondary/20',
 };
 
 const statusLabels: Record<StatusType, string> = {
@@ -57,6 +69,16 @@ const statusLabels: Record<StatusType, string> = {
   booked: 'Booked',
   confirmed: 'Confirmed',
   completed: 'Completed',
+  submitted: 'Submitted',
+  settled: 'Settled',
+  verified: 'Verified',
+  validated: 'Validated',
+  in_transit: 'In Transit',
+  pending_approval: 'Pending Approval',
+  return: 'Return',
+  damage: 'Damage',
+  expiry: 'Expiry',
+  scheme: 'Scheme',
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { GeoFilter } from '@/components/ui/GeoFilter';
+import { GeoFilter as GeoFilterType } from '@/data/geoData';
 import {
   Plus,
   Store,
@@ -199,11 +202,19 @@ const columns = [
 ];
 
 export default function RetailersPage() {
+  const navigate = useNavigate();
+  const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
+
+  const filteredRetailers = mockRetailers.filter(r => {
+    if (geoFilter.city && r.city !== geoFilter.city) return false;
+    return true;
+  });
+
   const stats = {
-    total: mockRetailers.length,
-    categoryA: mockRetailers.filter(r => r.category === 'A').length,
-    categoryB: mockRetailers.filter(r => r.category === 'B').length,
-    categoryC: mockRetailers.filter(r => r.category === 'C').length,
+    total: filteredRetailers.length,
+    categoryA: filteredRetailers.filter(r => r.category === 'A').length,
+    categoryB: filteredRetailers.filter(r => r.category === 'B').length,
+    categoryC: filteredRetailers.filter(r => r.category === 'C').length,
   };
 
   return (
@@ -214,10 +225,15 @@ export default function RetailersPage() {
           <h1 className="module-title">Retailers</h1>
           <p className="text-muted-foreground">Manage retail outlet network</p>
         </div>
-        <a href="/outlets/new-retailer" className="btn-primary flex items-center gap-2">
+        <button onClick={() => navigate('/outlets/new-retailer')} className="btn-primary flex items-center gap-2">
           <Plus size={18} />
           Add Retailer
-        </a>
+        </button>
+      </div>
+
+      {/* Geo Filter */}
+      <div className="bg-card rounded-xl border border-border p-4">
+        <GeoFilter value={geoFilter} onChange={setGeoFilter} showArea={false} />
       </div>
 
       {/* Stats */}
@@ -313,9 +329,10 @@ export default function RetailersPage() {
 
       {/* Data Table */}
       <DataTable
-        data={mockRetailers}
+        data={filteredRetailers}
         columns={columns}
         searchPlaceholder="Search by shop name, owner, code..."
+        onRowClick={(item) => navigate(`/outlets/retailers/${item.id}`)}
       />
     </div>
   );

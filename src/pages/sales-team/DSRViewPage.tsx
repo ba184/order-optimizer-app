@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { StatusType } from '@/components/ui/StatusBadge';
 import {
   ArrowLeft,
   Calendar,
@@ -44,7 +45,7 @@ const mockDSR = {
   marketIntelligence: 'Competitor ABC launched new scheme with 10% extra discount. Local retailers showing interest in our new product line.',
   competitorActivity: 'XYZ brand running display scheme with free stands. Some retailers switching to cheaper alternatives.',
   remarks: 'Good day overall. Target likely to be achieved this month.',
-  status: 'submitted',
+  status: 'submitted' as StatusType,
   submittedAt: '2024-12-09 18:30',
 };
 
