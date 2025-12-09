@@ -5,7 +5,8 @@ type StatusType =
   | 'approved' | 'rejected' | 'draft'
   | 'dispatched' | 'delivered' | 'cancelled'
   | 'paid' | 'partial' | 'overdue'
-  | 'new' | 'contacted' | 'interested' | 'converted' | 'lost';
+  | 'new' | 'contacted' | 'interested' | 'converted' | 'lost'
+  | 'booked' | 'confirmed' | 'completed';
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -30,6 +31,9 @@ const statusStyles: Record<StatusType, string> = {
   interested: 'bg-warning/10 text-warning border-warning/20',
   converted: 'bg-success/10 text-success border-success/20',
   lost: 'bg-muted text-muted-foreground border-muted-foreground/20',
+  booked: 'bg-info/10 text-info border-info/20',
+  confirmed: 'bg-success/10 text-success border-success/20',
+  completed: 'bg-success/10 text-success border-success/20',
 };
 
 const statusLabels: Record<StatusType, string> = {
@@ -50,6 +54,9 @@ const statusLabels: Record<StatusType, string> = {
   interested: 'Interested',
   converted: 'Converted',
   lost: 'Lost',
+  booked: 'Booked',
+  confirmed: 'Confirmed',
+  completed: 'Completed',
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
