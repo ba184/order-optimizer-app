@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { GeoFilter } from '@/components/ui/GeoFilter';
-import { geoHierarchy } from '@/data/geoData';
+import { GeoFilter as GeoFilterType } from '@/data/geoData';
 import {
   MapPin,
   Clock,
@@ -44,7 +44,7 @@ const mockAttendance: AttendanceRecord[] = [
 export default function AttendancePage() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [geoFilter, setGeoFilter] = useState({ zone: '', city: '', area: '' });
+  const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
 
   const filteredAttendance = mockAttendance.filter(att => {
     if (geoFilter.zone && att.zone !== geoFilter.zone) return false;
@@ -164,7 +164,7 @@ export default function AttendancePage() {
       </div>
 
       {/* Geo Filter */}
-      <GeoFilter geoHierarchy={geoHierarchy} value={geoFilter} onChange={setGeoFilter} />
+      <GeoFilter value={geoFilter} onChange={setGeoFilter} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

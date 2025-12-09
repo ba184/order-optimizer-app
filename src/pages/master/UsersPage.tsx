@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { GeoFilter } from '@/components/ui/GeoFilter';
-import { geoHierarchy } from '@/data/geoData';
+import { GeoFilter as GeoFilterType } from '@/data/geoData';
 import {
   Plus,
   Users,
@@ -68,7 +68,7 @@ export default function UsersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTargetModal, setShowTargetModal] = useState<UserData | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [geoFilter, setGeoFilter] = useState({ zone: '', city: '', area: '' });
+  const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -249,7 +249,7 @@ export default function UsersPage() {
       </div>
 
       {/* Geo Filter */}
-      <GeoFilter geoHierarchy={geoHierarchy} value={geoFilter} onChange={setGeoFilter} />
+      <GeoFilter value={geoFilter} onChange={setGeoFilter} />
 
       {/* Stats */}
       <div className="grid grid-cols-5 gap-4">
