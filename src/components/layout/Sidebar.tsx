@@ -24,6 +24,12 @@ import {
   Package,
   CreditCard,
   ClipboardList,
+  GitBranch,
+  Wallet,
+  Box,
+  Calendar,
+  GraduationCap,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types';
@@ -96,12 +102,46 @@ const navigationItems: NavItem[] = [
       { label: 'All Orders', path: '/orders/list', icon: ClipboardList },
       { label: 'Pending Approval', path: '/orders/pending', icon: FileText },
       { label: 'Create Order', path: '/orders/new', icon: ShoppingCart },
+      { label: 'Pre-Orders', path: '/pre-orders', icon: Calendar },
     ],
+  },
+  {
+    label: 'Inventory',
+    icon: Box,
+    path: '/inventory',
+    roles: ['asm', 'rsm', 'admin', 'distributor'],
   },
   {
     label: 'Schemes',
     icon: Gift,
-    path: '/schemes',
+    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
+    children: [
+      { label: 'Active Schemes', path: '/schemes', icon: Gift },
+      { label: 'Advanced Schemes', path: '/schemes/advanced', icon: Layers },
+    ],
+  },
+  {
+    label: 'Approvals',
+    icon: GitBranch,
+    path: '/approvals',
+    roles: ['asm', 'rsm', 'admin', 'credit_team'],
+  },
+  {
+    label: 'Expenses',
+    icon: Wallet,
+    path: '/expenses',
+    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
+  },
+  {
+    label: 'Samples & Gifts',
+    icon: Gift,
+    path: '/samples',
+    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
+  },
+  {
+    label: 'Training',
+    icon: GraduationCap,
+    path: '/training',
     roles: ['sales_executive', 'asm', 'rsm', 'admin'],
   },
   {
