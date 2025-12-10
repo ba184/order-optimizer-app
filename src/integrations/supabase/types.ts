@@ -14,6 +14,461 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          created_at: string | null
+          date: string
+          dsr_submitted: boolean | null
+          id: string
+          login_location: Json | null
+          login_selfie: string | null
+          login_time: string | null
+          logout_location: Json | null
+          logout_selfie: string | null
+          logout_time: string | null
+          orders_placed: number | null
+          status: string | null
+          total_distance: number | null
+          updated_at: string | null
+          user_id: string
+          visit_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string
+          dsr_submitted?: boolean | null
+          id?: string
+          login_location?: Json | null
+          login_selfie?: string | null
+          login_time?: string | null
+          logout_location?: Json | null
+          logout_selfie?: string | null
+          logout_time?: string | null
+          orders_placed?: number | null
+          status?: string | null
+          total_distance?: number | null
+          updated_at?: string | null
+          user_id: string
+          visit_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          dsr_submitted?: boolean | null
+          id?: string
+          login_location?: Json | null
+          login_selfie?: string | null
+          login_time?: string | null
+          logout_location?: Json | null
+          logout_selfie?: string | null
+          logout_time?: string | null
+          orders_placed?: number | null
+          status?: string | null
+          total_distance?: number | null
+          updated_at?: string | null
+          user_id?: string
+          visit_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beat_plans: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          id: string
+          month: number
+          plan_type: string | null
+          rejection_reason: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+          year: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          id?: string
+          month: number
+          plan_type?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+          year: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          id?: string
+          month?: number
+          plan_type?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beat_plans_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beat_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beat_routes: {
+        Row: {
+          area: string | null
+          beat_plan_id: string
+          created_at: string | null
+          day_of_week: number | null
+          id: string
+          planned_visits: number | null
+          retailers: Json | null
+          route_date: string | null
+          zone: string | null
+        }
+        Insert: {
+          area?: string | null
+          beat_plan_id: string
+          created_at?: string | null
+          day_of_week?: number | null
+          id?: string
+          planned_visits?: number | null
+          retailers?: Json | null
+          route_date?: string | null
+          zone?: string | null
+        }
+        Update: {
+          area?: string | null
+          beat_plan_id?: string
+          created_at?: string | null
+          day_of_week?: number | null
+          id?: string
+          planned_visits?: number | null
+          retailers?: Json | null
+          route_date?: string | null
+          zone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beat_routes_beat_plan_id_fkey"
+            columns: ["beat_plan_id"]
+            isOneToOne: false
+            referencedRelation: "beat_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_sales_reports: {
+        Row: {
+          area: string | null
+          city: string | null
+          collection_amount: number | null
+          complaints: number | null
+          created_at: string | null
+          date: string
+          distributor_id: string | null
+          distributor_name: string | null
+          id: string
+          market_intelligence: string | null
+          new_retailers: number | null
+          order_value: number | null
+          orders_count: number | null
+          productive_calls: number | null
+          remarks: string | null
+          retailer_id: string | null
+          retailer_name: string | null
+          status: string | null
+          submitted_at: string | null
+          total_calls: number | null
+          updated_at: string | null
+          user_id: string
+          visit_type: string | null
+          zone: string | null
+        }
+        Insert: {
+          area?: string | null
+          city?: string | null
+          collection_amount?: number | null
+          complaints?: number | null
+          created_at?: string | null
+          date?: string
+          distributor_id?: string | null
+          distributor_name?: string | null
+          id?: string
+          market_intelligence?: string | null
+          new_retailers?: number | null
+          order_value?: number | null
+          orders_count?: number | null
+          productive_calls?: number | null
+          remarks?: string | null
+          retailer_id?: string | null
+          retailer_name?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          total_calls?: number | null
+          updated_at?: string | null
+          user_id: string
+          visit_type?: string | null
+          zone?: string | null
+        }
+        Update: {
+          area?: string | null
+          city?: string | null
+          collection_amount?: number | null
+          complaints?: number | null
+          created_at?: string | null
+          date?: string
+          distributor_id?: string | null
+          distributor_name?: string | null
+          id?: string
+          market_intelligence?: string | null
+          new_retailers?: number | null
+          order_value?: number | null
+          orders_count?: number | null
+          productive_calls?: number | null
+          remarks?: string | null
+          retailer_id?: string | null
+          retailer_name?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          total_calls?: number | null
+          updated_at?: string | null
+          user_id?: string
+          visit_type?: string | null
+          zone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_sales_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_locations: {
+        Row: {
+          accuracy: number | null
+          address: string | null
+          battery_level: number | null
+          created_at: string | null
+          id: string
+          is_moving: boolean | null
+          latitude: number
+          longitude: number
+          recorded_at: string | null
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          address?: string | null
+          battery_level?: number | null
+          created_at?: string | null
+          id?: string
+          is_moving?: boolean | null
+          latitude: number
+          longitude: number
+          recorded_at?: string | null
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          address?: string | null
+          battery_level?: number | null
+          created_at?: string | null
+          id?: string
+          is_moving?: boolean | null
+          latitude?: number
+          longitude?: number
+          recorded_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_locations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          address: string | null
+          approval_reason: string | null
+          approval_status: string | null
+          area: string | null
+          assigned_to: string | null
+          city: string | null
+          created_at: string | null
+          created_by: string
+          email: string | null
+          follow_up_date: string | null
+          id: string
+          lead_type: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          potential_value: number | null
+          shop_name: string | null
+          source: string | null
+          state: string | null
+          status: string | null
+          updated_at: string | null
+          zone: string | null
+        }
+        Insert: {
+          address?: string | null
+          approval_reason?: string | null
+          approval_status?: string | null
+          area?: string | null
+          assigned_to?: string | null
+          city?: string | null
+          created_at?: string | null
+          created_by: string
+          email?: string | null
+          follow_up_date?: string | null
+          id?: string
+          lead_type?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          potential_value?: number | null
+          shop_name?: string | null
+          source?: string | null
+          state?: string | null
+          status?: string | null
+          updated_at?: string | null
+          zone?: string | null
+        }
+        Update: {
+          address?: string | null
+          approval_reason?: string | null
+          approval_status?: string | null
+          area?: string | null
+          assigned_to?: string | null
+          city?: string | null
+          created_at?: string | null
+          created_by?: string
+          email?: string | null
+          follow_up_date?: string | null
+          id?: string
+          lead_type?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          potential_value?: number | null
+          shop_name?: string | null
+          source?: string | null
+          state?: string | null
+          status?: string | null
+          updated_at?: string | null
+          zone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leaves: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          days: number
+          end_date: string
+          id: string
+          leave_type: string
+          reason: string
+          rejection_reason: string | null
+          start_date: string
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          days: number
+          end_date: string
+          id?: string
+          leave_type: string
+          reason: string
+          rejection_reason?: string | null
+          start_date: string
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          days?: number
+          end_date?: string
+          id?: string
+          leave_type?: string
+          reason?: string
+          rejection_reason?: string | null
+          start_date?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaves_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leaves_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           can_approve: boolean | null
