@@ -5,6 +5,8 @@ import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { GeoFilter } from '@/components/ui/GeoFilter';
 import { GeoFilter as GeoFilterType } from '@/data/geoData';
+import { useAttendance } from '@/hooks/useSalesTeamData';
+import { format } from 'date-fns';
 import {
   MapPin,
   Clock,
@@ -13,11 +15,12 @@ import {
   XCircle,
   Eye,
   Navigation,
+  Loader2,
 } from 'lucide-react';
 
 interface AttendanceRecord {
   id: string;
-  userId: string;
+  user_id: string;
   userName: string;
   date: string;
   loginTime: string;
@@ -29,24 +32,33 @@ interface AttendanceRecord {
   status: 'active' | 'pending' | 'inactive';
   zone: string;
   city: string;
-  latitude: number;
-  longitude: number;
 }
-
-const mockAttendance: AttendanceRecord[] = [
-  { id: '1', userId: 'se-001', userName: 'Rajesh Kumar', date: '2024-12-09', loginTime: '09:15 AM', logoutTime: '06:30 PM', loginLocation: 'Connaught Place, Delhi', totalDistance: 45.2, visitCount: 12, ordersPlaced: 8, status: 'active', zone: 'North Zone', city: 'New Delhi', latitude: 28.6139, longitude: 77.2090 },
-  { id: '2', userId: 'se-002', userName: 'Amit Sharma', date: '2024-12-09', loginTime: '09:30 AM', logoutTime: null, loginLocation: 'Lajpat Nagar, Delhi', totalDistance: 32.8, visitCount: 8, ordersPlaced: 5, status: 'active', zone: 'North Zone', city: 'New Delhi', latitude: 28.5355, longitude: 77.2500 },
-  { id: '3', userId: 'se-003', userName: 'Priya Singh', date: '2024-12-09', loginTime: '09:00 AM', logoutTime: '05:45 PM', loginLocation: 'Karol Bagh, Delhi', totalDistance: 38.5, visitCount: 10, ordersPlaced: 7, status: 'active', zone: 'North Zone', city: 'New Delhi', latitude: 28.6519, longitude: 77.2315 },
-  { id: '4', userId: 'se-004', userName: 'Vikram Patel', date: '2024-12-09', loginTime: '--', logoutTime: null, loginLocation: '--', totalDistance: 0, visitCount: 0, ordersPlaced: 0, status: 'inactive', zone: 'South Zone', city: 'Mumbai', latitude: 19.0760, longitude: 72.8777 },
-  { id: '5', userId: 'se-005', userName: 'Sunita Gupta', date: '2024-12-09', loginTime: '10:15 AM', logoutTime: null, loginLocation: 'Rohini, Delhi', totalDistance: 22.1, visitCount: 6, ordersPlaced: 4, status: 'pending', zone: 'North Zone', city: 'New Delhi', latitude: 28.7041, longitude: 77.1025 },
-];
 
 export default function AttendancePage() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
+  
+  const { data: attendanceData, isLoading } = useAttendance(selectedDate);
 
-  const filteredAttendance = mockAttendance.filter(att => {
+  // Transform data for display
+  const transformedData: AttendanceRecord[] = (attendanceData || []).map((att: any) => ({
+    id: att.id,
+    user_id: att.user_id,
+    userName: att.profiles?.name || 'Unknown',
+    date: att.date,
+    loginTime: att.login_time ? format(new Date(att.login_time), 'hh:mm a') : '--',
+    logoutTime: att.logout_time ? format(new Date(att.logout_time), 'hh:mm a') : null,
+    loginLocation: att.login_location?.address || '--',
+    totalDistance: att.total_distance || 0,
+    visitCount: att.visit_count || 0,
+    ordersPlaced: att.orders_placed || 0,
+    status: att.status === 'present' ? 'active' : att.status === 'absent' ? 'inactive' : 'pending',
+    zone: att.profiles?.region || 'N/A',
+    city: att.profiles?.territory || 'N/A',
+  }));
+
+  const filteredAttendance = transformedData.filter(att => {
     if (geoFilter.zone && att.zone !== geoFilter.zone) return false;
     if (geoFilter.city && att.city !== geoFilter.city) return false;
     return true;
@@ -135,6 +147,14 @@ export default function AttendancePage() {
     },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -218,7 +238,12 @@ export default function AttendancePage() {
       </div>
 
       {/* Data Table */}
-      <DataTable data={filteredAttendance} columns={columns} searchPlaceholder="Search by name, location..." />
+      <DataTable 
+        data={filteredAttendance} 
+        columns={columns} 
+        searchPlaceholder="Search by name, location..." 
+        emptyMessage="No attendance records found for this date"
+      />
     </div>
   );
 }

@@ -4,8 +4,10 @@ import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import { GeoFilter } from '@/components/ui/GeoFilter';
-import { GeoFilter as GeoFilterType, employees } from '@/data/geoData';
+import { GeoFilter as GeoFilterType } from '@/data/geoData';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDailySalesReports, useCreateDSR, useProfiles } from '@/hooks/useSalesTeamData';
+import { format } from 'date-fns';
 import {
   Plus,
   FileText,
@@ -19,37 +21,31 @@ import {
   User,
   Filter,
   Download,
+  Loader2,
+  X,
 } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface DSR {
   id: string;
   date: string;
-  employeeId: string;
+  user_id: string;
   employeeName: string;
-  visitType: 'call' | 'visit';
-  entityType: 'distributor' | 'retailer';
-  entityName: string;
+  visit_type: 'call' | 'visit';
+  distributor_name?: string;
+  retailer_name?: string;
   zone: string;
   city: string;
   area: string;
-  totalCalls: number;
-  productiveCalls: number;
-  ordersCount: number;
-  orderValue: number;
-  collectionAmount: number;
-  marketIntelligence: string;
+  total_calls: number;
+  productive_calls: number;
+  orders_count: number;
+  order_value: number;
+  collection_amount: number;
+  market_intelligence: string;
   status: StatusType;
-  submittedAt?: string;
+  submitted_at?: string;
+  profiles?: { name: string };
 }
-
-const mockDSRs: DSR[] = [
-  { id: 'dsr-001', date: '2024-12-09', employeeId: 'se-001', employeeName: 'Rajesh Kumar', visitType: 'visit', entityType: 'retailer', entityName: 'Sharma Store', zone: 'North Zone', city: 'New Delhi', area: 'Connaught Place', totalCalls: 15, productiveCalls: 12, ordersCount: 8, orderValue: 45000, collectionAmount: 25000, marketIntelligence: 'Competitor launched new scheme', status: 'submitted', submittedAt: '2024-12-09 18:30' },
-  { id: 'dsr-002', date: '2024-12-09', employeeId: 'se-002', employeeName: 'Amit Sharma', visitType: 'call', entityType: 'distributor', entityName: 'Krishna Traders', zone: 'North Zone', city: 'New Delhi', area: 'Karol Bagh', totalCalls: 12, productiveCalls: 10, ordersCount: 5, orderValue: 125000, collectionAmount: 85000, marketIntelligence: 'High demand for Alpha series', status: 'submitted', submittedAt: '2024-12-09 19:00' },
-  { id: 'dsr-003', date: '2024-12-08', employeeId: 'se-003', employeeName: 'Priya Singh', visitType: 'visit', entityType: 'retailer', entityName: 'Gupta General Store', zone: 'North Zone', city: 'New Delhi', area: 'Lajpat Nagar', totalCalls: 18, productiveCalls: 14, ordersCount: 10, orderValue: 38000, collectionAmount: 15000, marketIntelligence: 'New outlets opening in area', status: 'submitted', submittedAt: '2024-12-08 18:45' },
-  { id: 'dsr-004', date: '2024-12-08', employeeId: 'se-001', employeeName: 'Rajesh Kumar', visitType: 'visit', entityType: 'retailer', entityName: 'Jain Provisions', zone: 'North Zone', city: 'New Delhi', area: 'Connaught Place', totalCalls: 14, productiveCalls: 11, ordersCount: 7, orderValue: 52000, collectionAmount: 32000, marketIntelligence: '', status: 'submitted', submittedAt: '2024-12-08 19:15' },
-  { id: 'dsr-005', date: '2024-12-07', employeeId: 'se-004', employeeName: 'Vikram Patel', visitType: 'call', entityType: 'distributor', entityName: 'Patel Trading', zone: 'East Zone', city: 'Preet Vihar', area: 'Preet Vihar', totalCalls: 10, productiveCalls: 8, ordersCount: 4, orderValue: 95000, collectionAmount: 45000, marketIntelligence: 'Stock shortage reported', status: 'draft' },
-];
 
 const formatCurrency = (value: number) => {
   if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
@@ -59,27 +55,89 @@ const formatCurrency = (value: number) => {
 
 export default function DSRListPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
   const [dateFilter, setDateFilter] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const filteredDSRs = mockDSRs.filter(dsr => {
+  const { data: dsrData, isLoading } = useDailySalesReports({ date: dateFilter || undefined, userId: employeeFilter || undefined });
+  const { data: profilesData } = useProfiles();
+  const createDSR = useCreateDSR();
+
+  const [formData, setFormData] = useState({
+    visit_type: 'visit',
+    distributor_name: '',
+    retailer_name: '',
+    date: new Date().toISOString().split('T')[0],
+    zone: '',
+    city: '',
+    area: '',
+    total_calls: '',
+    productive_calls: '',
+    orders_count: '',
+    order_value: '',
+    collection_amount: '',
+    market_intelligence: '',
+  });
+
+  // Transform data for display
+  const dsrs: DSR[] = (dsrData || []).map((dsr: any) => ({
+    ...dsr,
+    employeeName: dsr.profiles?.name || 'Unknown',
+  }));
+
+  const filteredDSRs = dsrs.filter(dsr => {
     if (geoFilter.zone && dsr.zone !== geoFilter.zone) return false;
     if (geoFilter.city && dsr.city !== geoFilter.city) return false;
     if (geoFilter.area && dsr.area !== geoFilter.area) return false;
-    if (dateFilter && dsr.date !== dateFilter) return false;
-    if (employeeFilter && dsr.employeeId !== employeeFilter) return false;
     return true;
   });
 
   const stats = {
     total: filteredDSRs.length,
     submitted: filteredDSRs.filter(d => d.status === 'submitted').length,
-    totalOrders: filteredDSRs.reduce((sum, d) => sum + d.ordersCount, 0),
-    totalOrderValue: filteredDSRs.reduce((sum, d) => sum + d.orderValue, 0),
-    totalCollection: filteredDSRs.reduce((sum, d) => sum + d.collectionAmount, 0),
+    totalOrders: filteredDSRs.reduce((sum, d) => sum + (d.orders_count || 0), 0),
+    totalOrderValue: filteredDSRs.reduce((sum, d) => sum + (d.order_value || 0), 0),
+    totalCollection: filteredDSRs.reduce((sum, d) => sum + (d.collection_amount || 0), 0),
+  };
+
+  const handleSubmit = async () => {
+    if (!user?.id) return;
+    
+    await createDSR.mutateAsync({
+      user_id: user.id,
+      visit_type: formData.visit_type,
+      distributor_name: formData.distributor_name || undefined,
+      retailer_name: formData.retailer_name || undefined,
+      date: formData.date,
+      zone: formData.zone || undefined,
+      city: formData.city || undefined,
+      area: formData.area || undefined,
+      total_calls: parseInt(formData.total_calls) || 0,
+      productive_calls: parseInt(formData.productive_calls) || 0,
+      orders_count: parseInt(formData.orders_count) || 0,
+      order_value: parseFloat(formData.order_value) || 0,
+      collection_amount: parseFloat(formData.collection_amount) || 0,
+      market_intelligence: formData.market_intelligence || undefined,
+      status: 'submitted',
+    });
+    setShowCreateModal(false);
+    setFormData({
+      visit_type: 'visit',
+      distributor_name: '',
+      retailer_name: '',
+      date: new Date().toISOString().split('T')[0],
+      zone: '',
+      city: '',
+      area: '',
+      total_calls: '',
+      productive_calls: '',
+      orders_count: '',
+      order_value: '',
+      collection_amount: '',
+      market_intelligence: '',
+    });
   };
 
   const columns = [
@@ -104,30 +162,30 @@ export default function DSRListPage() {
           </div>
           <div>
             <p className="font-medium text-foreground">{item.employeeName}</p>
-            <p className="text-xs text-muted-foreground">{item.employeeId}</p>
+            <p className="text-xs text-muted-foreground">{item.user_id.slice(0, 8)}</p>
           </div>
         </div>
       ),
       sortable: true,
     },
     {
-      key: 'visitType',
+      key: 'visit_type',
       header: 'Type',
       render: (item: DSR) => (
         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-          item.visitType === 'visit' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'
+          item.visit_type === 'visit' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'
         }`}>
-          {item.visitType === 'visit' ? 'Visit' : 'Call'}
+          {item.visit_type === 'visit' ? 'Visit' : 'Call'}
         </span>
       ),
     },
     {
-      key: 'entityName',
+      key: 'entity',
       header: 'Entity',
       render: (item: DSR) => (
         <div>
-          <p className="font-medium text-foreground">{item.entityName}</p>
-          <p className="text-xs text-muted-foreground capitalize">{item.entityType}</p>
+          <p className="font-medium text-foreground">{item.retailer_name || item.distributor_name || 'N/A'}</p>
+          <p className="text-xs text-muted-foreground capitalize">{item.retailer_name ? 'Retailer' : 'Distributor'}</p>
         </div>
       ),
     },
@@ -137,7 +195,7 @@ export default function DSRListPage() {
       render: (item: DSR) => (
         <div className="flex items-center gap-2">
           <MapPin size={14} className="text-muted-foreground" />
-          <span className="text-sm">{item.city}, {item.area}</span>
+          <span className="text-sm">{item.city || 'N/A'}{item.area ? `, ${item.area}` : ''}</span>
         </div>
       ),
     },
@@ -147,7 +205,7 @@ export default function DSRListPage() {
       render: (item: DSR) => (
         <div className="flex items-center gap-2">
           <Phone size={14} className="text-muted-foreground" />
-          <span>{item.productiveCalls}/{item.totalCalls}</span>
+          <span>{item.productive_calls || 0}/{item.total_calls || 0}</span>
         </div>
       ),
     },
@@ -156,8 +214,8 @@ export default function DSRListPage() {
       header: 'Orders',
       render: (item: DSR) => (
         <div>
-          <p className="font-medium">{item.ordersCount}</p>
-          <p className="text-xs text-muted-foreground">{formatCurrency(item.orderValue)}</p>
+          <p className="font-medium">{item.orders_count || 0}</p>
+          <p className="text-xs text-muted-foreground">{formatCurrency(item.order_value || 0)}</p>
         </div>
       ),
     },
@@ -165,7 +223,7 @@ export default function DSRListPage() {
       key: 'collection',
       header: 'Collection',
       render: (item: DSR) => (
-        <span className="font-medium text-success">{formatCurrency(item.collectionAmount)}</span>
+        <span className="font-medium text-success">{formatCurrency(item.collection_amount || 0)}</span>
       ),
     },
     {
@@ -197,6 +255,14 @@ export default function DSRListPage() {
     },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -205,12 +271,10 @@ export default function DSRListPage() {
           <h1 className="module-title">Daily Sales Reports</h1>
           <p className="text-muted-foreground">View and manage daily sales reports from field team</p>
         </div>
-        {user?.role === 'admin' && (
-          <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-2">
-            <Plus size={18} />
-            Create DSR
-          </button>
-        )}
+        <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-2">
+          <Plus size={18} />
+          Create DSR
+        </button>
       </div>
 
       {/* Stats */}
@@ -299,7 +363,7 @@ export default function DSRListPage() {
           className="input-field w-48"
         >
           <option value="">All Employees</option>
-          {employees.filter(e => e.role === 'sales_executive').map((emp) => (
+          {(profilesData || []).map((emp: any) => (
             <option key={emp.id} value={emp.id}>{emp.name}</option>
           ))}
         </select>
@@ -314,222 +378,189 @@ export default function DSRListPage() {
         data={filteredDSRs}
         columns={columns}
         searchPlaceholder="Search by employee, entity..."
+        emptyMessage="No DSR records found"
       />
 
       {/* Create DSR Modal */}
       {showCreateModal && (
-        <CreateDSRModal onClose={() => setShowCreateModal(false)} />
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">Create DSR</h2>
+              <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Visit Type *</label>
+                  <select
+                    value={formData.visit_type}
+                    onChange={(e) => setFormData({ ...formData, visit_type: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="visit">Visit</option>
+                    <option value="call">Call</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Date *</label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Retailer Name</label>
+                  <input
+                    type="text"
+                    value={formData.retailer_name}
+                    onChange={(e) => setFormData({ ...formData, retailer_name: e.target.value })}
+                    placeholder="Enter retailer name"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Distributor Name</label>
+                  <input
+                    type="text"
+                    value={formData.distributor_name}
+                    onChange={(e) => setFormData({ ...formData, distributor_name: e.target.value })}
+                    placeholder="Enter distributor name"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Zone</label>
+                  <select
+                    value={formData.zone}
+                    onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="">Select Zone</option>
+                    <option value="North Zone">North Zone</option>
+                    <option value="South Zone">South Zone</option>
+                    <option value="East Zone">East Zone</option>
+                    <option value="West Zone">West Zone</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">City</label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="Enter city"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Area</label>
+                  <input
+                    type="text"
+                    value={formData.area}
+                    onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                    placeholder="Enter area"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Total Calls</label>
+                  <input
+                    type="number"
+                    value={formData.total_calls}
+                    onChange={(e) => setFormData({ ...formData, total_calls: e.target.value })}
+                    placeholder="0"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Productive Calls</label>
+                  <input
+                    type="number"
+                    value={formData.productive_calls}
+                    onChange={(e) => setFormData({ ...formData, productive_calls: e.target.value })}
+                    placeholder="0"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Orders Count</label>
+                  <input
+                    type="number"
+                    value={formData.orders_count}
+                    onChange={(e) => setFormData({ ...formData, orders_count: e.target.value })}
+                    placeholder="0"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Order Value (₹)</label>
+                  <input
+                    type="number"
+                    value={formData.order_value}
+                    onChange={(e) => setFormData({ ...formData, order_value: e.target.value })}
+                    placeholder="0"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Collection Amount (₹)</label>
+                  <input
+                    type="number"
+                    value={formData.collection_amount}
+                    onChange={(e) => setFormData({ ...formData, collection_amount: e.target.value })}
+                    placeholder="0"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Market Intelligence</label>
+                <textarea
+                  value={formData.market_intelligence}
+                  onChange={(e) => setFormData({ ...formData, market_intelligence: e.target.value })}
+                  placeholder="Any market insights, competitor information..."
+                  rows={3}
+                  className="input-field resize-none"
+                />
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button onClick={() => setShowCreateModal(false)} className="btn-outline">Cancel</button>
+              <button 
+                onClick={handleSubmit}
+                disabled={createDSR.isPending}
+                className="btn-primary"
+              >
+                {createDSR.isPending ? 'Creating...' : 'Create DSR'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
-    </div>
-  );
-}
-
-function CreateDSRModal({ onClose }: { onClose: () => void }) {
-  const [formData, setFormData] = useState({
-    visitType: 'visit',
-    entityType: 'retailer',
-    entityName: '',
-    employeeId: '',
-    date: new Date().toISOString().split('T')[0],
-    zone: '',
-    city: '',
-    area: '',
-    totalCalls: '',
-    productiveCalls: '',
-    ordersCount: '',
-    orderValue: '',
-    collectionAmount: '',
-    marketIntelligence: '',
-  });
-
-  const handleSubmit = () => {
-    toast.success('DSR created successfully');
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-      >
-        <h2 className="text-lg font-semibold text-foreground mb-6">Create DSR (Admin)</h2>
-        
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Visit Type *</label>
-              <select
-                value={formData.visitType}
-                onChange={(e) => setFormData({ ...formData, visitType: e.target.value })}
-                className="input-field"
-              >
-                <option value="visit">Visit</option>
-                <option value="call">Call</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Entity Type *</label>
-              <select
-                value={formData.entityType}
-                onChange={(e) => setFormData({ ...formData, entityType: e.target.value })}
-                className="input-field"
-              >
-                <option value="retailer">Retailer</option>
-                <option value="distributor">Distributor</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Select Employee *</label>
-              <select
-                value={formData.employeeId}
-                onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                className="input-field"
-              >
-                <option value="">Select Employee</option>
-                {employees.filter(e => e.role === 'sales_executive').map((emp) => (
-                  <option key={emp.id} value={emp.id}>{emp.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Date *</label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="input-field"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              {formData.entityType === 'retailer' ? 'Retailer Name' : 'Distributor Name'} *
-            </label>
-            <input
-              type="text"
-              value={formData.entityName}
-              onChange={(e) => setFormData({ ...formData, entityName: e.target.value })}
-              placeholder={`Enter ${formData.entityType} name`}
-              className="input-field"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Zone *</label>
-              <select
-                value={formData.zone}
-                onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
-                className="input-field"
-              >
-                <option value="">Select Zone</option>
-                <option value="North Zone">North Zone</option>
-                <option value="South Zone">South Zone</option>
-                <option value="East Zone">East Zone</option>
-                <option value="West Zone">West Zone</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">City *</label>
-              <input
-                type="text"
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                placeholder="Enter city"
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Area *</label>
-              <input
-                type="text"
-                value={formData.area}
-                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                placeholder="Enter area"
-                className="input-field"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Total Calls</label>
-              <input
-                type="number"
-                value={formData.totalCalls}
-                onChange={(e) => setFormData({ ...formData, totalCalls: e.target.value })}
-                placeholder="0"
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Productive Calls</label>
-              <input
-                type="number"
-                value={formData.productiveCalls}
-                onChange={(e) => setFormData({ ...formData, productiveCalls: e.target.value })}
-                placeholder="0"
-                className="input-field"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Orders Count</label>
-              <input
-                type="number"
-                value={formData.ordersCount}
-                onChange={(e) => setFormData({ ...formData, ordersCount: e.target.value })}
-                placeholder="0"
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Order Value (₹)</label>
-              <input
-                type="number"
-                value={formData.orderValue}
-                onChange={(e) => setFormData({ ...formData, orderValue: e.target.value })}
-                placeholder="0"
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Collection (₹)</label>
-              <input
-                type="number"
-                value={formData.collectionAmount}
-                onChange={(e) => setFormData({ ...formData, collectionAmount: e.target.value })}
-                placeholder="0"
-                className="input-field"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Market Intelligence</label>
-            <textarea
-              value={formData.marketIntelligence}
-              onChange={(e) => setFormData({ ...formData, marketIntelligence: e.target.value })}
-              placeholder="Competitor activity, market feedback..."
-              rows={3}
-              className="input-field resize-none"
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-3 mt-6">
-          <button onClick={onClose} className="btn-outline">Cancel</button>
-          <button onClick={handleSubmit} className="btn-primary">Create DSR</button>
-        </div>
-      </motion.div>
     </div>
   );
 }

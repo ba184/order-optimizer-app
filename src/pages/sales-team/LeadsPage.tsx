@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { useLeads, useCreateLead, useUpdateLead } from '@/hooks/useSalesTeamData';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   UserPlus,
   Phone,
@@ -13,125 +15,166 @@ import {
   CheckCircle,
   Clock,
   TrendingUp,
+  Loader2,
+  X,
 } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface Lead {
   id: string;
   name: string;
-  shopName: string;
-  phone: string;
-  address: string;
-  city: string;
-  type: 'retailer' | 'distributor';
-  status: 'new' | 'contacted' | 'interested' | 'converted' | 'lost';
-  notes: string;
-  createdBy: string;
-  createdAt: string;
-  assignedTo: string;
-  followUpDate?: string;
+  shop_name: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  lead_type: string | null;
+  status: string | null;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+  assigned_to: string | null;
+  follow_up_date?: string | null;
 }
 
-const mockLeads: Lead[] = [
-  { id: 'l-001', name: 'Ramesh Agarwal', shopName: 'Agarwal Stores', phone: '+91 98765 11111', address: 'Shop 15, Main Market', city: 'Delhi', type: 'retailer', status: 'interested', notes: 'Interested in Alpha series', createdBy: 'Rajesh Kumar', createdAt: '2024-12-05', assignedTo: 'Rajesh Kumar', followUpDate: '2024-12-10' },
-  { id: 'l-002', name: 'Suresh Bansal', shopName: 'Bansal Trading', phone: '+91 98765 22222', address: '45 Industrial Area', city: 'Gurgaon', type: 'distributor', status: 'contacted', notes: 'Looking for distributorship', createdBy: 'Amit Sharma', createdAt: '2024-12-07', assignedTo: 'Amit Sharma', followUpDate: '2024-12-12' },
-  { id: 'l-003', name: 'Mahesh Joshi', shopName: 'Joshi Provisions', phone: '+91 98765 33333', address: '78 Market Complex', city: 'Noida', type: 'retailer', status: 'new', notes: 'Walk-in inquiry', createdBy: 'Priya Singh', createdAt: '2024-12-09', assignedTo: 'Priya Singh' },
-  { id: 'l-004', name: 'Dinesh Mehta', shopName: 'Mehta Mart', phone: '+91 98765 44444', address: '23 Shopping Plaza', city: 'Delhi', type: 'retailer', status: 'converted', notes: 'Converted to retailer', createdBy: 'Rajesh Kumar', createdAt: '2024-12-01', assignedTo: 'Rajesh Kumar' },
-  { id: 'l-005', name: 'Rakesh Verma', shopName: 'Verma & Co', phone: '+91 98765 55555', address: '56 Business Park', city: 'Faridabad', type: 'distributor', status: 'lost', notes: 'Went with competitor', createdBy: 'Vikram Patel', createdAt: '2024-11-25', assignedTo: 'Vikram Patel' },
-];
-
-const columns = [
-  {
-    key: 'shopName',
-    header: 'Lead',
-    render: (item: Lead) => (
-      <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-          item.type === 'retailer' ? 'bg-secondary/10' : 'bg-primary/10'
-        }`}>
-          {item.type === 'retailer' ? <Store size={20} className="text-secondary" /> : <Building2 size={20} className="text-primary" />}
-        </div>
-        <div>
-          <p className="font-medium text-foreground">{item.shopName}</p>
-          <p className="text-xs text-muted-foreground">{item.name}</p>
-        </div>
-      </div>
-    ),
-  },
-  {
-    key: 'phone',
-    header: 'Contact',
-    render: (item: Lead) => (
-      <div className="flex items-center gap-2">
-        <Phone size={14} className="text-muted-foreground" />
-        <span className="text-sm">{item.phone}</span>
-      </div>
-    ),
-  },
-  {
-    key: 'city',
-    header: 'Location',
-    render: (item: Lead) => (
-      <div className="flex items-center gap-2">
-        <MapPin size={14} className="text-muted-foreground" />
-        <span className="text-sm">{item.city}</span>
-      </div>
-    ),
-  },
-  {
-    key: 'type',
-    header: 'Type',
-    render: (item: Lead) => (
-      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-        item.type === 'retailer' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'
-      }`}>
-        {item.type}
-      </span>
-    ),
-  },
-  {
-    key: 'assignedTo',
-    header: 'Assigned To',
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    render: (item: Lead) => <StatusBadge status={item.status} />,
-  },
-  {
-    key: 'actions',
-    header: 'Actions',
-    render: (item: Lead) => (
-      <div className="flex items-center gap-1">
-        <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-          <Eye size={16} className="text-muted-foreground" />
-        </button>
-        <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-          <Edit size={16} className="text-muted-foreground" />
-        </button>
-        {item.status !== 'converted' && item.status !== 'lost' && (
-          <button
-            onClick={() => toast.success('Lead converted!')}
-            className="p-2 hover:bg-success/10 rounded-lg transition-colors"
-          >
-            <CheckCircle size={16} className="text-success" />
-          </button>
-        )}
-      </div>
-    ),
-  },
-];
-
 export default function LeadsPage() {
+  const { user } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState<Lead | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    shop_name: '',
+    phone: '',
+    address: '',
+    city: '',
+    lead_type: 'retailer',
+    notes: '',
+  });
+
+  const { data: leadsData, isLoading } = useLeads();
+  const createLead = useCreateLead();
+  const updateLead = useUpdateLead();
+
+  const leads: Lead[] = (leadsData || []).map((l: any) => ({
+    ...l,
+    lead_type: l.lead_type || 'retailer',
+    status: l.status || 'new',
+  }));
+
+  const handleCreate = async () => {
+    if (!formData.name || !formData.shop_name) {
+      return;
+    }
+    await createLead.mutateAsync(formData);
+    setShowAddModal(false);
+    setFormData({ name: '', shop_name: '', phone: '', address: '', city: '', lead_type: 'retailer', notes: '' });
+  };
+
+  const handleConvert = async (id: string) => {
+    await updateLead.mutateAsync({ id, status: 'converted' });
+  };
+
+  const columns = [
+    {
+      key: 'shop_name',
+      header: 'Lead',
+      render: (item: Lead) => (
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+            item.lead_type === 'retailer' ? 'bg-secondary/10' : 'bg-primary/10'
+          }`}>
+            {item.lead_type === 'retailer' ? <Store size={20} className="text-secondary" /> : <Building2 size={20} className="text-primary" />}
+          </div>
+          <div>
+            <p className="font-medium text-foreground">{item.shop_name || 'N/A'}</p>
+            <p className="text-xs text-muted-foreground">{item.name}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'phone',
+      header: 'Contact',
+      render: (item: Lead) => (
+        <div className="flex items-center gap-2">
+          <Phone size={14} className="text-muted-foreground" />
+          <span className="text-sm">{item.phone || 'N/A'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'city',
+      header: 'Location',
+      render: (item: Lead) => (
+        <div className="flex items-center gap-2">
+          <MapPin size={14} className="text-muted-foreground" />
+          <span className="text-sm">{item.city || 'N/A'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'lead_type',
+      header: 'Type',
+      render: (item: Lead) => (
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+          item.lead_type === 'retailer' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'
+        }`}>
+          {item.lead_type}
+        </span>
+      ),
+    },
+    {
+      key: 'assigned_to',
+      header: 'Assigned To',
+      render: (item: Lead) => (
+        <span className="text-sm">{item.assigned_to ? 'Assigned' : 'Unassigned'}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (item: Lead) => <StatusBadge status={item.status} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (item: Lead) => (
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={() => setShowViewModal(item)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+          >
+            <Eye size={16} className="text-muted-foreground" />
+          </button>
+          <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+            <Edit size={16} className="text-muted-foreground" />
+          </button>
+          {item.status !== 'converted' && item.status !== 'lost' && (
+            <button
+              onClick={() => handleConvert(item.id)}
+              className="p-2 hover:bg-success/10 rounded-lg transition-colors"
+            >
+              <CheckCircle size={16} className="text-success" />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   const stats = {
-    total: mockLeads.length,
-    new: mockLeads.filter(l => l.status === 'new').length,
-    interested: mockLeads.filter(l => l.status === 'interested').length,
-    converted: mockLeads.filter(l => l.status === 'converted').length,
-    conversionRate: ((mockLeads.filter(l => l.status === 'converted').length / mockLeads.length) * 100).toFixed(0),
+    total: leads.length,
+    new: leads.filter(l => l.status === 'new').length,
+    interested: leads.filter(l => l.status === 'interested').length,
+    converted: leads.filter(l => l.status === 'converted').length,
+    conversionRate: leads.length > 0 ? ((leads.filter(l => l.status === 'converted').length / leads.length) * 100).toFixed(0) : '0',
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -199,7 +242,12 @@ export default function LeadsPage() {
       </div>
 
       {/* Leads Table */}
-      <DataTable data={mockLeads} columns={columns} searchPlaceholder="Search leads..." />
+      <DataTable 
+        data={leads} 
+        columns={columns} 
+        searchPlaceholder="Search leads..." 
+        emptyMessage="No leads found. Add your first lead!"
+      />
 
       {/* Add Lead Modal */}
       {showAddModal && (
@@ -209,41 +257,160 @@ export default function LeadsPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-4">Add New Lead</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Add New Lead</h2>
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Contact Name</label>
-                  <input type="text" placeholder="Enter name" className="input-field" />
+                  <label className="block text-sm font-medium text-foreground mb-2">Contact Name *</label>
+                  <input 
+                    type="text" 
+                    placeholder="Enter name" 
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="input-field" 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Phone</label>
-                  <input type="tel" placeholder="+91 98765 43210" className="input-field" />
+                  <input 
+                    type="tel" 
+                    placeholder="+91 98765 43210" 
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="input-field" 
+                  />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Shop/Firm Name</label>
-                <input type="text" placeholder="Enter shop name" className="input-field" />
+                <label className="block text-sm font-medium text-foreground mb-2">Shop/Firm Name *</label>
+                <input 
+                  type="text" 
+                  placeholder="Enter shop name" 
+                  value={formData.shop_name}
+                  onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
+                  className="input-field" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Lead Type</label>
-                <select className="input-field">
+                <select 
+                  value={formData.lead_type}
+                  onChange={(e) => setFormData({ ...formData, lead_type: e.target.value })}
+                  className="input-field"
+                >
                   <option value="retailer">Retailer</option>
                   <option value="distributor">Distributor</option>
                 </select>
               </div>
               <div>
+                <label className="block text-sm font-medium text-foreground mb-2">City</label>
+                <input 
+                  type="text" 
+                  placeholder="Enter city" 
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="input-field" 
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Address</label>
-                <textarea placeholder="Enter address" rows={2} className="input-field resize-none" />
+                <textarea 
+                  placeholder="Enter address" 
+                  rows={2} 
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="input-field resize-none" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Notes</label>
-                <textarea placeholder="Any additional notes..." rows={2} className="input-field resize-none" />
+                <textarea 
+                  placeholder="Any additional notes..." 
+                  rows={2} 
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="input-field resize-none" 
+                />
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => setShowAddModal(false)} className="btn-outline">Cancel</button>
-              <button onClick={() => { toast.success('Lead added'); setShowAddModal(false); }} className="btn-primary">Add Lead</button>
+              <button 
+                onClick={handleCreate} 
+                disabled={createLead.isPending}
+                className="btn-primary"
+              >
+                {createLead.isPending ? 'Adding...' : 'Add Lead'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* View Lead Modal */}
+      {showViewModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Lead Details</h2>
+              <button onClick={() => setShowViewModal(null)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                  showViewModal.lead_type === 'retailer' ? 'bg-secondary/10' : 'bg-primary/10'
+                }`}>
+                  {showViewModal.lead_type === 'retailer' ? <Store size={24} className="text-secondary" /> : <Building2 size={24} className="text-primary" />}
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">{showViewModal.shop_name}</p>
+                  <p className="text-sm text-muted-foreground">{showViewModal.name}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Phone</p>
+                  <p className="font-medium">{showViewModal.phone || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">City</p>
+                  <p className="font-medium">{showViewModal.city || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Type</p>
+                  <p className="font-medium capitalize">{showViewModal.lead_type}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <StatusBadge status={showViewModal.status} />
+                </div>
+              </div>
+              {showViewModal.address && (
+                <div>
+                  <p className="text-muted-foreground text-sm">Address</p>
+                  <p className="font-medium">{showViewModal.address}</p>
+                </div>
+              )}
+              {showViewModal.notes && (
+                <div>
+                  <p className="text-muted-foreground text-sm">Notes</p>
+                  <p className="font-medium">{showViewModal.notes}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-end mt-6">
+              <button onClick={() => setShowViewModal(null)} className="btn-outline">Close</button>
             </div>
           </motion.div>
         </div>

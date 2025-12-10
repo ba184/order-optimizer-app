@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { useLeaves, useCreateLeave, useUpdateLeave } from '@/hooks/useSalesTeamData';
+import { useAuth } from '@/contexts/AuthContext';
+import { format, differenceInDays } from 'date-fns';
 import {
   Plus,
   Calendar,
@@ -13,121 +16,35 @@ import {
   ThumbsUp,
   ThumbsDown,
   ArrowLeft,
+  Loader2,
+  X,
 } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface LeaveRequest {
   id: string;
-  userId: string;
+  user_id: string;
   userName: string;
-  leaveType: 'casual' | 'sick' | 'earned' | 'compensatory';
-  startDate: string;
-  endDate: string;
+  leave_type: 'casual' | 'sick' | 'earned' | 'compensatory';
+  start_date: string;
+  end_date: string;
   days: number;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
-  appliedOn: string;
-  approvedBy?: string;
-  remarks?: string;
+  created_at: string;
+  approved_by?: string;
+  rejection_reason?: string;
+  profiles?: { name: string };
+  approved_by_profile?: { name: string };
 }
 
-interface EmployeeLeaveBalance {
-  casual: { total: number; used: number; remaining: number };
-  sick: { total: number; used: number; remaining: number };
-  earned: { total: number; used: number; remaining: number };
-  compensatory: { total: number; used: number; remaining: number };
-}
-
-const mockLeaveRequests: LeaveRequest[] = [
-  {
-    id: 'l-001',
-    userId: 'se-001',
-    userName: 'Rajesh Kumar',
-    leaveType: 'casual',
-    startDate: '2024-12-15',
-    endDate: '2024-12-16',
-    days: 2,
-    reason: 'Family function',
-    status: 'pending',
-    appliedOn: '2024-12-09',
-  },
-  {
-    id: 'l-002',
-    userId: 'se-002',
-    userName: 'Amit Sharma',
-    leaveType: 'sick',
-    startDate: '2024-12-10',
-    endDate: '2024-12-10',
-    days: 1,
-    reason: 'Not feeling well',
-    status: 'approved',
-    appliedOn: '2024-12-09',
-    approvedBy: 'Priya Sharma (ASM)',
-  },
-  {
-    id: 'l-003',
-    userId: 'se-003',
-    userName: 'Priya Singh',
-    leaveType: 'earned',
-    startDate: '2024-12-20',
-    endDate: '2024-12-25',
-    days: 6,
-    reason: 'Annual vacation',
-    status: 'pending',
-    appliedOn: '2024-12-08',
-  },
-  {
-    id: 'l-004',
-    userId: 'se-004',
-    userName: 'Vikram Patel',
-    leaveType: 'casual',
-    startDate: '2024-12-05',
-    endDate: '2024-12-05',
-    days: 1,
-    reason: 'Personal work',
-    status: 'rejected',
-    appliedOn: '2024-12-04',
-    approvedBy: 'Priya Sharma (ASM)',
-    remarks: 'Critical sales period, please reschedule',
-  },
-];
-
-// Mock employee leave balances
-const mockEmployeeBalances: Record<string, EmployeeLeaveBalance> = {
-  'se-001': {
-    casual: { total: 12, used: 4, remaining: 8 },
-    sick: { total: 10, used: 2, remaining: 8 },
-    earned: { total: 15, used: 0, remaining: 15 },
-    compensatory: { total: 3, used: 1, remaining: 2 },
-  },
-  'se-002': {
-    casual: { total: 12, used: 6, remaining: 6 },
-    sick: { total: 10, used: 3, remaining: 7 },
-    earned: { total: 15, used: 5, remaining: 10 },
-    compensatory: { total: 2, used: 0, remaining: 2 },
-  },
-  'se-003': {
-    casual: { total: 12, used: 2, remaining: 10 },
-    sick: { total: 10, used: 0, remaining: 10 },
-    earned: { total: 15, used: 3, remaining: 12 },
-    compensatory: { total: 4, used: 2, remaining: 2 },
-  },
-  'se-004': {
-    casual: { total: 12, used: 8, remaining: 4 },
-    sick: { total: 10, used: 5, remaining: 5 },
-    earned: { total: 15, used: 10, remaining: 5 },
-    compensatory: { total: 1, used: 1, remaining: 0 },
-  },
-};
-
-const leaveTypeLabels = {
+const leaveTypeLabels: Record<string, string> = {
   casual: 'Casual Leave',
   sick: 'Sick Leave',
   earned: 'Earned Leave',
   compensatory: 'Comp Off',
 };
 
-const leaveTypeColors = {
+const leaveTypeColors: Record<string, string> = {
   casual: 'bg-info/10 text-info',
   sick: 'bg-destructive/10 text-destructive',
   earned: 'bg-success/10 text-success',
@@ -135,34 +52,52 @@ const leaveTypeColors = {
 };
 
 export default function LeaveManagementPage() {
+  const { user } = useAuth();
   const [showApplyModal, setShowApplyModal] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<{
-    userId: string;
-    userName: string;
-  } | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<{ userId: string; userName: string } | null>(null);
   const [newLeave, setNewLeave] = useState({
-    leaveType: 'casual',
-    startDate: '',
-    endDate: '',
+    leave_type: 'casual',
+    start_date: '',
+    end_date: '',
     reason: '',
   });
 
-  const handleApplyLeave = () => {
-    if (!newLeave.startDate || !newLeave.endDate || !newLeave.reason) {
-      toast.error('Please fill all fields');
+  const { data: leavesData, isLoading } = useLeaves();
+  const createLeave = useCreateLeave();
+  const updateLeave = useUpdateLeave();
+
+  const leaveRequests: LeaveRequest[] = (leavesData || []).map((leave: any) => ({
+    ...leave,
+    userName: leave.profiles?.name || 'Unknown',
+  }));
+
+  const calculateDays = (start: string, end: string) => {
+    if (!start || !end) return 0;
+    return differenceInDays(new Date(end), new Date(start)) + 1;
+  };
+
+  const handleApplyLeave = async () => {
+    if (!newLeave.start_date || !newLeave.end_date || !newLeave.reason) {
       return;
     }
-    toast.success('Leave application submitted');
+    const days = calculateDays(newLeave.start_date, newLeave.end_date);
+    await createLeave.mutateAsync({
+      leave_type: newLeave.leave_type,
+      start_date: newLeave.start_date,
+      end_date: newLeave.end_date,
+      days,
+      reason: newLeave.reason,
+    });
     setShowApplyModal(false);
-    setNewLeave({ leaveType: 'casual', startDate: '', endDate: '', reason: '' });
+    setNewLeave({ leave_type: 'casual', start_date: '', end_date: '', reason: '' });
   };
 
-  const handleApprove = (id: string) => {
-    toast.success('Leave approved');
+  const handleApprove = async (id: string) => {
+    await updateLeave.mutateAsync({ id, status: 'approved' });
   };
 
-  const handleReject = (id: string) => {
-    toast.success('Leave rejected');
+  const handleReject = async (id: string) => {
+    await updateLeave.mutateAsync({ id, status: 'rejected' });
   };
 
   const handleViewEmployee = (userId: string, userName: string) => {
@@ -180,17 +115,17 @@ export default function LeaveManagementPage() {
           </div>
           <div>
             <p className="font-medium text-foreground">{item.userName}</p>
-            <p className="text-xs text-muted-foreground">{item.userId}</p>
+            <p className="text-xs text-muted-foreground">{item.user_id.slice(0, 8)}</p>
           </div>
         </div>
       ),
     },
     {
-      key: 'leaveType',
+      key: 'leave_type',
       header: 'Type',
       render: (item: LeaveRequest) => (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${leaveTypeColors[item.leaveType]}`}>
-          {leaveTypeLabels[item.leaveType]}
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${leaveTypeColors[item.leave_type] || 'bg-muted text-muted-foreground'}`}>
+          {leaveTypeLabels[item.leave_type] || item.leave_type}
         </span>
       ),
     },
@@ -201,7 +136,7 @@ export default function LeaveManagementPage() {
         <div className="flex items-center gap-2">
           <Calendar size={14} className="text-muted-foreground" />
           <div>
-            <p className="text-sm">{item.startDate} - {item.endDate}</p>
+            <p className="text-sm">{item.start_date} - {item.end_date}</p>
             <p className="text-xs text-muted-foreground">{item.days} day(s)</p>
           </div>
         </div>
@@ -225,7 +160,7 @@ export default function LeaveManagementPage() {
       render: (item: LeaveRequest) => (
         <div className="flex items-center gap-1">
           <button
-            onClick={() => handleViewEmployee(item.userId, item.userName)}
+            onClick={() => handleViewEmployee(item.user_id, item.userName)}
             className="p-2 hover:bg-muted rounded-lg transition-colors"
             title="View Employee Details"
           >
@@ -255,15 +190,22 @@ export default function LeaveManagementPage() {
   ];
 
   const stats = {
-    pending: mockLeaveRequests.filter(l => l.status === 'pending').length,
-    approved: mockLeaveRequests.filter(l => l.status === 'approved').length,
-    rejected: mockLeaveRequests.filter(l => l.status === 'rejected').length,
+    pending: leaveRequests.filter(l => l.status === 'pending').length,
+    approved: leaveRequests.filter(l => l.status === 'approved').length,
+    rejected: leaveRequests.filter(l => l.status === 'rejected').length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // Employee detail view
   if (selectedEmployee) {
-    const employeeBalance = mockEmployeeBalances[selectedEmployee.userId] || mockEmployeeBalances['se-001'];
-    const employeeLeaves = mockLeaveRequests.filter(l => l.userId === selectedEmployee.userId);
+    const employeeLeaves = leaveRequests.filter(l => l.user_id === selectedEmployee.userId);
 
     return (
       <div className="space-y-6">
@@ -278,44 +220,9 @@ export default function LeaveManagementPage() {
             </button>
             <div>
               <h1 className="module-title">{selectedEmployee.userName}</h1>
-              <p className="text-muted-foreground">Employee ID: {selectedEmployee.userId}</p>
+              <p className="text-muted-foreground">Employee ID: {selectedEmployee.userId.slice(0, 8)}</p>
             </div>
           </div>
-        </div>
-
-        {/* Leave Balance Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Object.entries(employeeBalance).map(([type, balance], index) => (
-            <motion.div
-              key={type}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="stat-card"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${leaveTypeColors[type as keyof typeof leaveTypeColors]}`}>
-                  {leaveTypeLabels[type as keyof typeof leaveTypeLabels]}
-                </span>
-              </div>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold text-foreground">{balance.remaining}</p>
-                  <p className="text-xs text-muted-foreground">Available</p>
-                </div>
-                <div className="text-right text-xs text-muted-foreground">
-                  <p>Used: {balance.used}</p>
-                  <p>Total: {balance.total}</p>
-                </div>
-              </div>
-              <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: `${(balance.remaining / balance.total) * 100}%` }}
-                />
-              </div>
-            </motion.div>
-          ))}
         </div>
 
         {/* Employee Leave History */}
@@ -326,11 +233,11 @@ export default function LeaveManagementPage() {
               {employeeLeaves.map((leave) => (
                 <div key={leave.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                   <div className="flex items-center gap-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${leaveTypeColors[leave.leaveType]}`}>
-                      {leaveTypeLabels[leave.leaveType]}
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${leaveTypeColors[leave.leave_type] || 'bg-muted'}`}>
+                      {leaveTypeLabels[leave.leave_type] || leave.leave_type}
                     </span>
                     <div>
-                      <p className="text-sm font-medium">{leave.startDate} - {leave.endDate}</p>
+                      <p className="text-sm font-medium">{leave.start_date} - {leave.end_date}</p>
                       <p className="text-xs text-muted-foreground">{leave.reason}</p>
                     </div>
                   </div>
@@ -364,13 +271,9 @@ export default function LeaveManagementPage() {
         </button>
       </div>
 
-      {/* Request Stats - Only Pending, Approved, Rejected */}
+      {/* Request Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="stat-card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-warning/10">
               <Clock size={24} className="text-warning" />
@@ -382,12 +285,7 @@ export default function LeaveManagementPage() {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="stat-card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-success/10">
               <CheckCircle size={24} className="text-success" />
@@ -399,12 +297,7 @@ export default function LeaveManagementPage() {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="stat-card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-destructive/10">
               <XCircle size={24} className="text-destructive" />
@@ -419,9 +312,10 @@ export default function LeaveManagementPage() {
 
       {/* Leave Requests Table */}
       <DataTable
-        data={mockLeaveRequests}
+        data={leaveRequests}
         columns={columns}
         searchPlaceholder="Search by employee name..."
+        emptyMessage="No leave requests found"
       />
 
       {/* Apply Leave Modal */}
@@ -432,13 +326,18 @@ export default function LeaveManagementPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-4">Apply for Leave</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Apply for Leave</h2>
+              <button onClick={() => setShowApplyModal(false)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Leave Type</label>
                 <select
-                  value={newLeave.leaveType}
-                  onChange={e => setNewLeave({ ...newLeave, leaveType: e.target.value })}
+                  value={newLeave.leave_type}
+                  onChange={e => setNewLeave({ ...newLeave, leave_type: e.target.value })}
                   className="input-field"
                 >
                   <option value="casual">Casual Leave</option>
@@ -452,8 +351,8 @@ export default function LeaveManagementPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">Start Date</label>
                   <input
                     type="date"
-                    value={newLeave.startDate}
-                    onChange={e => setNewLeave({ ...newLeave, startDate: e.target.value })}
+                    value={newLeave.start_date}
+                    onChange={e => setNewLeave({ ...newLeave, start_date: e.target.value })}
                     className="input-field"
                   />
                 </div>
@@ -461,12 +360,17 @@ export default function LeaveManagementPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">End Date</label>
                   <input
                     type="date"
-                    value={newLeave.endDate}
-                    onChange={e => setNewLeave({ ...newLeave, endDate: e.target.value })}
+                    value={newLeave.end_date}
+                    onChange={e => setNewLeave({ ...newLeave, end_date: e.target.value })}
                     className="input-field"
                   />
                 </div>
               </div>
+              {newLeave.start_date && newLeave.end_date && (
+                <p className="text-sm text-muted-foreground">
+                  Duration: {calculateDays(newLeave.start_date, newLeave.end_date)} day(s)
+                </p>
+              )}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Reason</label>
                 <textarea
@@ -479,11 +383,13 @@ export default function LeaveManagementPage() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowApplyModal(false)} className="btn-outline">
-                Cancel
-              </button>
-              <button onClick={handleApplyLeave} className="btn-primary">
-                Submit
+              <button onClick={() => setShowApplyModal(false)} className="btn-outline">Cancel</button>
+              <button 
+                onClick={handleApplyLeave} 
+                disabled={createLeave.isPending}
+                className="btn-primary"
+              >
+                {createLeave.isPending ? 'Submitting...' : 'Submit'}
               </button>
             </div>
           </motion.div>

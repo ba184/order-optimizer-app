@@ -1,107 +1,25 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Navigation, MapPin, Clock, Battery, Users, Signal, AlertCircle, Key } from "lucide-react";
+import { Navigation, MapPin, Clock, Battery, Users, Signal, AlertCircle, Key, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useEmployeeLocations } from "@/hooks/useSalesTeamData";
+import { formatDistanceToNow } from "date-fns";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 
 interface EmployeeLocation {
   id: string;
-  userId: string;
+  user_id: string;
   userName: string;
   latitude: number;
   longitude: number;
   address: string;
   timestamp: string;
-  batteryLevel: number;
-  isMoving: boolean;
+  battery_level: number;
+  is_moving: boolean;
   zone: string;
   city: string;
-  travelHistory: [number, number][]; // Array of [lng, lat] coordinates
 }
-
-const mockLocations: EmployeeLocation[] = [
-  {
-    id: "1",
-    userId: "se-001",
-    userName: "Rajesh Kumar",
-    latitude: 28.6139,
-    longitude: 77.209,
-    address: "Connaught Place, Delhi",
-    timestamp: "2 mins ago",
-    batteryLevel: 85,
-    isMoving: true,
-    zone: "North Zone",
-    city: "New Delhi",
-    travelHistory: [
-      [77.199, 28.605],
-      [77.202, 28.608],
-      [77.205, 28.610],
-      [77.207, 28.612],
-      [77.209, 28.6139],
-    ],
-  },
-  {
-    id: "2",
-    userId: "se-002",
-    userName: "Amit Sharma",
-    latitude: 28.5355,
-    longitude: 77.25,
-    address: "Lajpat Nagar, Delhi",
-    timestamp: "5 mins ago",
-    batteryLevel: 62,
-    isMoving: false,
-    zone: "North Zone",
-    city: "New Delhi",
-    travelHistory: [
-      [77.240, 28.530],
-      [77.243, 28.532],
-      [77.246, 28.533],
-      [77.248, 28.534],
-      [77.25, 28.5355],
-    ],
-  },
-  {
-    id: "3",
-    userId: "se-003",
-    userName: "Priya Singh",
-    latitude: 28.6519,
-    longitude: 77.2315,
-    address: "Karol Bagh, Delhi",
-    timestamp: "1 min ago",
-    batteryLevel: 91,
-    isMoving: true,
-    zone: "North Zone",
-    city: "New Delhi",
-    travelHistory: [
-      [77.220, 28.645],
-      [77.223, 28.647],
-      [77.226, 28.649],
-      [77.229, 28.650],
-      [77.2315, 28.6519],
-    ],
-  },
-  {
-    id: "4",
-    userId: "se-004",
-    userName: "Vikram Patel",
-    latitude: 28.7041,
-    longitude: 77.1025,
-    address: "Rohini, Delhi",
-    timestamp: "8 mins ago",
-    batteryLevel: 45,
-    isMoving: false,
-    zone: "North Zone",
-    city: "New Delhi",
-    travelHistory: [
-      [77.095, 28.698],
-      [77.097, 28.700],
-      [77.099, 28.702],
-      [77.101, 28.703],
-      [77.1025, 28.7041],
-    ],
-  },
-];
 
 export default function LiveTrackingPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
@@ -112,6 +30,23 @@ export default function LiveTrackingPage() {
   const map = useRef<any>(null);
   const markers = useRef<any[]>([]);
 
+  const { data: locationsData, isLoading } = useEmployeeLocations();
+
+  // Transform data for display
+  const locations: EmployeeLocation[] = (locationsData || []).map((loc: any) => ({
+    id: loc.id,
+    user_id: loc.user_id,
+    userName: loc.profiles?.name || 'Unknown',
+    latitude: Number(loc.latitude),
+    longitude: Number(loc.longitude),
+    address: loc.address || 'Unknown location',
+    timestamp: loc.recorded_at ? formatDistanceToNow(new Date(loc.recorded_at), { addSuffix: true }) : 'N/A',
+    battery_level: loc.battery_level || 100,
+    is_moving: loc.is_moving || false,
+    zone: loc.profiles?.region || 'N/A',
+    city: loc.profiles?.territory || 'N/A',
+  }));
+
   const initializeMap = async () => {
     if (!mapboxToken || !mapContainer.current) return;
 
@@ -119,10 +54,15 @@ export default function LiveTrackingPage() {
       const mapboxgl = (await import("mapbox-gl")).default;
       mapboxgl.accessToken = mapboxToken;
 
+      // Default center (Delhi, India) if no locations
+      const center = locations.length > 0 
+        ? [locations[0].longitude, locations[0].latitude] 
+        : [77.209, 28.6139];
+
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: "mapbox://styles/mapbox/streets-v12",
-        center: [77.209, 28.6139],
+        center: center as [number, number],
         zoom: 11,
       });
 
@@ -130,147 +70,7 @@ export default function LiveTrackingPage() {
 
       map.current.on("load", () => {
         setMapLoaded(true);
-
-        mockLocations.forEach((loc, index) => {
-          // Add radius circle for each employee
-          const radiusSourceId = `radius-${loc.id}`;
-          const radiusLayerId = `radius-layer-${loc.id}`;
-          
-          map.current.addSource(radiusSourceId, {
-            type: "geojson",
-            data: createCircleGeoJSON(loc.longitude, loc.latitude, 0.5), // 500m radius
-          });
-
-          map.current.addLayer({
-            id: radiusLayerId,
-            type: "fill",
-            source: radiusSourceId,
-            paint: {
-              "fill-color": loc.isMoving ? "#22c55e" : "#f59e0b",
-              "fill-opacity": 0.15,
-            },
-          });
-
-          // Add radius border
-          map.current.addLayer({
-            id: `${radiusLayerId}-border`,
-            type: "line",
-            source: radiusSourceId,
-            paint: {
-              "line-color": loc.isMoving ? "#22c55e" : "#f59e0b",
-              "line-width": 2,
-              "line-opacity": 0.5,
-            },
-          });
-
-          // Add travel path line
-          const pathSourceId = `path-${loc.id}`;
-          const pathLayerId = `path-layer-${loc.id}`;
-
-          map.current.addSource(pathSourceId, {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              properties: {},
-              geometry: {
-                type: "LineString",
-                coordinates: loc.travelHistory,
-              },
-            },
-          });
-
-          map.current.addLayer({
-            id: pathLayerId,
-            type: "line",
-            source: pathSourceId,
-            layout: {
-              "line-join": "round",
-              "line-cap": "round",
-            },
-            paint: {
-              "line-color": "#1e293b",
-              "line-width": 4,
-              "line-opacity": 0.8,
-            },
-          });
-
-          // Add direction dots along the path
-          const dotSourceId = `dots-${loc.id}`;
-          map.current.addSource(dotSourceId, {
-            type: "geojson",
-            data: {
-              type: "FeatureCollection",
-              features: loc.travelHistory.slice(0, -1).map((coord, i) => ({
-                type: "Feature",
-                properties: { order: i },
-                geometry: {
-                  type: "Point",
-                  coordinates: coord,
-                },
-              })),
-            },
-          });
-
-          map.current.addLayer({
-            id: `dots-layer-${loc.id}`,
-            type: "circle",
-            source: dotSourceId,
-            paint: {
-              "circle-radius": 5,
-              "circle-color": "#64748b",
-              "circle-stroke-width": 2,
-              "circle-stroke-color": "#ffffff",
-            },
-          });
-
-          // Add employee marker
-          const el = document.createElement("div");
-          el.className = "employee-marker";
-          el.style.cssText = `
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: ${loc.isMoving ? "hsl(142, 71%, 45%)" : "hsl(38, 92%, 50%)"};
-            border: 4px solid white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 12px;
-            z-index: 10;
-          `;
-          el.innerHTML = loc.userName
-            .split(" ")
-            .map((n) => n[0])
-            .join("");
-
-          const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-            <div style="padding: 12px; min-width: 180px;">
-              <strong style="font-size: 14px;">${loc.userName}</strong><br/>
-              <span style="color: #666; font-size: 12px;">${loc.address}</span><br/>
-              <div style="margin-top: 8px; padding: 4px 8px; border-radius: 4px; background: ${loc.isMoving ? "#dcfce7" : "#fef3c7"};">
-                <span style="color: ${loc.isMoving ? "#16a34a" : "#d97706"}; font-size: 12px; font-weight: 500;">
-                  ${loc.isMoving ? "● Moving" : "● Stationary"}
-                </span>
-              </div>
-              <div style="margin-top: 8px; font-size: 11px; color: #888;">
-                <div>📍 ${loc.travelHistory.length} checkpoints tracked</div>
-                <div>🕒 Last updated: ${loc.timestamp}</div>
-              </div>
-            </div>
-          `);
-
-          const marker = new mapboxgl.Marker(el)
-            .setLngLat([loc.longitude, loc.latitude])
-            .setPopup(popup)
-            .addTo(map.current);
-
-          el.addEventListener("click", () => setSelectedEmployee(loc.id));
-          markers.current.push(marker);
-        });
+        updateMarkers(mapboxgl);
       });
 
       setShowTokenInput(false);
@@ -279,6 +79,94 @@ export default function LiveTrackingPage() {
       console.error("Error initializing map:", error);
       toast.error("Failed to load map. Please check your token.");
     }
+  };
+
+  const updateMarkers = async (mapboxgl: any) => {
+    // Clear existing markers
+    markers.current.forEach(marker => marker.remove());
+    markers.current = [];
+
+    locations.forEach((loc) => {
+      // Add radius circle for each employee
+      const radiusSourceId = `radius-${loc.id}`;
+      const radiusLayerId = `radius-layer-${loc.id}`;
+      
+      if (!map.current.getSource(radiusSourceId)) {
+        map.current.addSource(radiusSourceId, {
+          type: "geojson",
+          data: createCircleGeoJSON(loc.longitude, loc.latitude, 0.5),
+        });
+
+        map.current.addLayer({
+          id: radiusLayerId,
+          type: "fill",
+          source: radiusSourceId,
+          paint: {
+            "fill-color": loc.is_moving ? "#22c55e" : "#f59e0b",
+            "fill-opacity": 0.15,
+          },
+        });
+
+        map.current.addLayer({
+          id: `${radiusLayerId}-border`,
+          type: "line",
+          source: radiusSourceId,
+          paint: {
+            "line-color": loc.is_moving ? "#22c55e" : "#f59e0b",
+            "line-width": 2,
+            "line-opacity": 0.5,
+          },
+        });
+      }
+
+      // Add employee marker
+      const el = document.createElement("div");
+      el.className = "employee-marker";
+      el.style.cssText = `
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: ${loc.is_moving ? "hsl(142, 71%, 45%)" : "hsl(38, 92%, 50%)"};
+        border: 4px solid white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 12px;
+        z-index: 10;
+      `;
+      el.innerHTML = loc.userName
+        .split(" ")
+        .map((n) => n[0])
+        .join("");
+
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <div style="padding: 12px; min-width: 180px;">
+          <strong style="font-size: 14px;">${loc.userName}</strong><br/>
+          <span style="color: #666; font-size: 12px;">${loc.address}</span><br/>
+          <div style="margin-top: 8px; padding: 4px 8px; border-radius: 4px; background: ${loc.is_moving ? "#dcfce7" : "#fef3c7"};">
+            <span style="color: ${loc.is_moving ? "#16a34a" : "#d97706"}; font-size: 12px; font-weight: 500;">
+              ${loc.is_moving ? "● Moving" : "● Stationary"}
+            </span>
+          </div>
+          <div style="margin-top: 8px; font-size: 11px; color: #888;">
+            <div>🔋 Battery: ${loc.battery_level}%</div>
+            <div>🕒 Last updated: ${loc.timestamp}</div>
+          </div>
+        </div>
+      `);
+
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([loc.longitude, loc.latitude])
+        .setPopup(popup)
+        .addTo(map.current);
+
+      el.addEventListener("click", () => setSelectedEmployee(loc.id));
+      markers.current.push(marker);
+    });
   };
 
   // Helper function to create circle GeoJSON
@@ -291,13 +179,12 @@ export default function LiveTrackingPage() {
       const dx = radiusKm * Math.cos(angle);
       const dy = radiusKm * Math.sin(angle);
       
-      // Convert km to degrees (approximate)
       const dLng = dx / (111.32 * Math.cos(lat * Math.PI / 180));
       const dLat = dy / 110.574;
       
       coords.push([lng + dLng, lat + dLat]);
     }
-    coords.push(coords[0]); // Close the circle
+    coords.push(coords[0]);
     
     return {
       type: "Feature" as const,
@@ -326,21 +213,25 @@ export default function LiveTrackingPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="module-header">
         <div>
           <h1 className="module-title">Live GPS Tracking</h1>
-          <p className="text-muted-foreground">Real-time employee location monitoring with travel paths</p>
+          <p className="text-muted-foreground">Real-time employee location monitoring</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg">
-            <div className="w-3 h-3 rounded-full bg-[#1e293b]" />
-            <span className="text-xs text-muted-foreground">Travel Path</span>
-          </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-success/10 rounded-lg">
             <Signal size={16} className="text-success" />
-            <span className="text-sm text-success font-medium">{mockLocations.length} Online</span>
+            <span className="text-sm text-success font-medium">{locations.length} Online</span>
           </div>
         </div>
       </div>
@@ -420,10 +311,6 @@ export default function LiveTrackingPage() {
                 <span className="text-muted-foreground">Stationary</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-1 rounded bg-[#1e293b]" />
-                <span className="text-muted-foreground">Travel Path</span>
-              </div>
-              <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full border-2 border-success bg-success/20" />
                 <span className="text-muted-foreground">Coverage Radius (500m)</span>
               </div>
@@ -438,52 +325,50 @@ export default function LiveTrackingPage() {
             Field Executives
           </h3>
           <div className="space-y-3 max-h-[520px] overflow-y-auto scrollbar-thin">
-            {mockLocations.map((loc) => (
-              <motion.div
-                key={loc.id}
-                whileHover={{ scale: 1.02 }}
-                onClick={() => focusOnEmployee(loc)}
-                className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                  selectedEmployee === loc.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="font-medium text-foreground">{loc.userName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {loc.zone} • {loc.city}
-                    </p>
+            {locations.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No active employees found</p>
+            ) : (
+              locations.map((loc) => (
+                <motion.div
+                  key={loc.id}
+                  whileHover={{ scale: 1.02 }}
+                  onClick={() => focusOnEmployee(loc)}
+                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                    selectedEmployee === loc.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="font-medium text-foreground">{loc.userName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {loc.zone} • {loc.city}
+                      </p>
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        loc.is_moving ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+                      }`}
+                    >
+                      {loc.is_moving ? "Moving" : "Stationary"}
+                    </span>
                   </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      loc.isMoving ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
-                    }`}
-                  >
-                    {loc.isMoving ? "Moving" : "Stationary"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin size={12} />
-                  <span className="truncate">{loc.address}</span>
-                </div>
-                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Clock size={12} />
-                    {loc.timestamp}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Battery size={12} className={loc.batteryLevel < 50 ? "text-warning" : "text-success"} />
-                    {loc.batteryLevel}%
-                  </div>
-                </div>
-                <div className="mt-2 pt-2 border-t border-border">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <div className="w-3 h-0.5 bg-[#1e293b] rounded" />
-                    <span>{loc.travelHistory.length} checkpoints tracked</span>
+                    <MapPin size={12} />
+                    <span className="truncate">{loc.address}</span>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                  <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Clock size={12} />
+                      {loc.timestamp}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Battery size={12} className={loc.battery_level < 50 ? "text-warning" : "text-success"} />
+                      {loc.battery_level}%
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
       </div>
