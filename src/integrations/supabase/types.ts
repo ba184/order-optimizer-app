@@ -373,6 +373,89 @@ export type Database = {
           },
         ]
       }
+      inventory_batches: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          batch_number: string
+          created_at: string | null
+          created_by: string | null
+          distributor_id: string | null
+          expiry_date: string | null
+          id: string
+          manufacturing_date: string | null
+          product_id: string
+          purchase_price: number | null
+          quantity: number
+          status: string | null
+          updated_at: string | null
+          warehouse: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          batch_number: string
+          created_at?: string | null
+          created_by?: string | null
+          distributor_id?: string | null
+          expiry_date?: string | null
+          id?: string
+          manufacturing_date?: string | null
+          product_id: string
+          purchase_price?: number | null
+          quantity?: number
+          status?: string | null
+          updated_at?: string | null
+          warehouse?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          batch_number?: string
+          created_at?: string | null
+          created_by?: string | null
+          distributor_id?: string | null
+          expiry_date?: string | null
+          id?: string
+          manufacturing_date?: string | null
+          product_id?: string
+          purchase_price?: number | null
+          quantity?: number
+          status?: string | null
+          updated_at?: string | null
+          warehouse?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_batches_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           address: string | null
@@ -911,6 +994,128 @@ export type Database = {
           status?: string | null
         }
         Relationships: []
+      }
+      stock_transfer_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          product_id: string
+          quantity: number
+          transfer_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          product_id: string
+          quantity?: number
+          transfer_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          product_id?: string
+          quantity?: number
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfer_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_items_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "stock_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfers: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          created_by: string
+          delivered_at: string | null
+          dispatched_at: string | null
+          from_distributor_id: string | null
+          from_location: string
+          id: string
+          notes: string | null
+          status: string | null
+          to_distributor_id: string | null
+          to_location: string
+          transfer_number: string
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          created_by: string
+          delivered_at?: string | null
+          dispatched_at?: string | null
+          from_distributor_id?: string | null
+          from_location: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          to_distributor_id?: string | null
+          to_location: string
+          transfer_number: string
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          created_by?: string
+          delivered_at?: string | null
+          dispatched_at?: string | null
+          from_distributor_id?: string | null
+          from_location?: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          to_distributor_id?: string | null
+          to_location?: string
+          transfer_number?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfers_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_from_distributor_id_fkey"
+            columns: ["from_distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_to_distributor_id_fkey"
+            columns: ["to_distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
