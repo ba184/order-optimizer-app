@@ -11,39 +11,13 @@ import {
   Store,
   Package,
   AlertCircle,
-  Check,
   Send,
   FileText,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-const mockProducts = [
-  { id: 'p-001', name: 'Product Alpha 500ml', sku: 'PA-500', ptr: 120, mrp: 150, gst: 18, stock: 500 },
-  { id: 'p-002', name: 'Product Beta 1L', sku: 'PB-1L', ptr: 220, mrp: 275, gst: 18, stock: 350 },
-  { id: 'p-003', name: 'Product Gamma 250g', sku: 'PG-250', ptr: 85, mrp: 110, gst: 12, stock: 800 },
-  { id: 'p-004', name: 'Product Delta Pack', sku: 'PD-PK', ptr: 350, mrp: 450, gst: 18, stock: 200 },
-  { id: 'p-005', name: 'Product Epsilon 2L', sku: 'PE-2L', ptr: 380, mrp: 480, gst: 18, stock: 150 },
-  { id: 'p-006', name: 'Product Zeta Combo', sku: 'PZ-CB', ptr: 550, mrp: 699, gst: 18, stock: 100 },
-];
-
-const mockDistributors = [
-  { id: 'd-001', name: 'Krishna Traders', creditLimit: 500000, outstanding: 125000 },
-  { id: 'd-002', name: 'Sharma Distributors', creditLimit: 750000, outstanding: 280000 },
-  { id: 'd-003', name: 'Patel Trading Co', creditLimit: 1000000, outstanding: 450000 },
-];
-
-const mockRetailers = [
-  { id: 'r-001', name: 'New Sharma Store', distributorId: 'd-001' },
-  { id: 'r-002', name: 'Gupta General Store', distributorId: 'd-001' },
-  { id: 'r-003', name: 'Jain Provision Store', distributorId: 'd-002' },
-];
-
-interface CartItem {
-  productId: string;
-  quantity: number;
-  freeGoods: number;
-  discount: number;
-}
+import { useProducts, useCreateOrder, CartItem } from '@/hooks/useOrdersData';
+import { useDistributors, useRetailers } from '@/hooks/useOutletsData';
 
 export default function CreateOrderPage() {
   const navigate = useNavigate();
@@ -52,17 +26,23 @@ export default function CreateOrderPage() {
   const [selectedRetailer, setSelectedRetailer] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [notes, setNotes] = useState('');
 
-  const distributor = mockDistributors.find(d => d.id === selectedDistributor);
-  const availableCredit = distributor ? distributor.creditLimit - distributor.outstanding : 0;
+  const { data: products = [], isLoading: productsLoading } = useProducts();
+  const { data: distributors = [], isLoading: distributorsLoading } = useDistributors();
+  const { data: retailers = [] } = useRetailers();
+  const createOrder = useCreateOrder();
 
-  const filteredProducts = mockProducts.filter(p =>
+  const distributor = distributors.find(d => d.id === selectedDistributor);
+  const availableCredit = distributor ? Number(distributor.credit_limit || 0) - Number(distributor.outstanding_amount || 0) : 0;
+
+  const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.sku.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredRetailers = mockRetailers.filter(r =>
-    r.distributorId === selectedDistributor
+  const filteredRetailers = retailers.filter(r =>
+    r.distributor_id === selectedDistributor
   );
 
   const updateCart = (productId: string, quantity: number) => {
@@ -92,16 +72,16 @@ export default function CreateOrderPage() {
     let gstAmount = 0;
 
     cartItems.forEach(item => {
-      const product = mockProducts.find(p => p.id === item.productId);
+      const product = products.find(p => p.id === item.productId);
       if (product) {
-        const itemTotal = product.ptr * item.quantity;
-        const gst = (itemTotal * product.gst) / 100;
+        const itemTotal = Number(product.ptr) * item.quantity;
+        const gst = (itemTotal * Number(product.gst)) / 100;
         subtotal += itemTotal;
         gstAmount += gst;
       }
     });
 
-    const discount = 0; // Can be calculated based on schemes
+    const discount = 0;
     const total = subtotal + gstAmount - discount;
 
     return { subtotal, gstAmount, discount, total };
@@ -109,7 +89,7 @@ export default function CreateOrderPage() {
 
   const { subtotal, gstAmount, discount, total } = calculateTotals();
 
-  const handleSubmit = (asDraft: boolean) => {
+  const handleSubmit = async (asDraft: boolean) => {
     if (!selectedDistributor) {
       toast.error('Please select a distributor');
       return;
@@ -123,13 +103,31 @@ export default function CreateOrderPage() {
       return;
     }
 
-    if (asDraft) {
-      toast.success('Order saved as draft');
-    } else {
-      toast.success('Order submitted for approval');
+    try {
+      await createOrder.mutateAsync({
+        orderType,
+        distributorId: selectedDistributor,
+        retailerId: orderType === 'secondary' ? selectedRetailer : undefined,
+        cartItems,
+        products,
+        status: asDraft ? 'draft' : 'pending',
+        notes,
+      });
+      navigate('/orders/list');
+    } catch (error) {
+      // Error handled by mutation
     }
-    navigate('/orders/list');
   };
+
+  const isLoading = productsLoading || distributorsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -195,9 +193,9 @@ export default function CreateOrderPage() {
                   className="input-field"
                 >
                   <option value="">Select Distributor</option>
-                  {mockDistributors.map(dist => (
+                  {distributors.map(dist => (
                     <option key={dist.id} value={dist.id}>
-                      {dist.name}
+                      {dist.firm_name}
                     </option>
                   ))}
                 </select>
@@ -222,12 +220,26 @@ export default function CreateOrderPage() {
                     <option value="">Select Retailer</option>
                     {filteredRetailers.map(ret => (
                       <option key={ret.id} value={ret.id}>
-                        {ret.name}
+                        {ret.shop_name}
                       </option>
                     ))}
                   </select>
                 </div>
               )}
+            </div>
+
+            {/* Notes */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Notes (Optional)
+              </label>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                className="input-field"
+                rows={2}
+                placeholder="Add any notes for this order..."
+              />
             </div>
           </motion.div>
 
@@ -252,56 +264,63 @@ export default function CreateOrderPage() {
               </div>
             </div>
 
-            <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin">
-              {filteredProducts.map(product => {
-                const quantity = getCartQuantity(product.id);
-                return (
-                  <div
-                    key={product.id}
-                    className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
-                      quantity > 0 ? 'bg-primary/5 border border-primary/20' : 'bg-muted/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                        <Package size={24} className="text-muted-foreground" />
+            {products.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package size={48} className="mx-auto mb-4 opacity-50" />
+                <p>No products available. Please add products first.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin">
+                {filteredProducts.map(product => {
+                  const quantity = getCartQuantity(product.id);
+                  return (
+                    <div
+                      key={product.id}
+                      className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
+                        quantity > 0 ? 'bg-primary/5 border border-primary/20' : 'bg-muted/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                          <Package size={24} className="text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{product.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            SKU: {product.sku} • PTR: ₹{product.ptr} • GST: {product.gst}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Stock: {product.stock} units
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground">{product.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          SKU: {product.sku} • PTR: ₹{product.ptr} • GST: {product.gst}%
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Stock: {product.stock} units
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => updateCart(product.id, quantity - 1)}
+                          disabled={quantity === 0}
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50"
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <input
+                          type="number"
+                          value={quantity}
+                          onChange={e => updateCart(product.id, parseInt(e.target.value) || 0)}
+                          className="w-16 text-center input-field py-1"
+                          min="0"
+                        />
+                        <button
+                          onClick={() => updateCart(product.id, quantity + 1)}
+                          className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"
+                        >
+                          <Plus size={16} />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => updateCart(product.id, quantity - 1)}
-                        disabled={quantity === 0}
-                        className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <input
-                        type="number"
-                        value={quantity}
-                        onChange={e => updateCart(product.id, parseInt(e.target.value) || 0)}
-                        className="w-16 text-center input-field py-1"
-                        min="0"
-                      />
-                      <button
-                        onClick={() => updateCart(product.id, quantity + 1)}
-                        className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </motion.div>
         </div>
 
@@ -326,7 +345,7 @@ export default function CreateOrderPage() {
                 {/* Cart Items */}
                 <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-thin">
                   {cartItems.map(item => {
-                    const product = mockProducts.find(p => p.id === item.productId);
+                    const product = products.find(p => p.id === item.productId);
                     if (!product) return null;
                     return (
                       <div key={item.productId} className="flex items-center justify-between py-2 border-b border-border">
@@ -337,7 +356,7 @@ export default function CreateOrderPage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">₹{(product.ptr * item.quantity).toLocaleString()}</p>
+                          <p className="font-medium">₹{(Number(product.ptr) * item.quantity).toLocaleString()}</p>
                           <button
                             onClick={() => updateCart(item.productId, 0)}
                             className="p-1 hover:text-destructive"
@@ -386,13 +405,19 @@ export default function CreateOrderPage() {
                 <div className="space-y-2 pt-4">
                   <button
                     onClick={() => handleSubmit(false)}
+                    disabled={createOrder.isPending}
                     className="btn-primary w-full flex items-center justify-center gap-2"
                   >
-                    <Send size={18} />
+                    {createOrder.isPending ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Send size={18} />
+                    )}
                     Submit Order
                   </button>
                   <button
                     onClick={() => handleSubmit(true)}
+                    disabled={createOrder.isPending}
                     className="btn-outline w-full flex items-center justify-center gap-2"
                   >
                     <FileText size={18} />
