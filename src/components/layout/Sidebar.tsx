@@ -37,7 +37,8 @@ import {
   Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UserRole } from '@/types';
+
+type RoleCode = 'sales_executive' | 'asm' | 'rsm' | 'admin';
 
 interface NavChild {
   label: string;
@@ -51,7 +52,7 @@ interface NavItem {
   icon: React.ElementType;
   path?: string;
   children?: NavChild[];
-  roles: UserRole[];
+  roles: RoleCode[];
 }
 
 const navigationItems: NavItem[] = [
@@ -189,8 +190,15 @@ const navigationItems: NavItem[] = [
   },
 ];
 
+const roleLabels: Record<string, string> = {
+  sales_executive: 'Sales Executive',
+  asm: 'Area Sales Manager',
+  rsm: 'Regional Sales Manager',
+  admin: 'Administrator',
+};
+
 export function Sidebar() {
-  const { user, logout } = useAuth();
+  const { profile, userRole, signOut } = useAuth();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
@@ -202,7 +210,7 @@ export function Sidebar() {
   };
 
   const filteredItems = navigationItems.filter(
-    item => user && item.roles.includes(user.role)
+    item => userRole && item.roles.includes(userRole as RoleCode)
   );
 
   const isActive = (path: string) => location.pathname === path;
@@ -213,13 +221,6 @@ export function Sidebar() {
       if (child.children) return isChildActive(child.children as NavChild[]);
       return false;
     });
-  };
-
-  const roleLabels: Record<UserRole, string> = {
-    sales_executive: 'Sales Executive',
-    asm: 'Area Sales Manager',
-    rsm: 'Regional Sales Manager',
-    admin: 'Administrator',
   };
 
   return (
@@ -374,23 +375,23 @@ export function Sidebar() {
 
       {/* User Section */}
       <div className="p-4 border-t border-sidebar-border">
-        {!collapsed && user && (
+        {!collapsed && profile && (
           <div className="mb-3">
             <p className="text-sm font-medium text-sidebar-foreground truncate">
-              {user.name}
+              {profile.name}
             </p>
             <p className="text-xs text-sidebar-foreground/60 truncate">
-              {roleLabels[user.role]}
+              {userRole ? roleLabels[userRole] || userRole : 'User'}
             </p>
-            {user.geoHierarchy && (
+            {profile.region && (
               <p className="text-xs text-sidebar-foreground/40 truncate">
-                {user.geoHierarchy.zone} • {user.geoHierarchy.city || user.geoHierarchy.state}
+                {profile.region} {profile.territory && `• ${profile.territory}`}
               </p>
             )}
           </div>
         )}
         <button
-          onClick={logout}
+          onClick={signOut}
           className="nav-item w-full text-destructive hover:bg-destructive/10"
         >
           <LogOut size={20} />

@@ -65,7 +65,7 @@ const recentOrders = [
 const COLORS = ['hsl(215, 70%, 23%)', 'hsl(178, 60%, 40%)', 'hsl(38, 92%, 50%)', 'hsl(142, 71%, 45%)', 'hsl(220, 20%, 70%)'];
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { profile, userRole } = useAuth();
 
   const formatCurrency = (value: number) => {
     if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
@@ -80,7 +80,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            Welcome back, {user?.name?.split(' ')[0]}!
+            Welcome back, {profile?.name?.split(' ')[0] || 'User'}!
           </h1>
           <p className="text-muted-foreground">
             Here's what's happening with your sales today.
@@ -319,7 +319,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions for Sales Executive */}
-      {user?.role === 'sales_executive' && (
+      {userRole === 'sales_executive' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
