@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import { useLeads, useCreateLead, useUpdateLead } from '@/hooks/useSalesTeamData';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -131,7 +131,7 @@ export default function LeadsPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (item: Lead) => <StatusBadge status={item.status} />,
+      render: (item: Lead) => <StatusBadge status={item.status as StatusType} />,
     },
     {
       key: 'actions',
@@ -393,7 +393,7 @@ export default function LeadsPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Status</p>
-                  <StatusBadge status={showViewModal.status} />
+                  <StatusBadge status={showViewModal.status as StatusType} />
                 </div>
               </div>
               {showViewModal.address && (
