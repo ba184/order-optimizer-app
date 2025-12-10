@@ -175,6 +175,7 @@ const navigationItems: NavItem[] = [
         ],
       },
       { label: 'Users', path: '/master/users', icon: Users },
+      { label: 'Targets', path: '/master/targets', icon: Target },
       { label: 'Presentations', path: '/master/presentations', icon: GraduationCap },
     ],
   },
