@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
+import { useOrders } from '@/hooks/useOrdersData';
 import {
   Plus,
   ShoppingCart,
@@ -9,90 +10,11 @@ import {
   FileText,
   CheckCircle,
   Clock,
-  Package,
-  XCircle,
-  IndianRupee,
   Truck,
+  IndianRupee,
+  Loader2,
 } from 'lucide-react';
-
-interface Order {
-  id: string;
-  orderNumber: string;
-  type: 'primary' | 'secondary';
-  distributorName: string;
-  retailerName?: string;
-  items: number;
-  totalAmount: number;
-  status: 'draft' | 'pending' | 'approved' | 'dispatched' | 'delivered' | 'cancelled';
-  paymentStatus: 'pending' | 'partial' | 'paid';
-  createdBy: string;
-  createdAt: string;
-}
-
-const mockOrders: Order[] = [
-  {
-    id: 'o-001',
-    orderNumber: 'ORD-2024-001',
-    type: 'primary',
-    distributorName: 'Krishna Traders',
-    items: 12,
-    totalAmount: 245000,
-    status: 'approved',
-    paymentStatus: 'pending',
-    createdBy: 'Rajesh Kumar',
-    createdAt: '2024-12-09 10:30 AM',
-  },
-  {
-    id: 'o-002',
-    orderNumber: 'ORD-2024-002',
-    type: 'secondary',
-    distributorName: 'Krishna Traders',
-    retailerName: 'New Sharma Store',
-    items: 8,
-    totalAmount: 15500,
-    status: 'dispatched',
-    paymentStatus: 'paid',
-    createdBy: 'Rajesh Kumar',
-    createdAt: '2024-12-09 09:15 AM',
-  },
-  {
-    id: 'o-003',
-    orderNumber: 'ORD-2024-003',
-    type: 'primary',
-    distributorName: 'Sharma Distributors',
-    items: 25,
-    totalAmount: 520000,
-    status: 'pending',
-    paymentStatus: 'pending',
-    createdBy: 'Amit Sharma',
-    createdAt: '2024-12-08 04:45 PM',
-  },
-  {
-    id: 'o-004',
-    orderNumber: 'ORD-2024-004',
-    type: 'secondary',
-    distributorName: 'Sharma Distributors',
-    retailerName: 'Gupta General Store',
-    items: 5,
-    totalAmount: 8200,
-    status: 'delivered',
-    paymentStatus: 'paid',
-    createdBy: 'Priya Singh',
-    createdAt: '2024-12-08 02:30 PM',
-  },
-  {
-    id: 'o-005',
-    orderNumber: 'ORD-2024-005',
-    type: 'primary',
-    distributorName: 'Patel Trading Co',
-    items: 18,
-    totalAmount: 380000,
-    status: 'cancelled',
-    paymentStatus: 'pending',
-    createdBy: 'Vikram Patel',
-    createdAt: '2024-12-07 11:00 AM',
-  },
-];
+import { format } from 'date-fns';
 
 const formatCurrency = (value: number) => {
   if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
@@ -100,101 +22,111 @@ const formatCurrency = (value: number) => {
   return `₹${value}`;
 };
 
-const columns = [
-  {
-    key: 'orderNumber',
-    header: 'Order',
-    render: (item: Order) => (
-      <div>
-        <p className="font-medium text-foreground">{item.orderNumber}</p>
-        <span className={`text-xs px-2 py-0.5 rounded-full ${
-          item.type === 'primary' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'
-        }`}>
-          {item.type === 'primary' ? 'Primary' : 'Secondary'}
-        </span>
-      </div>
-    ),
-    sortable: true,
-  },
-  {
-    key: 'distributorName',
-    header: 'Distributor',
-    render: (item: Order) => (
-      <div>
-        <p className="font-medium text-foreground">{item.distributorName}</p>
-        {item.retailerName && (
-          <p className="text-xs text-muted-foreground">→ {item.retailerName}</p>
-        )}
-      </div>
-    ),
-    sortable: true,
-  },
-  {
-    key: 'items',
-    header: 'Items',
-    sortable: true,
-  },
-  {
-    key: 'totalAmount',
-    header: 'Amount',
-    render: (item: Order) => (
-      <span className="font-semibold text-foreground">{formatCurrency(item.totalAmount)}</span>
-    ),
-    sortable: true,
-  },
-  {
-    key: 'status',
-    header: 'Order Status',
-    render: (item: Order) => <StatusBadge status={item.status} />,
-  },
-  {
-    key: 'paymentStatus',
-    header: 'Payment',
-    render: (item: Order) => <StatusBadge status={item.paymentStatus} />,
-  },
-  {
-    key: 'createdAt',
-    header: 'Created',
-    render: (item: Order) => (
-      <div>
-        <p className="text-sm">{item.createdAt.split(' ')[0]}</p>
-        <p className="text-xs text-muted-foreground">{item.createdBy}</p>
-      </div>
-    ),
-  },
-  {
-    key: 'actions',
-    header: 'Actions',
-    render: (item: Order) => (
-      <div className="flex items-center gap-1">
-        <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="View">
-          <Eye size={16} className="text-muted-foreground" />
-        </button>
-        <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="Invoice">
-          <FileText size={16} className="text-muted-foreground" />
-        </button>
-      </div>
-    ),
-  },
-];
-
 export default function OrdersListPage() {
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  
+  const { data: orders = [], isLoading } = useOrders();
 
-  const filteredOrders = mockOrders.filter(order => {
-    if (filterType !== 'all' && order.type !== filterType) return false;
+  const filteredOrders = orders.filter(order => {
+    if (filterType !== 'all' && order.order_type !== filterType) return false;
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     return true;
   });
 
   const stats = {
-    total: mockOrders.length,
-    pending: mockOrders.filter(o => o.status === 'pending').length,
-    approved: mockOrders.filter(o => o.status === 'approved').length,
-    dispatched: mockOrders.filter(o => o.status === 'dispatched').length,
-    totalValue: mockOrders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + o.totalAmount, 0),
+    total: orders.length,
+    pending: orders.filter(o => o.status === 'pending').length,
+    approved: orders.filter(o => o.status === 'approved').length,
+    dispatched: orders.filter(o => o.status === 'dispatched').length,
+    totalValue: orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + Number(o.total_amount), 0),
   };
+
+  const columns = [
+    {
+      key: 'order_number',
+      header: 'Order',
+      render: (item: typeof orders[0]) => (
+        <div>
+          <p className="font-medium text-foreground">{item.order_number}</p>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${
+            item.order_type === 'primary' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'
+          }`}>
+            {item.order_type === 'primary' ? 'Primary' : 'Secondary'}
+          </span>
+        </div>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'distributor',
+      header: 'Distributor',
+      render: (item: typeof orders[0]) => (
+        <div>
+          <p className="font-medium text-foreground">{item.distributor?.firm_name || '-'}</p>
+          {item.retailer?.shop_name && (
+            <p className="text-xs text-muted-foreground">→ {item.retailer.shop_name}</p>
+          )}
+        </div>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'items_count',
+      header: 'Items',
+      sortable: true,
+    },
+    {
+      key: 'total_amount',
+      header: 'Amount',
+      render: (item: typeof orders[0]) => (
+        <span className="font-semibold text-foreground">{formatCurrency(Number(item.total_amount))}</span>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'status',
+      header: 'Order Status',
+      render: (item: typeof orders[0]) => <StatusBadge status={item.status as StatusType} />,
+    },
+    {
+      key: 'payment_status',
+      header: 'Payment',
+      render: (item: typeof orders[0]) => <StatusBadge status={item.payment_status as StatusType} />,
+    },
+    {
+      key: 'created_at',
+      header: 'Created',
+      render: (item: typeof orders[0]) => (
+        <div>
+          <p className="text-sm">{format(new Date(item.created_at), 'dd MMM yyyy')}</p>
+          <p className="text-xs text-muted-foreground">{item.creator?.name || '-'}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (item: typeof orders[0]) => (
+        <div className="flex items-center gap-1">
+          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="View">
+            <Eye size={16} className="text-muted-foreground" />
+          </button>
+          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="Invoice">
+            <FileText size={16} className="text-muted-foreground" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
