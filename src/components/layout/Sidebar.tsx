@@ -38,11 +38,18 @@ import {
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types';
 
+interface NavChild {
+  label: string;
+  path?: string;
+  icon: React.ElementType;
+  children?: { label: string; path: string; icon: React.ElementType }[];
+}
+
 interface NavItem {
   label: string;
   icon: React.ElementType;
   path?: string;
-  children?: { label: string; path: string; icon: React.ElementType }[];
+  children?: NavChild[];
   roles: UserRole[];
 }
 
@@ -156,11 +163,17 @@ const navigationItems: NavItem[] = [
     children: [
       { label: 'Products', path: '/master/products', icon: Package },
       { label: 'Schemes', path: '/master/schemes', icon: Gift },
-      { label: 'Countries', path: '/master/countries', icon: Globe },
-      { label: 'States', path: '/master/states', icon: Map },
-      { label: 'Cities', path: '/master/cities', icon: Building2 },
-      { label: 'Zones', path: '/master/zones', icon: Compass },
-      { label: 'Territories', path: '/master/territories', icon: MapPin },
+      { 
+        label: 'Geographical', 
+        icon: Globe,
+        children: [
+          { label: 'Countries', path: '/master/countries', icon: Globe },
+          { label: 'States', path: '/master/states', icon: Map },
+          { label: 'Cities', path: '/master/cities', icon: Building2 },
+          { label: 'Zones', path: '/master/zones', icon: Compass },
+          { label: 'Territories', path: '/master/territories', icon: MapPin },
+        ],
+      },
       { label: 'Users', path: '/master/users', icon: Users },
       { label: 'Presentations', path: '/master/presentations', icon: GraduationCap },
     ],
@@ -190,8 +203,14 @@ export function Sidebar() {
   );
 
   const isActive = (path: string) => location.pathname === path;
-  const isParentActive = (children?: { path: string }[]) =>
-    children?.some(child => location.pathname.startsWith(child.path));
+  const isChildActive = (children?: NavChild[]): boolean => {
+    if (!children) return false;
+    return children.some(child => {
+      if (child.path) return location.pathname.startsWith(child.path);
+      if (child.children) return isChildActive(child.children as NavChild[]);
+      return false;
+    });
+  };
 
   const roleLabels: Record<UserRole, string> = {
     sales_executive: 'Sales Executive',
@@ -239,7 +258,7 @@ export function Sidebar() {
                     onClick={() => toggleExpanded(item.label)}
                     className={cn(
                       'nav-item w-full justify-between',
-                      isParentActive(item.children) && 'nav-item-active'
+                      isChildActive(item.children) && 'nav-item-active'
                     )}
                   >
                     <div className="flex items-center gap-3">
@@ -265,17 +284,68 @@ export function Sidebar() {
                         className="overflow-hidden ml-4 mt-1 space-y-1"
                       >
                         {item.children.map(child => (
-                          <li key={child.path}>
-                            <NavLink
-                              to={child.path}
-                              className={cn(
-                                'nav-item text-sm',
-                                isActive(child.path) && 'nav-item-active'
-                              )}
-                            >
-                              <child.icon size={16} />
-                              <span>{child.label}</span>
-                            </NavLink>
+                          <li key={child.path || child.label}>
+                            {child.children ? (
+                              // Nested submodule (e.g., Geographical)
+                              <div>
+                                <button
+                                  onClick={() => toggleExpanded(child.label)}
+                                  className={cn(
+                                    'nav-item text-sm w-full justify-between',
+                                    isChildActive(child.children as NavChild[]) && 'nav-item-active'
+                                  )}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <child.icon size={16} />
+                                    <span>{child.label}</span>
+                                  </div>
+                                  <ChevronDown
+                                    size={14}
+                                    className={cn(
+                                      'transition-transform',
+                                      expandedItems.includes(child.label) && 'rotate-180'
+                                    )}
+                                  />
+                                </button>
+                                <AnimatePresence>
+                                  {expandedItems.includes(child.label) && (
+                                    <motion.ul
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: 'auto', opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      className="overflow-hidden ml-4 mt-1 space-y-1"
+                                    >
+                                      {child.children.map(subChild => (
+                                        <li key={subChild.path}>
+                                          <NavLink
+                                            to={subChild.path}
+                                            className={cn(
+                                              'nav-item text-xs',
+                                              isActive(subChild.path) && 'nav-item-active'
+                                            )}
+                                          >
+                                            <subChild.icon size={14} />
+                                            <span>{subChild.label}</span>
+                                          </NavLink>
+                                        </li>
+                                      ))}
+                                    </motion.ul>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            ) : (
+                              // Regular child link
+                              <NavLink
+                                to={child.path!}
+                                className={cn(
+                                  'nav-item text-sm',
+                                  isActive(child.path!) && 'nav-item-active'
+                                )}
+                              >
+                                <child.icon size={16} />
+                                <span>{child.label}</span>
+                              </NavLink>
+                            )}
                           </li>
                         ))}
                       </motion.ul>
