@@ -91,9 +91,7 @@ export default function RetailersPage() {
   });
 
   const handleCreate = () => {
-    setSelectedItem(null);
-    setMode('create');
-    setModalOpen(true);
+    navigate('/outlets/retailers/new');
   };
 
   const handleView = (item: Retailer) => {

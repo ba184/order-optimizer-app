@@ -87,9 +87,7 @@ export default function DistributorsPage() {
   });
 
   const handleCreate = () => {
-    setSelectedItem(null);
-    setMode('create');
-    setModalOpen(true);
+    navigate('/outlets/distributors/new');
   };
 
   const handleView = (item: Distributor) => {
