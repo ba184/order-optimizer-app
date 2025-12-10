@@ -13,11 +13,11 @@ import {
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [formData, setFormData] = useState({
-    name: user?.name || 'Admin User',
-    email: user?.email || 'admin@toagosei.com',
-    phone: user?.phone || '+91 98765 00000',
+    name: profile?.name || 'Admin User',
+    email: profile?.email || 'admin@toagosei.com',
+    phone: profile?.phone || '+91 98765 00000',
     designation: 'System Administrator',
     department: 'IT & Operations',
     address: 'Corporate Office, New Delhi',
