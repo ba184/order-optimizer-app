@@ -29,6 +29,9 @@ import {
   Layers,
   Navigation,
   CalendarDays,
+  Globe,
+  Map,
+  Compass,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types';
@@ -139,6 +142,10 @@ const navigationItems: NavItem[] = [
     children: [
       { label: 'Products', path: '/master/products', icon: Package },
       { label: 'Schemes', path: '/master/schemes', icon: Gift },
+      { label: 'Countries', path: '/master/countries', icon: Globe },
+      { label: 'States', path: '/master/states', icon: Map },
+      { label: 'Cities', path: '/master/cities', icon: Building2 },
+      { label: 'Zones', path: '/master/zones', icon: Compass },
       { label: 'Territories', path: '/master/territories', icon: MapPin },
       { label: 'Users', path: '/master/users', icon: Users },
       { label: 'Presentations', path: '/master/presentations', icon: GraduationCap },

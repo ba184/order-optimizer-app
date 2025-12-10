@@ -32,6 +32,11 @@ import ProductsPage from "./pages/master/ProductsPage";
 import PresentationsPage from "./pages/master/PresentationsPage";
 import TerritoriesPage from "./pages/master/TerritoriesPage";
 import UsersPage from "./pages/master/UsersPage";
+import CountryMasterPage from "./pages/master/CountryMasterPage";
+import StateMasterPage from "./pages/master/StateMasterPage";
+import CityMasterPage from "./pages/master/CityMasterPage";
+import ZoneMasterPage from "./pages/master/ZoneMasterPage";
+import SettingsPage from "./pages/SettingsPage";
 import ExpenseManagementPage from "./pages/ExpenseManagementPage";
 import SampleGiftManagementPage from "./pages/SampleGiftManagementPage";
 import InventoryManagementPage from "./pages/InventoryManagementPage";
@@ -117,11 +122,15 @@ function AppRoutes() {
       {/* Master Data */}
       <Route path="/master/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
       <Route path="/master/schemes" element={<ProtectedRoute><AdvancedSchemesPage /></ProtectedRoute>} />
+      <Route path="/master/countries" element={<ProtectedRoute><CountryMasterPage /></ProtectedRoute>} />
+      <Route path="/master/states" element={<ProtectedRoute><StateMasterPage /></ProtectedRoute>} />
+      <Route path="/master/cities" element={<ProtectedRoute><CityMasterPage /></ProtectedRoute>} />
+      <Route path="/master/zones" element={<ProtectedRoute><ZoneMasterPage /></ProtectedRoute>} />
       <Route path="/master/territories" element={<ProtectedRoute><TerritoriesPage /></ProtectedRoute>} />
       <Route path="/master/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
       <Route path="/master/presentations" element={<ProtectedRoute><PresentationsPage /></ProtectedRoute>} />
       
-      <Route path="/settings" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
