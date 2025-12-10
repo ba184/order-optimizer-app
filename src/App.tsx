@@ -21,8 +21,6 @@ import DistributorsPage from "./pages/outlets/DistributorsPage";
 import DistributorDetailPage from "./pages/outlets/DistributorDetailPage";
 import RetailersPage from "./pages/outlets/RetailersPage";
 import RetailerDetailPage from "./pages/outlets/RetailerDetailPage";
-import NewDistributorPage from "./pages/outlets/NewDistributorPage";
-import NewRetailerPage from "./pages/outlets/NewRetailerPage";
 import OrdersListPage from "./pages/orders/OrdersListPage";
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
 import SchemesPage from "./pages/SchemesPage";
@@ -86,8 +84,6 @@ function AppRoutes() {
       <Route path="/outlets/distributors/:id" element={<ProtectedRoute><DistributorDetailPage /></ProtectedRoute>} />
       <Route path="/outlets/retailers" element={<ProtectedRoute><RetailersPage /></ProtectedRoute>} />
       <Route path="/outlets/retailers/:id" element={<ProtectedRoute><RetailerDetailPage /></ProtectedRoute>} />
-      <Route path="/outlets/new-distributor" element={<ProtectedRoute><NewDistributorPage /></ProtectedRoute>} />
-      <Route path="/outlets/new-retailer" element={<ProtectedRoute><NewRetailerPage /></ProtectedRoute>} />
       
       {/* Orders */}
       <Route path="/orders/list" element={<ProtectedRoute><OrdersListPage /></ProtectedRoute>} />
