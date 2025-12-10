@@ -34,6 +34,7 @@ import {
   Compass,
   MessageSquare,
   RotateCcw,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types';
@@ -175,6 +176,7 @@ const navigationItems: NavItem[] = [
         ],
       },
       { label: 'Users', path: '/master/users', icon: Users },
+      { label: 'Roles & Permissions', path: '/master/roles', icon: Shield },
       { label: 'Targets', path: '/master/targets', icon: Target },
       { label: 'Presentations', path: '/master/presentations', icon: GraduationCap },
     ],

@@ -32,6 +32,7 @@ import ProductsPage from "./pages/master/ProductsPage";
 import PresentationsPage from "./pages/master/PresentationsPage";
 import TerritoriesPage from "./pages/master/TerritoriesPage";
 import UsersPage from "./pages/master/UsersPage";
+import RolesPermissionsPage from "./pages/master/RolesPermissionsPage";
 import TargetManagementPage from "./pages/master/TargetManagementPage";
 import CountryMasterPage from "./pages/master/CountryMasterPage";
 import StateMasterPage from "./pages/master/StateMasterPage";
@@ -137,6 +138,7 @@ function AppRoutes() {
       <Route path="/master/zones" element={<ProtectedRoute><ZoneMasterPage /></ProtectedRoute>} />
       <Route path="/master/territories" element={<ProtectedRoute><TerritoriesPage /></ProtectedRoute>} />
       <Route path="/master/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
+      <Route path="/master/roles" element={<ProtectedRoute><RolesPermissionsPage /></ProtectedRoute>} />
       <Route path="/master/targets" element={<ProtectedRoute><TargetManagementPage /></ProtectedRoute>} />
       <Route path="/master/presentations" element={<ProtectedRoute><PresentationsPage /></ProtectedRoute>} />
       
