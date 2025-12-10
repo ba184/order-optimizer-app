@@ -32,6 +32,8 @@ import {
   Globe,
   Map,
   Compass,
+  MessageSquare,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types';
@@ -128,6 +130,18 @@ const navigationItems: NavItem[] = [
     icon: GraduationCap,
     path: '/training',
     roles: ['sales_executive', 'asm', 'rsm', 'admin'],
+  },
+  {
+    label: 'Feedback',
+    icon: MessageSquare,
+    path: '/feedback',
+    roles: ['asm', 'rsm', 'admin'],
+  },
+  {
+    label: 'Returns',
+    icon: RotateCcw,
+    path: '/returns',
+    roles: ['asm', 'rsm', 'admin'],
   },
   {
     label: 'Reports',

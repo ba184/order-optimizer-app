@@ -43,6 +43,8 @@ import InventoryManagementPage from "./pages/InventoryManagementPage";
 import PreOrderBookingPage from "./pages/PreOrderBookingPage";
 import ProductTrainingPage from "./pages/ProductTrainingPage";
 import CreditManagementPage from "./pages/CreditManagementPage";
+import FeedbackComplaintsPage from "./pages/FeedbackComplaintsPage";
+import ReturnsManagementPage from "./pages/ReturnsManagementPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -117,6 +119,10 @@ function AppRoutes() {
       
       {/* Credit Management */}
       <Route path="/credit" element={<ProtectedRoute><CreditManagementPage /></ProtectedRoute>} />
+      
+      {/* Feedback & Returns */}
+      <Route path="/feedback" element={<ProtectedRoute><FeedbackComplaintsPage /></ProtectedRoute>} />
+      <Route path="/returns" element={<ProtectedRoute><ReturnsManagementPage /></ProtectedRoute>} />
       
       {/* Reports & Analytics */}
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
