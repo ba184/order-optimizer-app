@@ -526,6 +526,161 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          created_at: string | null
+          discount: number | null
+          free_goods: number | null
+          gst_amount: number
+          gst_percent: number
+          id: string
+          order_id: string
+          product_id: string
+          quantity: number
+          total_amount: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string | null
+          discount?: number | null
+          free_goods?: number | null
+          gst_amount?: number
+          gst_percent?: number
+          id?: string
+          order_id: string
+          product_id: string
+          quantity?: number
+          total_amount?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string | null
+          discount?: number | null
+          free_goods?: number | null
+          gst_amount?: number
+          gst_percent?: number
+          id?: string
+          order_id?: string
+          product_id?: string
+          quantity?: number
+          total_amount?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          created_by: string
+          delivered_at: string | null
+          discount: number | null
+          dispatched_at: string | null
+          distributor_id: string | null
+          gst_amount: number | null
+          id: string
+          items_count: number | null
+          notes: string | null
+          order_number: string
+          order_type: string
+          payment_status: string | null
+          retailer_id: string | null
+          status: string | null
+          subtotal: number | null
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          created_by: string
+          delivered_at?: string | null
+          discount?: number | null
+          dispatched_at?: string | null
+          distributor_id?: string | null
+          gst_amount?: number | null
+          id?: string
+          items_count?: number | null
+          notes?: string | null
+          order_number: string
+          order_type?: string
+          payment_status?: string | null
+          retailer_id?: string | null
+          status?: string | null
+          subtotal?: number | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          created_by?: string
+          delivered_at?: string | null
+          discount?: number | null
+          dispatched_at?: string | null
+          distributor_id?: string | null
+          gst_amount?: number | null
+          id?: string
+          items_count?: number | null
+          notes?: string | null
+          order_number?: string
+          order_type?: string
+          payment_status?: string | null
+          retailer_id?: string | null
+          status?: string | null
+          subtotal?: number | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_retailer_id_fkey"
+            columns: ["retailer_id"]
+            isOneToOne: false
+            referencedRelation: "retailers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           can_approve: boolean | null
@@ -569,6 +724,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      products: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          gst: number
+          id: string
+          mrp: number
+          name: string
+          ptr: number
+          sku: string
+          status: string | null
+          stock: number
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          gst?: number
+          id?: string
+          mrp?: number
+          name: string
+          ptr?: number
+          sku: string
+          status?: string | null
+          stock?: number
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          gst?: number
+          id?: string
+          mrp?: number
+          name?: string
+          ptr?: number
+          sku?: string
+          status?: string | null
+          stock?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
