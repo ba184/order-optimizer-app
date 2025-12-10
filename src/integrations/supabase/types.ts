@@ -269,6 +269,63 @@ export type Database = {
           },
         ]
       }
+      distributors: {
+        Row: {
+          address: string | null
+          city: string | null
+          code: string
+          created_at: string | null
+          credit_limit: number | null
+          email: string | null
+          firm_name: string
+          gstin: string | null
+          id: string
+          last_order_date: string | null
+          outstanding_amount: number | null
+          owner_name: string
+          phone: string | null
+          state: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          code: string
+          created_at?: string | null
+          credit_limit?: number | null
+          email?: string | null
+          firm_name: string
+          gstin?: string | null
+          id?: string
+          last_order_date?: string | null
+          outstanding_amount?: number | null
+          owner_name: string
+          phone?: string | null
+          state?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          code?: string
+          created_at?: string | null
+          credit_limit?: number | null
+          email?: string | null
+          firm_name?: string
+          gstin?: string | null
+          id?: string
+          last_order_date?: string | null
+          outstanding_amount?: number | null
+          owner_name?: string
+          phone?: string | null
+          state?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       employee_locations: {
         Row: {
           accuracy: number | null
@@ -556,6 +613,71 @@ export type Database = {
             columns: ["reporting_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retailers: {
+        Row: {
+          address: string | null
+          category: string | null
+          city: string | null
+          code: string
+          created_at: string | null
+          distributor_id: string | null
+          email: string | null
+          id: string
+          last_order_value: number | null
+          last_visit: string | null
+          owner_name: string
+          phone: string | null
+          shop_name: string
+          state: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          category?: string | null
+          city?: string | null
+          code: string
+          created_at?: string | null
+          distributor_id?: string | null
+          email?: string | null
+          id?: string
+          last_order_value?: number | null
+          last_visit?: string | null
+          owner_name: string
+          phone?: string | null
+          shop_name: string
+          state?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          category?: string | null
+          city?: string | null
+          code?: string
+          created_at?: string | null
+          distributor_id?: string | null
+          email?: string | null
+          id?: string
+          last_order_value?: number | null
+          last_visit?: string | null
+          owner_name?: string
+          phone?: string | null
+          shop_name?: string
+          state?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retailers_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
             referencedColumns: ["id"]
           },
         ]

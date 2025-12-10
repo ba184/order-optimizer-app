@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import { GeoFilter } from '@/components/ui/GeoFilter';
 import { GeoFilter as GeoFilterType } from '@/data/geoData';
-import { CrudModal, FieldConfig } from '@/components/ui/CrudModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
+import { useDistributors, useCreateDistributor, useUpdateDistributor, useDeleteDistributor } from '@/hooks/useOutletsData';
 import {
   Plus,
   Building2,
@@ -16,33 +16,26 @@ import {
   Eye,
   Edit,
   Trash2,
+  Loader2,
+  X,
 } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface Distributor {
   id: string;
   code: string;
-  firmName: string;
-  ownerName: string;
-  gstin: string;
-  city: string;
-  state: string;
-  phone: string;
-  email: string;
-  address: string;
-  creditLimit: number;
-  outstandingAmount: number;
-  status: 'active' | 'pending' | 'inactive';
-  lastOrderDate: string;
+  firm_name: string;
+  owner_name: string;
+  gstin: string | null;
+  city: string | null;
+  state: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  credit_limit: number;
+  outstanding_amount: number;
+  status: string;
+  last_order_date: string | null;
 }
-
-const initialDistributors: Distributor[] = [
-  { id: 'd-001', code: 'DIST-DEL-001', firmName: 'Krishna Traders', ownerName: 'Ramesh Krishna', gstin: '07AABCT1234K1ZK', city: 'New Delhi', state: 'Delhi', phone: '+91 98765 43210', email: 'krishna@traders.com', address: 'Shop 1, Karol Bagh', creditLimit: 500000, outstandingAmount: 125000, status: 'active', lastOrderDate: '2024-12-08' },
-  { id: 'd-002', code: 'DIST-DEL-002', firmName: 'Sharma Distributors', ownerName: 'Anil Sharma', gstin: '07BRSPS5678L2YZ', city: 'Gurgaon', state: 'Haryana', phone: '+91 98765 43211', email: 'sharma@dist.com', address: 'DLF Phase 2', creditLimit: 750000, outstandingAmount: 280000, status: 'active', lastOrderDate: '2024-12-07' },
-  { id: 'd-003', code: 'DIST-MUM-001', firmName: 'Patel Trading Co', ownerName: 'Jayesh Patel', gstin: '27CCPPS9012M3AB', city: 'Mumbai', state: 'Maharashtra', phone: '+91 98765 43212', email: 'patel@trading.com', address: 'Andheri West', creditLimit: 1000000, outstandingAmount: 450000, status: 'active', lastOrderDate: '2024-12-06' },
-  { id: 'd-004', code: 'DIST-CHE-001', firmName: 'Gupta Enterprises', ownerName: 'Suresh Gupta', gstin: '33DDGPS3456N4CD', city: 'Chennai', state: 'Tamil Nadu', phone: '+91 98765 43213', email: 'gupta@ent.com', address: 'T Nagar', creditLimit: 600000, outstandingAmount: 180000, status: 'pending', lastOrderDate: '2024-12-05' },
-  { id: 'd-005', code: 'DIST-KOL-001', firmName: 'Singh & Sons', ownerName: 'Harpreet Singh', gstin: '19EESPS7890O5EF', city: 'Kolkata', state: 'West Bengal', phone: '+91 98765 43214', email: 'singh@sons.com', address: 'Park Street', creditLimit: 400000, outstandingAmount: 95000, status: 'active', lastOrderDate: '2024-12-04' },
-];
 
 const states = [
   { value: 'Delhi', label: 'Delhi' },
@@ -50,20 +43,8 @@ const states = [
   { value: 'Maharashtra', label: 'Maharashtra' },
   { value: 'Tamil Nadu', label: 'Tamil Nadu' },
   { value: 'West Bengal', label: 'West Bengal' },
-];
-
-const fields: FieldConfig[] = [
-  { key: 'code', label: 'Distributor Code', type: 'text', required: true, placeholder: 'e.g., DIST-DEL-001' },
-  { key: 'firmName', label: 'Firm Name', type: 'text', required: true, placeholder: 'Enter firm name' },
-  { key: 'ownerName', label: 'Owner Name', type: 'text', required: true, placeholder: 'Enter owner name' },
-  { key: 'gstin', label: 'GSTIN', type: 'text', required: true, placeholder: 'Enter GSTIN' },
-  { key: 'email', label: 'Email', type: 'email', required: true, placeholder: 'Enter email' },
-  { key: 'phone', label: 'Phone', type: 'text', required: true, placeholder: '+91 98765 43210' },
-  { key: 'state', label: 'State', type: 'select', required: true, options: states },
-  { key: 'city', label: 'City', type: 'text', required: true, placeholder: 'Enter city' },
-  { key: 'address', label: 'Address', type: 'textarea', placeholder: 'Enter full address' },
-  { key: 'creditLimit', label: 'Credit Limit (₹)', type: 'number', required: true, placeholder: '500000' },
-  { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'pending', label: 'Pending' }, { value: 'inactive', label: 'Inactive' }] },
+  { value: 'Karnataka', label: 'Karnataka' },
+  { value: 'Gujarat', label: 'Gujarat' },
 ];
 
 const formatCurrency = (value: number) => {
@@ -74,65 +55,104 @@ const formatCurrency = (value: number) => {
 
 export default function DistributorsPage() {
   const navigate = useNavigate();
-  const [data, setData] = useState<Distributor[]>(initialDistributors);
   const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
-  const [modalOpen, setModalOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState<Distributor | null>(null);
-  const [selectedItem, setSelectedItem] = useState<Distributor | null>(null);
-  const [mode, setMode] = useState<'create' | 'edit' | 'view'>('create');
+  const [showModal, setShowModal] = useState(false);
+  const [editItem, setEditItem] = useState<Distributor | null>(null);
+  const [formData, setFormData] = useState({
+    code: '',
+    firm_name: '',
+    owner_name: '',
+    gstin: '',
+    city: '',
+    state: '',
+    phone: '',
+    email: '',
+    address: '',
+    credit_limit: '',
+    status: 'pending',
+  });
 
-  const filteredData = data.filter(d => {
+  const { data: distributorsData, isLoading } = useDistributors();
+  const createDistributor = useCreateDistributor();
+  const updateDistributor = useUpdateDistributor();
+  const deleteDistributor = useDeleteDistributor();
+
+  const distributors: Distributor[] = (distributorsData || []).map((d: any) => ({
+    ...d,
+    credit_limit: Number(d.credit_limit) || 0,
+    outstanding_amount: Number(d.outstanding_amount) || 0,
+  }));
+
+  const filteredData = distributors.filter(d => {
     if (geoFilter.state && d.state !== geoFilter.state) return false;
     return true;
   });
 
   const handleCreate = () => {
-    navigate('/outlets/distributors/new');
-  };
-
-  const handleView = (item: Distributor) => {
-    setSelectedItem(item);
-    setMode('view');
-    setModalOpen(true);
+    setEditItem(null);
+    setFormData({
+      code: '',
+      firm_name: '',
+      owner_name: '',
+      gstin: '',
+      city: '',
+      state: '',
+      phone: '',
+      email: '',
+      address: '',
+      credit_limit: '',
+      status: 'pending',
+    });
+    setShowModal(true);
   };
 
   const handleEdit = (item: Distributor) => {
-    setSelectedItem(item);
-    setMode('edit');
-    setModalOpen(true);
+    setEditItem(item);
+    setFormData({
+      code: item.code,
+      firm_name: item.firm_name,
+      owner_name: item.owner_name,
+      gstin: item.gstin || '',
+      city: item.city || '',
+      state: item.state || '',
+      phone: item.phone || '',
+      email: item.email || '',
+      address: item.address || '',
+      credit_limit: item.credit_limit.toString(),
+      status: item.status,
+    });
+    setShowModal(true);
   };
 
-  const handleSubmit = (formData: Record<string, any>) => {
-    if (mode === 'create') {
-      const newItem: Distributor = {
-        id: Date.now().toString(),
-        code: formData.code,
-        firmName: formData.firmName,
-        ownerName: formData.ownerName,
-        gstin: formData.gstin,
-        city: formData.city,
-        state: formData.state,
-        phone: formData.phone,
-        email: formData.email,
-        address: formData.address || '',
-        creditLimit: Number(formData.creditLimit),
-        outstandingAmount: 0,
-        status: formData.status || 'pending',
-        lastOrderDate: '-',
-      };
-      setData([...data, newItem]);
-      toast.success('Distributor created successfully');
+  const handleSubmit = async () => {
+    if (!formData.code || !formData.firm_name || !formData.owner_name) return;
+
+    const data = {
+      code: formData.code,
+      firm_name: formData.firm_name,
+      owner_name: formData.owner_name,
+      gstin: formData.gstin || undefined,
+      city: formData.city || undefined,
+      state: formData.state || undefined,
+      phone: formData.phone || undefined,
+      email: formData.email || undefined,
+      address: formData.address || undefined,
+      credit_limit: parseFloat(formData.credit_limit) || 0,
+      status: formData.status,
+    };
+
+    if (editItem) {
+      await updateDistributor.mutateAsync({ id: editItem.id, ...data });
     } else {
-      setData(data.map(item => item.id === selectedItem?.id ? { ...item, ...formData, creditLimit: Number(formData.creditLimit) } : item));
-      toast.success('Distributor updated successfully');
+      await createDistributor.mutateAsync(data);
     }
-    setModalOpen(false);
+    setShowModal(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteModal) {
-      setData(data.filter(item => item.id !== deleteModal.id));
-      toast.success('Distributor deleted successfully');
+      await deleteDistributor.mutateAsync(deleteModal.id);
       setDeleteModal(null);
     }
   };
@@ -141,13 +161,13 @@ export default function DistributorsPage() {
     total: filteredData.length,
     active: filteredData.filter(d => d.status === 'active').length,
     pending: filteredData.filter(d => d.status === 'pending').length,
-    totalCredit: filteredData.reduce((sum, d) => sum + d.creditLimit, 0),
-    totalOutstanding: filteredData.reduce((sum, d) => sum + d.outstandingAmount, 0),
+    totalCredit: filteredData.reduce((sum, d) => sum + d.credit_limit, 0),
+    totalOutstanding: filteredData.reduce((sum, d) => sum + d.outstanding_amount, 0),
   };
 
   const columns = [
     {
-      key: 'firmName',
+      key: 'firm_name',
       header: 'Distributor',
       render: (item: Distributor) => (
         <div className="flex items-center gap-3">
@@ -155,21 +175,21 @@ export default function DistributorsPage() {
             <Building2 size={20} className="text-primary" />
           </div>
           <div>
-            <p className="font-medium text-foreground">{item.firmName}</p>
+            <p className="font-medium text-foreground">{item.firm_name}</p>
             <p className="text-xs text-muted-foreground">{item.code}</p>
           </div>
         </div>
       ),
       sortable: true,
     },
-    { key: 'ownerName', header: 'Owner', sortable: true },
+    { key: 'owner_name', header: 'Owner', sortable: true },
     {
       key: 'location',
       header: 'Location',
       render: (item: Distributor) => (
         <div className="flex items-center gap-2">
           <MapPin size={14} className="text-muted-foreground" />
-          <span>{item.city}, {item.state}</span>
+          <span>{item.city || 'N/A'}{item.state ? `, ${item.state}` : ''}</span>
         </div>
       ),
     },
@@ -179,25 +199,25 @@ export default function DistributorsPage() {
       render: (item: Distributor) => (
         <div className="flex items-center gap-2">
           <Phone size={14} className="text-muted-foreground" />
-          <span className="text-sm">{item.phone}</span>
+          <span className="text-sm">{item.phone || 'N/A'}</span>
         </div>
       ),
     },
     {
-      key: 'creditLimit',
+      key: 'credit_limit',
       header: 'Credit Limit',
-      render: (item: Distributor) => <span className="font-medium">{formatCurrency(item.creditLimit)}</span>,
+      render: (item: Distributor) => <span className="font-medium">{formatCurrency(item.credit_limit)}</span>,
       sortable: true,
     },
     {
-      key: 'outstandingAmount',
+      key: 'outstanding_amount',
       header: 'Outstanding',
       render: (item: Distributor) => {
-        const percentage = (item.outstandingAmount / item.creditLimit) * 100;
+        const percentage = item.credit_limit > 0 ? (item.outstanding_amount / item.credit_limit) * 100 : 0;
         return (
           <div>
             <span className={`font-medium ${percentage > 80 ? 'text-destructive' : percentage > 50 ? 'text-warning' : 'text-foreground'}`}>
-              {formatCurrency(item.outstandingAmount)}
+              {formatCurrency(item.outstanding_amount)}
             </span>
             <div className="w-full h-1.5 bg-muted rounded-full mt-1">
               <div className={`h-full rounded-full ${percentage > 80 ? 'bg-destructive' : percentage > 50 ? 'bg-warning' : 'bg-success'}`} style={{ width: `${Math.min(percentage, 100)}%` }} />
@@ -210,14 +230,14 @@ export default function DistributorsPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (item: Distributor) => <StatusBadge status={item.status} />,
+      render: (item: Distributor) => <StatusBadge status={item.status as StatusType} />,
     },
     {
       key: 'actions',
       header: 'Actions',
       render: (item: Distributor) => (
         <div className="flex items-center gap-1">
-          <button onClick={() => handleView(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+          <button onClick={() => navigate(`/outlets/distributors/${item.id}`)} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Eye size={16} className="text-muted-foreground" />
           </button>
           <button onClick={() => handleEdit(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
@@ -230,6 +250,14 @@ export default function DistributorsPage() {
       ),
     },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -287,11 +315,185 @@ export default function DistributorsPage() {
         </motion.div>
       </div>
 
-      <DataTable data={filteredData} columns={columns} searchPlaceholder="Search by name, code, city..." onRowClick={(item) => navigate(`/outlets/distributors/${item.id}`)} />
+      <DataTable 
+        data={filteredData} 
+        columns={columns} 
+        searchPlaceholder="Search by name, code, city..." 
+        onRowClick={(item) => navigate(`/outlets/distributors/${item.id}`)} 
+        emptyMessage="No distributors found. Add your first distributor!"
+      />
 
-      <CrudModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={mode === 'create' ? 'Add Distributor' : mode === 'edit' ? 'Edit Distributor' : 'Distributor Details'} fields={fields} initialData={selectedItem || undefined} onSubmit={handleSubmit} mode={mode} />
+      {/* Add/Edit Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">
+                {editItem ? 'Edit Distributor' : 'Add Distributor'}
+              </h2>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Code *</label>
+                  <input
+                    type="text"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    placeholder="DIST-DEL-001"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Firm Name *</label>
+                  <input
+                    type="text"
+                    value={formData.firm_name}
+                    onChange={(e) => setFormData({ ...formData, firm_name: e.target.value })}
+                    placeholder="Enter firm name"
+                    className="input-field"
+                  />
+                </div>
+              </div>
 
-      <DeleteConfirmModal isOpen={!!deleteModal} onClose={() => setDeleteModal(null)} onConfirm={handleDelete} title="Delete Distributor" message={`Are you sure you want to delete "${deleteModal?.firmName}"? This action cannot be undone.`} />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Owner Name *</label>
+                  <input
+                    type="text"
+                    value={formData.owner_name}
+                    onChange={(e) => setFormData({ ...formData, owner_name: e.target.value })}
+                    placeholder="Enter owner name"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">GSTIN</label>
+                  <input
+                    type="text"
+                    value={formData.gstin}
+                    onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
+                    placeholder="Enter GSTIN"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Phone</label>
+                  <input
+                    type="text"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="+91 98765 43210"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Enter email"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">State</label>
+                  <select
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="">Select State</option>
+                    {states.map(s => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">City</label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="Enter city"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Address</label>
+                <textarea
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Enter full address"
+                  rows={2}
+                  className="input-field resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Credit Limit (₹)</label>
+                  <input
+                    type="number"
+                    value={formData.credit_limit}
+                    onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
+                    placeholder="500000"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button onClick={() => setShowModal(false)} className="btn-outline">Cancel</button>
+              <button 
+                onClick={handleSubmit}
+                disabled={createDistributor.isPending || updateDistributor.isPending}
+                className="btn-primary"
+              >
+                {(createDistributor.isPending || updateDistributor.isPending) ? 'Saving...' : editItem ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      <DeleteConfirmModal 
+        isOpen={!!deleteModal} 
+        onClose={() => setDeleteModal(null)} 
+        onConfirm={handleDelete} 
+        title="Delete Distributor" 
+        message={`Are you sure you want to delete "${deleteModal?.firm_name}"? This action cannot be undone.`} 
+      />
     </div>
   );
 }
