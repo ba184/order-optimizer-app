@@ -1283,6 +1283,143 @@ export type Database = {
         }
         Relationships: []
       }
+      sample_budgets: {
+        Row: {
+          created_at: string
+          id: string
+          month: number
+          monthly_budget: number
+          updated_at: string
+          used_amount: number
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: number
+          monthly_budget?: number
+          updated_at?: string
+          used_amount?: number
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: number
+          monthly_budget?: number
+          updated_at?: string
+          used_amount?: number
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      sample_issues: {
+        Row: {
+          acknowledged: boolean
+          acknowledged_at: string | null
+          acknowledgement_photo: string | null
+          converted_to_order: boolean
+          created_at: string
+          id: string
+          issued_by: string
+          issued_to_id: string | null
+          issued_to_name: string
+          issued_to_type: string
+          notes: string | null
+          order_id: string | null
+          order_value: number | null
+          quantity: number
+          sample_id: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledgement_photo?: string | null
+          converted_to_order?: boolean
+          created_at?: string
+          id?: string
+          issued_by: string
+          issued_to_id?: string | null
+          issued_to_name: string
+          issued_to_type?: string
+          notes?: string | null
+          order_id?: string | null
+          order_value?: number | null
+          quantity?: number
+          sample_id: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledgement_photo?: string | null
+          converted_to_order?: boolean
+          created_at?: string
+          id?: string
+          issued_by?: string
+          issued_to_id?: string | null
+          issued_to_name?: string
+          issued_to_type?: string
+          notes?: string | null
+          order_id?: string | null
+          order_value?: number | null
+          quantity?: number
+          sample_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sample_issues_sample_id_fkey"
+            columns: ["sample_id"]
+            isOneToOne: false
+            referencedRelation: "samples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      samples: {
+        Row: {
+          cost_price: number
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          sku: string
+          status: string
+          stock: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          cost_price?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          sku: string
+          status?: string
+          stock?: number
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          cost_price?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sku?: string
+          status?: string
+          stock?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       scheme_claims: {
         Row: {
           applicant_type: string

@@ -13,95 +13,94 @@ import {
   AlertTriangle,
   Check,
   Camera,
+  Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
-
-interface Sample {
-  id: string;
-  sku: string;
-  name: string;
-  costPrice: number;
-  stock: number;
-  issuedThisMonth: number;
-  conversions: number;
-}
-
-interface SampleIssue {
-  id: string;
-  sampleId: string;
-  sampleName: string;
-  quantity: number;
-  issuedTo: string;
-  issuedToType: 'retailer' | 'distributor';
-  issuedBy: string;
-  issuedAt: string;
-  acknowledged: boolean;
-  convertedToOrder: boolean;
-  orderValue?: number;
-}
-
-const mockSamples: Sample[] = [
-  { id: 's-001', sku: 'SMP-001', name: 'Product Alpha Sample 50ml', costPrice: 45, stock: 500, issuedThisMonth: 85, conversions: 42 },
-  { id: 's-002', sku: 'SMP-002', name: 'Product Beta Trial Pack', costPrice: 80, stock: 300, issuedThisMonth: 62, conversions: 28 },
-  { id: 's-003', sku: 'SMP-003', name: 'Product Gamma Sachet', costPrice: 15, stock: 1000, issuedThisMonth: 250, conversions: 95 },
-  { id: 's-004', sku: 'GIFT-001', name: 'Branded Pen Set', costPrice: 120, stock: 200, issuedThisMonth: 45, conversions: 0 },
-  { id: 's-005', sku: 'GIFT-002', name: 'Promotional T-Shirt', costPrice: 250, stock: 100, issuedThisMonth: 28, conversions: 0 },
-];
-
-const mockIssues: SampleIssue[] = [
-  {
-    id: 'si-001',
-    sampleId: 's-001',
-    sampleName: 'Product Alpha Sample 50ml',
-    quantity: 5,
-    issuedTo: 'New Sharma Store',
-    issuedToType: 'retailer',
-    issuedBy: 'Rajesh Kumar',
-    issuedAt: '2024-12-09 10:30 AM',
-    acknowledged: true,
-    convertedToOrder: true,
-    orderValue: 15500,
-  },
-  {
-    id: 'si-002',
-    sampleId: 's-002',
-    sampleName: 'Product Beta Trial Pack',
-    quantity: 3,
-    issuedTo: 'Gupta General Store',
-    issuedToType: 'retailer',
-    issuedBy: 'Amit Sharma',
-    issuedAt: '2024-12-09 11:45 AM',
-    acknowledged: true,
-    convertedToOrder: false,
-  },
-  {
-    id: 'si-003',
-    sampleId: 's-003',
-    sampleName: 'Product Gamma Sachet',
-    quantity: 20,
-    issuedTo: 'Krishna Traders',
-    issuedToType: 'distributor',
-    issuedBy: 'Priya Singh',
-    issuedAt: '2024-12-08 03:00 PM',
-    acknowledged: true,
-    convertedToOrder: true,
-    orderValue: 45000,
-  },
-];
-
-const executiveBudget = {
-  monthlyBudget: 5000,
-  used: 3250,
-  remaining: 1750,
-};
+import { format } from 'date-fns';
+import {
+  useSamples,
+  useSampleIssues,
+  useCurrentBudget,
+  useCreateSample,
+  useUpdateSample,
+  useIssueSample,
+  Sample,
+  SampleIssue,
+} from '@/hooks/useSamplesData';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function SampleGiftManagementPage() {
   const [activeTab, setActiveTab] = useState<'samples' | 'issues'>('samples');
   const [showIssueModal, setShowIssueModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [viewingIssue, setViewingIssue] = useState<SampleIssue | null>(null);
+
+  const [issueData, setIssueData] = useState({
+    sampleId: '',
+    quantity: 1,
+    issuedToName: '',
+    issuedToType: 'retailer',
+    notes: '',
+  });
+
+  const [sampleData, setSampleData] = useState({
+    sku: '',
+    name: '',
+    type: 'sample',
+    cost_price: 0,
+    stock: 0,
+    description: '',
+  });
+
+  const { data: samples = [], isLoading: loadingSamples } = useSamples();
+  const { data: issues = [], isLoading: loadingIssues } = useSampleIssues();
+  const { data: budget } = useCurrentBudget();
+  const createSampleMutation = useCreateSample();
+  const issueMutation = useIssueSample();
+
+  // Fetch retailers and distributors for issue modal
+  const { data: retailers = [] } = useQuery({
+    queryKey: ['retailers-for-samples'],
+    queryFn: async () => {
+      const { data } = await supabase.from('retailers').select('id, shop_name').eq('status', 'active');
+      return data || [];
+    },
+  });
+
+  const { data: distributors = [] } = useQuery({
+    queryKey: ['distributors-for-samples'],
+    queryFn: async () => {
+      const { data } = await supabase.from('distributors').select('id, firm_name').eq('status', 'active');
+      return data || [];
+    },
+  });
 
   const handleIssue = () => {
-    toast.success('Sample issued successfully');
-    setShowIssueModal(false);
+    if (!issueData.sampleId || !issueData.issuedToName) return;
+    issueMutation.mutate(
+      {
+        sample_id: issueData.sampleId,
+        quantity: issueData.quantity,
+        issued_to_name: issueData.issuedToName,
+        issued_to_type: issueData.issuedToType,
+        notes: issueData.notes || undefined,
+      },
+      {
+        onSuccess: () => {
+          setShowIssueModal(false);
+          setIssueData({ sampleId: '', quantity: 1, issuedToName: '', issuedToType: 'retailer', notes: '' });
+        },
+      }
+    );
+  };
+
+  const handleCreateSample = () => {
+    createSampleMutation.mutate(sampleData, {
+      onSuccess: () => {
+        setShowCreateModal(false);
+        setSampleData({ sku: '', name: '', type: 'sample', cost_price: 0, stock: 0, description: '' });
+      },
+    });
   };
 
   const sampleColumns = [
@@ -111,7 +110,11 @@ export default function SampleGiftManagementPage() {
       render: (item: Sample) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-            {item.sku.startsWith('GIFT') ? <Gift size={20} className="text-secondary" /> : <Package size={20} className="text-primary" />}
+            {item.type === 'gift' ? (
+              <Gift size={20} className="text-secondary" />
+            ) : (
+              <Package size={20} className="text-primary" />
+            )}
           </div>
           <div>
             <p className="font-medium text-foreground">{item.name}</p>
@@ -121,34 +124,33 @@ export default function SampleGiftManagementPage() {
       ),
     },
     {
-      key: 'costPrice',
+      key: 'cost_price',
       header: 'Cost',
-      render: (item: Sample) => <span>₹{item.costPrice}</span>,
+      render: (item: Sample) => <span>₹{Number(item.cost_price).toLocaleString()}</span>,
     },
     {
       key: 'stock',
       header: 'Available Stock',
       render: (item: Sample) => (
-        <span className={item.stock < 100 ? 'text-destructive font-medium' : ''}>
-          {item.stock}
-        </span>
+        <span className={item.stock < 100 ? 'text-destructive font-medium' : ''}>{item.stock}</span>
       ),
     },
     {
-      key: 'issuedThisMonth',
+      key: 'issued_this_month',
       header: 'Issued (MTD)',
+      render: (item: Sample) => <span>{item.issued_this_month || 0}</span>,
     },
     {
       key: 'conversions',
       header: 'Conversions',
       render: (item: Sample) => {
-        const rate = item.issuedThisMonth > 0 ? ((item.conversions / item.issuedThisMonth) * 100).toFixed(0) : 0;
+        const issued = item.issued_this_month || 0;
+        const conversions = item.conversions || 0;
+        const rate = issued > 0 ? ((conversions / issued) * 100).toFixed(0) : 0;
         return (
           <div className="flex items-center gap-2">
-            <span>{item.conversions}</span>
-            {item.conversions > 0 && (
-              <span className="text-xs text-success">({rate}%)</span>
-            )}
+            <span>{conversions}</span>
+            {conversions > 0 && <span className="text-xs text-success">({rate}%)</span>}
           </div>
         );
       },
@@ -171,43 +173,45 @@ export default function SampleGiftManagementPage() {
 
   const issueColumns = [
     {
-      key: 'sampleName',
+      key: 'sample_name',
       header: 'Sample/Gift',
       render: (item: SampleIssue) => (
         <div>
-          <p className="font-medium text-foreground">{item.sampleName}</p>
+          <p className="font-medium text-foreground">{item.sample_name}</p>
           <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
         </div>
       ),
     },
     {
-      key: 'issuedTo',
+      key: 'issued_to_name',
       header: 'Issued To',
       render: (item: SampleIssue) => (
         <div>
-          <p className="text-sm">{item.issuedTo}</p>
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
-            item.issuedToType === 'retailer' ? 'bg-info/10 text-info' : 'bg-primary/10 text-primary'
-          }`}>
-            {item.issuedToType}
+          <p className="text-sm">{item.issued_to_name}</p>
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full ${
+              item.issued_to_type === 'retailer' ? 'bg-info/10 text-info' : 'bg-primary/10 text-primary'
+            }`}
+          >
+            {item.issued_to_type}
           </span>
         </div>
       ),
     },
     {
-      key: 'issuedBy',
+      key: 'issued_by_name',
       header: 'Issued By',
       render: (item: SampleIssue) => (
         <div>
-          <p className="text-sm">{item.issuedBy}</p>
-          <p className="text-xs text-muted-foreground">{item.issuedAt}</p>
+          <p className="text-sm">{item.issued_by_name}</p>
+          <p className="text-xs text-muted-foreground">{format(new Date(item.created_at), 'MMM d, yyyy h:mm a')}</p>
         </div>
       ),
     },
     {
       key: 'acknowledged',
       header: 'Acknowledgement',
-      render: (item: SampleIssue) => (
+      render: (item: SampleIssue) =>
         item.acknowledged ? (
           <span className="flex items-center gap-1 text-success text-sm">
             <Check size={14} />
@@ -215,36 +219,59 @@ export default function SampleGiftManagementPage() {
           </span>
         ) : (
           <span className="text-warning text-sm">Pending</span>
-        )
-      ),
+        ),
     },
     {
-      key: 'convertedToOrder',
+      key: 'converted_to_order',
       header: 'Conversion',
-      render: (item: SampleIssue) => (
-        item.convertedToOrder ? (
+      render: (item: SampleIssue) =>
+        item.converted_to_order ? (
           <div className="text-success">
             <p className="text-sm font-medium flex items-center gap-1">
               <TrendingUp size={14} />
               Converted
             </p>
-            {item.orderValue && (
-              <p className="text-xs">₹{item.orderValue.toLocaleString()}</p>
-            )}
+            {item.order_value && <p className="text-xs">₹{Number(item.order_value).toLocaleString()}</p>}
           </div>
         ) : (
           <span className="text-muted-foreground text-sm">--</span>
-        )
+        ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (item: SampleIssue) => (
+        <button onClick={() => setViewingIssue(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+          <Eye size={16} className="text-muted-foreground" />
+        </button>
       ),
     },
   ];
 
   const stats = {
-    totalSamples: mockSamples.filter(s => s.sku.startsWith('SMP')).length,
-    totalGifts: mockSamples.filter(s => s.sku.startsWith('GIFT')).length,
-    issuedThisMonth: mockSamples.reduce((sum, s) => sum + s.issuedThisMonth, 0),
-    conversionRate: (mockSamples.reduce((sum, s) => sum + s.conversions, 0) / mockSamples.reduce((sum, s) => sum + s.issuedThisMonth, 0) * 100).toFixed(0),
+    totalSamples: samples.filter((s) => s.type === 'sample').length,
+    totalGifts: samples.filter((s) => s.type === 'gift').length,
+    issuedThisMonth: samples.reduce((sum, s) => sum + (s.issued_this_month || 0), 0),
+    conversionRate:
+      samples.reduce((sum, s) => sum + (s.issued_this_month || 0), 0) > 0
+        ? (
+            (samples.reduce((sum, s) => sum + (s.conversions || 0), 0) /
+              samples.reduce((sum, s) => sum + (s.issued_this_month || 0), 0)) *
+            100
+          ).toFixed(0)
+        : 0,
   };
+
+  const executiveBudget = budget || { monthly_budget: 5000, used_amount: 0 };
+  const budgetRemaining = Number(executiveBudget.monthly_budget) - Number(executiveBudget.used_amount);
+
+  if (loadingSamples || loadingIssues) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -254,10 +281,16 @@ export default function SampleGiftManagementPage() {
           <h1 className="module-title">Sample & Gift Management</h1>
           <p className="text-muted-foreground">Track samples, gifts, and conversion metrics</p>
         </div>
-        <button onClick={() => setShowIssueModal(true)} className="btn-primary flex items-center gap-2">
-          <Plus size={18} />
-          Issue Sample/Gift
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowCreateModal(true)} className="btn-outline flex items-center gap-2">
+            <Plus size={18} />
+            Add Sample/Gift
+          </button>
+          <button onClick={() => setShowIssueModal(true)} className="btn-primary flex items-center gap-2">
+            <Plus size={18} />
+            Issue Sample/Gift
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -274,7 +307,12 @@ export default function SampleGiftManagementPage() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="stat-card"
+        >
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-secondary/10">
               <Gift size={24} className="text-secondary" />
@@ -286,7 +324,12 @@ export default function SampleGiftManagementPage() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="stat-card"
+        >
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-info/10">
               <Users size={24} className="text-info" />
@@ -298,7 +341,12 @@ export default function SampleGiftManagementPage() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="stat-card"
+        >
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-success/10">
               <TrendingUp size={24} className="text-success" />
@@ -312,29 +360,41 @@ export default function SampleGiftManagementPage() {
       </div>
 
       {/* Budget Card */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl border border-border p-6 shadow-sm">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-card rounded-xl border border-border p-6 shadow-sm"
+      >
         <h3 className="font-semibold text-foreground mb-4">Monthly Budget</h3>
         <div className="flex items-center gap-6">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Used: ₹{executiveBudget.used.toLocaleString()}</span>
-              <span className="text-sm text-muted-foreground">Budget: ₹{executiveBudget.monthlyBudget.toLocaleString()}</span>
+              <span className="text-sm text-muted-foreground">
+                Used: ₹{Number(executiveBudget.used_amount).toLocaleString()}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                Budget: ₹{Number(executiveBudget.monthly_budget).toLocaleString()}
+              </span>
             </div>
             <div className="h-3 bg-muted rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${
-                  (executiveBudget.used / executiveBudget.monthlyBudget) > 0.8 ? 'bg-warning' : 'bg-primary'
+                  Number(executiveBudget.used_amount) / Number(executiveBudget.monthly_budget) > 0.8
+                    ? 'bg-warning'
+                    : 'bg-primary'
                 }`}
-                style={{ width: `${(executiveBudget.used / executiveBudget.monthlyBudget) * 100}%` }}
+                style={{
+                  width: `${(Number(executiveBudget.used_amount) / Number(executiveBudget.monthly_budget)) * 100}%`,
+                }}
               />
             </div>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-foreground">₹{executiveBudget.remaining.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-foreground">₹{budgetRemaining.toLocaleString()}</p>
             <p className="text-sm text-muted-foreground">Remaining</p>
           </div>
         </div>
-        {executiveBudget.remaining < 1000 && (
+        {budgetRemaining < 1000 && (
           <div className="mt-4 p-3 bg-warning/10 rounded-lg">
             <p className="text-sm text-warning flex items-center gap-2">
               <AlertTriangle size={16} />
@@ -366,9 +426,96 @@ export default function SampleGiftManagementPage() {
 
       {/* Content */}
       {activeTab === 'samples' ? (
-        <DataTable data={mockSamples} columns={sampleColumns} searchPlaceholder="Search samples..." />
+        <DataTable data={samples} columns={sampleColumns} searchPlaceholder="Search samples..." />
       ) : (
-        <DataTable data={mockIssues} columns={issueColumns} searchPlaceholder="Search issues..." />
+        <DataTable data={issues} columns={issueColumns} searchPlaceholder="Search issues..." />
+      )}
+
+      {/* Create Sample Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+          >
+            <h2 className="text-lg font-semibold text-foreground mb-4">Add Sample/Gift</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">SKU Code</label>
+                <input
+                  type="text"
+                  value={sampleData.sku}
+                  onChange={(e) => setSampleData({ ...sampleData, sku: e.target.value })}
+                  className="input-field"
+                  placeholder="e.g., SMP-001"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Name</label>
+                <input
+                  type="text"
+                  value={sampleData.name}
+                  onChange={(e) => setSampleData({ ...sampleData, name: e.target.value })}
+                  className="input-field"
+                  placeholder="Product name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Type</label>
+                <select
+                  value={sampleData.type}
+                  onChange={(e) => setSampleData({ ...sampleData, type: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="sample">Sample</option>
+                  <option value="gift">Gift</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Cost Price (₹)</label>
+                  <input
+                    type="number"
+                    value={sampleData.cost_price}
+                    onChange={(e) => setSampleData({ ...sampleData, cost_price: Number(e.target.value) })}
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Initial Stock</label>
+                  <input
+                    type="number"
+                    value={sampleData.stock}
+                    onChange={(e) => setSampleData({ ...sampleData, stock: Number(e.target.value) })}
+                    className="input-field"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Description (Optional)</label>
+                <textarea
+                  value={sampleData.description}
+                  onChange={(e) => setSampleData({ ...sampleData, description: e.target.value })}
+                  className="input-field resize-none"
+                  rows={2}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button onClick={() => setShowCreateModal(false)} className="btn-outline">
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateSample}
+                disabled={createSampleMutation.isPending || !sampleData.sku || !sampleData.name}
+                className="btn-primary"
+              >
+                {createSampleMutation.isPending ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {/* Issue Modal */}
@@ -383,24 +530,69 @@ export default function SampleGiftManagementPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Select Item</label>
-                <select className="input-field">
-                  {mockSamples.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} (Stock: {s.stock})</option>
+                <select
+                  value={issueData.sampleId}
+                  onChange={(e) => setIssueData({ ...issueData, sampleId: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="">Select a sample/gift</option>
+                  {samples.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} (Stock: {s.stock})
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Quantity</label>
-                <input type="number" placeholder="Enter quantity" className="input-field" />
+                <input
+                  type="number"
+                  value={issueData.quantity}
+                  onChange={(e) => setIssueData({ ...issueData, quantity: Number(e.target.value) })}
+                  min={1}
+                  className="input-field"
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Issue To</label>
-                <select className="input-field">
-                  <option value="">Select Retailer/Distributor</option>
-                  <option value="r-001">New Sharma Store (Retailer)</option>
-                  <option value="r-002">Gupta General Store (Retailer)</option>
-                  <option value="d-001">Krishna Traders (Distributor)</option>
+                <label className="block text-sm font-medium text-foreground mb-2">Issue To Type</label>
+                <select
+                  value={issueData.issuedToType}
+                  onChange={(e) => setIssueData({ ...issueData, issuedToType: e.target.value, issuedToName: '' })}
+                  className="input-field"
+                >
+                  <option value="retailer">Retailer</option>
+                  <option value="distributor">Distributor</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Select Recipient</label>
+                <select
+                  value={issueData.issuedToName}
+                  onChange={(e) => setIssueData({ ...issueData, issuedToName: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="">Select {issueData.issuedToType}</option>
+                  {issueData.issuedToType === 'retailer'
+                    ? retailers.map((r) => (
+                        <option key={r.id} value={r.shop_name}>
+                          {r.shop_name}
+                        </option>
+                      ))
+                    : distributors.map((d) => (
+                        <option key={d.id} value={d.firm_name}>
+                          {d.firm_name}
+                        </option>
+                      ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Notes (Optional)</label>
+                <textarea
+                  value={issueData.notes}
+                  onChange={(e) => setIssueData({ ...issueData, notes: e.target.value })}
+                  className="input-field resize-none"
+                  rows={2}
+                />
               </div>
               <div className="p-4 border-2 border-dashed border-border rounded-lg text-center">
                 <Camera size={24} className="mx-auto text-muted-foreground mb-2" />
@@ -408,8 +600,78 @@ export default function SampleGiftManagementPage() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowIssueModal(false)} className="btn-outline">Cancel</button>
-              <button onClick={handleIssue} className="btn-primary">Issue</button>
+              <button onClick={() => setShowIssueModal(false)} className="btn-outline">
+                Cancel
+              </button>
+              <button
+                onClick={handleIssue}
+                disabled={issueMutation.isPending || !issueData.sampleId || !issueData.issuedToName}
+                className="btn-primary"
+              >
+                {issueMutation.isPending ? 'Issuing...' : 'Issue'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* View Issue Modal */}
+      {viewingIssue && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+          >
+            <h2 className="text-lg font-semibold text-foreground mb-4">Issue Details</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Sample/Gift</span>
+                <span className="font-medium">{viewingIssue.sample_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Quantity</span>
+                <span className="font-medium">{viewingIssue.quantity}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Issued To</span>
+                <span className="font-medium">{viewingIssue.issued_to_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Type</span>
+                <span className="capitalize">{viewingIssue.issued_to_type}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Issued By</span>
+                <span>{viewingIssue.issued_by_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Date</span>
+                <span>{format(new Date(viewingIssue.created_at), 'MMM d, yyyy h:mm a')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Acknowledged</span>
+                <span>{viewingIssue.acknowledged ? 'Yes' : 'Pending'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Converted</span>
+                <span>
+                  {viewingIssue.converted_to_order
+                    ? `Yes (₹${Number(viewingIssue.order_value).toLocaleString()})`
+                    : 'No'}
+                </span>
+              </div>
+              {viewingIssue.notes && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-sm text-muted-foreground">Notes:</p>
+                  <p className="text-sm">{viewingIssue.notes}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-end mt-6">
+              <button onClick={() => setViewingIssue(null)} className="btn-outline">
+                Close
+              </button>
             </div>
           </motion.div>
         </div>
