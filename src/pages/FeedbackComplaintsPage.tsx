@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { CrudModal, FieldConfig } from '@/components/ui/CrudModal';
+import {
+  useFeedbackTickets,
+  useRespondToTicket,
+  useChangeTicketStatus,
+  FeedbackTicket,
+  TicketStatus,
+  TicketType,
+  TicketPriority,
+} from '@/hooks/useFeedbackData';
 import {
   MessageSquare,
   AlertTriangle,
@@ -13,129 +20,28 @@ import {
   X,
   Filter,
   ThumbsUp,
-  ThumbsDown,
   User,
   Store,
   Calendar,
+  Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { format } from 'date-fns';
 
-type ComplaintStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
-type ComplaintType = 'complaint' | 'feedback' | 'suggestion' | 'query';
-type Priority = 'low' | 'medium' | 'high' | 'critical';
-
-interface Complaint {
-  id: string;
-  ticketId: string;
-  type: ComplaintType;
-  priority: Priority;
-  subject: string;
-  description: string;
-  source: 'retailer' | 'distributor' | 'employee';
-  sourceName: string;
-  sourceId: string;
-  status: ComplaintStatus;
-  assignedTo?: string;
-  response?: string;
-  createdAt: string;
-  updatedAt: string;
-  resolvedAt?: string;
-}
-
-const initialData: Complaint[] = [
-  {
-    id: '1',
-    ticketId: 'TKT-2024-001',
-    type: 'complaint',
-    priority: 'high',
-    subject: 'Delayed delivery of order',
-    description: 'Order ORD-2024-156 was supposed to be delivered 3 days ago but still not received.',
-    source: 'retailer',
-    sourceName: 'New Sharma Store',
-    sourceId: 'r-001',
-    status: 'open',
-    createdAt: '2024-12-08',
-    updatedAt: '2024-12-08',
-  },
-  {
-    id: '2',
-    ticketId: 'TKT-2024-002',
-    type: 'feedback',
-    priority: 'medium',
-    subject: 'Great product quality',
-    description: 'The new product line has excellent quality. Customers are very happy.',
-    source: 'distributor',
-    sourceName: 'Krishna Traders',
-    sourceId: 'd-001',
-    status: 'resolved',
-    response: 'Thank you for your positive feedback! We are glad to hear about your experience.',
-    createdAt: '2024-12-07',
-    updatedAt: '2024-12-07',
-    resolvedAt: '2024-12-07',
-  },
-  {
-    id: '3',
-    ticketId: 'TKT-2024-003',
-    type: 'suggestion',
-    priority: 'low',
-    subject: 'New packaging suggestion',
-    description: 'Suggest to add QR code on packaging for easy reorder.',
-    source: 'retailer',
-    sourceName: 'Gupta General Store',
-    sourceId: 'r-002',
-    status: 'in_progress',
-    assignedTo: 'Product Team',
-    createdAt: '2024-12-06',
-    updatedAt: '2024-12-08',
-  },
-  {
-    id: '4',
-    ticketId: 'TKT-2024-004',
-    type: 'complaint',
-    priority: 'critical',
-    subject: 'Damaged products received',
-    description: 'Received 10 damaged bottles in the last shipment. Need immediate replacement.',
-    source: 'distributor',
-    sourceName: 'Sharma Distributors',
-    sourceId: 'd-002',
-    status: 'in_progress',
-    assignedTo: 'Logistics Team',
-    createdAt: '2024-12-05',
-    updatedAt: '2024-12-06',
-  },
-  {
-    id: '5',
-    ticketId: 'TKT-2024-005',
-    type: 'query',
-    priority: 'medium',
-    subject: 'Scheme eligibility query',
-    description: 'Need clarification on Summer Sale scheme eligibility criteria.',
-    source: 'retailer',
-    sourceName: 'Jain Provision Store',
-    sourceId: 'r-003',
-    status: 'closed',
-    response: 'The Summer Sale scheme applies to orders above ₹10,000. You are eligible.',
-    createdAt: '2024-12-04',
-    updatedAt: '2024-12-05',
-    resolvedAt: '2024-12-05',
-  },
-];
-
-const typeConfig: Record<ComplaintType, { label: string; color: string; icon: React.ElementType }> = {
+const typeConfig: Record<TicketType, { label: string; color: string; icon: React.ElementType }> = {
   complaint: { label: 'Complaint', color: 'bg-destructive/10 text-destructive', icon: AlertTriangle },
   feedback: { label: 'Feedback', color: 'bg-success/10 text-success', icon: ThumbsUp },
   suggestion: { label: 'Suggestion', color: 'bg-info/10 text-info', icon: MessageSquare },
   query: { label: 'Query', color: 'bg-warning/10 text-warning', icon: MessageSquare },
 };
 
-const priorityConfig: Record<Priority, { label: string; color: string }> = {
+const priorityConfig: Record<TicketPriority, { label: string; color: string }> = {
   low: { label: 'Low', color: 'bg-muted text-muted-foreground' },
   medium: { label: 'Medium', color: 'bg-warning/10 text-warning' },
   high: { label: 'High', color: 'bg-destructive/10 text-destructive' },
   critical: { label: 'Critical', color: 'bg-destructive text-destructive-foreground' },
 };
 
-const statusConfig: Record<ComplaintStatus, { label: string; color: string; icon: React.ElementType }> = {
+const statusConfig: Record<TicketStatus, { label: string; color: string; icon: React.ElementType }> = {
   open: { label: 'Open', color: 'bg-info/10 text-info', icon: Clock },
   in_progress: { label: 'In Progress', color: 'bg-warning/10 text-warning', icon: Clock },
   resolved: { label: 'Resolved', color: 'bg-success/10 text-success', icon: CheckCircle },
@@ -143,68 +49,70 @@ const statusConfig: Record<ComplaintStatus, { label: string; color: string; icon
 };
 
 export default function FeedbackComplaintsPage() {
-  const [data, setData] = useState<Complaint[]>(initialData);
-  const [selectedItem, setSelectedItem] = useState<Complaint | null>(null);
+  const { data: tickets = [], isLoading } = useFeedbackTickets();
+  const respondToTicket = useRespondToTicket();
+  const changeTicketStatus = useChangeTicketStatus();
+
+  const [selectedItem, setSelectedItem] = useState<FeedbackTicket | null>(null);
   const [showResponseModal, setShowResponseModal] = useState(false);
   const [responseText, setResponseText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
-  const filteredData = data.filter(item => {
+  const filteredData = tickets.filter(item => {
     if (statusFilter !== 'all' && item.status !== statusFilter) return false;
     if (typeFilter !== 'all' && item.type !== typeFilter) return false;
     return true;
   });
 
   const stats = {
-    total: data.length,
-    open: data.filter(c => c.status === 'open').length,
-    inProgress: data.filter(c => c.status === 'in_progress').length,
-    resolved: data.filter(c => c.status === 'resolved' || c.status === 'closed').length,
-    critical: data.filter(c => c.priority === 'critical' && c.status !== 'resolved' && c.status !== 'closed').length,
+    total: tickets.length,
+    open: tickets.filter(c => c.status === 'open').length,
+    inProgress: tickets.filter(c => c.status === 'in_progress').length,
+    resolved: tickets.filter(c => c.status === 'resolved' || c.status === 'closed').length,
+    critical: tickets.filter(c => c.priority === 'critical' && c.status !== 'resolved' && c.status !== 'closed').length,
   };
 
-  const handleView = (item: Complaint) => {
+  const handleView = (item: FeedbackTicket) => {
     setSelectedItem(item);
   };
 
-  const handleRespond = (item: Complaint) => {
+  const handleRespond = (item: FeedbackTicket) => {
     setSelectedItem(item);
     setResponseText(item.response || '');
     setShowResponseModal(true);
   };
 
-  const handleSubmitResponse = () => {
-    if (!responseText.trim()) {
-      toast.error('Please enter a response');
-      return;
-    }
+  const handleSubmitResponse = async () => {
+    if (!responseText.trim() || !selectedItem) return;
     
-    setData(data.map(item => 
-      item.id === selectedItem?.id 
-        ? { ...item, response: responseText, status: 'resolved' as ComplaintStatus, updatedAt: new Date().toISOString().split('T')[0], resolvedAt: new Date().toISOString().split('T')[0] }
-        : item
-    ));
-    toast.success('Response submitted successfully');
+    await respondToTicket.mutateAsync({
+      id: selectedItem.id,
+      response: responseText,
+    });
+    
     setShowResponseModal(false);
     setSelectedItem(null);
     setResponseText('');
   };
 
-  const handleChangeStatus = (item: Complaint, newStatus: ComplaintStatus) => {
-    setData(data.map(c => 
-      c.id === item.id 
-        ? { ...c, status: newStatus, updatedAt: new Date().toISOString().split('T')[0] }
-        : c
-    ));
-    toast.success(`Status changed to ${statusConfig[newStatus].label}`);
+  const handleChangeStatus = async (item: FeedbackTicket, newStatus: TicketStatus) => {
+    await changeTicketStatus.mutateAsync({ id: item.id, status: newStatus });
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'yyyy-MM-dd');
+    } catch {
+      return dateString;
+    }
   };
 
   const columns = [
     {
-      key: 'ticketId',
+      key: 'ticket_number',
       header: 'Ticket',
-      render: (item: Complaint) => {
+      render: (item: FeedbackTicket) => {
         const TypeIcon = typeConfig[item.type].icon;
         return (
           <div className="flex items-center gap-3">
@@ -212,7 +120,7 @@ export default function FeedbackComplaintsPage() {
               <TypeIcon size={18} />
             </div>
             <div>
-              <p className="font-medium text-foreground">{item.ticketId}</p>
+              <p className="font-medium text-foreground">{item.ticket_number}</p>
               <span className={`px-2 py-0.5 rounded text-xs ${typeConfig[item.type].color}`}>
                 {typeConfig[item.type].label}
               </span>
@@ -225,7 +133,7 @@ export default function FeedbackComplaintsPage() {
     {
       key: 'subject',
       header: 'Subject',
-      render: (item: Complaint) => (
+      render: (item: FeedbackTicket) => (
         <div className="max-w-[250px]">
           <p className="font-medium text-foreground truncate">{item.subject}</p>
           <p className="text-xs text-muted-foreground truncate">{item.description}</p>
@@ -235,11 +143,11 @@ export default function FeedbackComplaintsPage() {
     {
       key: 'source',
       header: 'Source',
-      render: (item: Complaint) => (
+      render: (item: FeedbackTicket) => (
         <div className="flex items-center gap-2">
           {item.source === 'retailer' ? <Store size={14} className="text-muted-foreground" /> : <User size={14} className="text-muted-foreground" />}
           <div>
-            <p className="text-sm">{item.sourceName}</p>
+            <p className="text-sm">{item.source_name}</p>
             <p className="text-xs text-muted-foreground capitalize">{item.source}</p>
           </div>
         </div>
@@ -248,7 +156,7 @@ export default function FeedbackComplaintsPage() {
     {
       key: 'priority',
       header: 'Priority',
-      render: (item: Complaint) => (
+      render: (item: FeedbackTicket) => (
         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${priorityConfig[item.priority].color}`}>
           {priorityConfig[item.priority].label}
         </span>
@@ -258,7 +166,7 @@ export default function FeedbackComplaintsPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (item: Complaint) => {
+      render: (item: FeedbackTicket) => {
         const StatusIcon = statusConfig[item.status].icon;
         return (
           <div className="flex items-center gap-1">
@@ -271,12 +179,12 @@ export default function FeedbackComplaintsPage() {
       },
     },
     {
-      key: 'createdAt',
+      key: 'created_at',
       header: 'Date',
-      render: (item: Complaint) => (
+      render: (item: FeedbackTicket) => (
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <Calendar size={14} />
-          {item.createdAt}
+          {formatDate(item.created_at)}
         </div>
       ),
       sortable: true,
@@ -284,7 +192,7 @@ export default function FeedbackComplaintsPage() {
     {
       key: 'actions',
       header: 'Actions',
-      render: (item: Complaint) => (
+      render: (item: FeedbackTicket) => (
         <div className="flex items-center gap-1">
           <button onClick={() => handleView(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Eye size={16} className="text-muted-foreground" />
@@ -298,6 +206,14 @@ export default function FeedbackComplaintsPage() {
       ),
     },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -380,14 +296,19 @@ export default function FeedbackComplaintsPage() {
       </div>
 
       {/* Data Table */}
-      <DataTable data={filteredData} columns={columns} searchPlaceholder="Search tickets..." />
+      <DataTable 
+        data={filteredData} 
+        columns={columns} 
+        searchPlaceholder="Search tickets..."
+        emptyMessage="No feedback tickets found. Create your first ticket to get started."
+      />
 
       {/* View Detail Modal */}
       {selectedItem && !showResponseModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">{selectedItem.ticketId}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{selectedItem.ticket_number}</h2>
               <button onClick={() => setSelectedItem(null)} className="p-2 hover:bg-muted rounded-lg"><X size={20} /></button>
             </div>
             
@@ -406,17 +327,17 @@ export default function FeedbackComplaintsPage() {
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
                 <div>
                   <p className="text-xs text-muted-foreground">Source</p>
-                  <p className="font-medium">{selectedItem.sourceName}</p>
+                  <p className="font-medium">{selectedItem.source_name}</p>
                   <p className="text-xs text-muted-foreground capitalize">{selectedItem.source}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Created</p>
-                  <p className="font-medium">{selectedItem.createdAt}</p>
+                  <p className="font-medium">{formatDate(selectedItem.created_at)}</p>
                 </div>
-                {selectedItem.assignedTo && (
+                {selectedItem.assigned_to && (
                   <div>
                     <p className="text-xs text-muted-foreground">Assigned To</p>
-                    <p className="font-medium">{selectedItem.assignedTo}</p>
+                    <p className="font-medium">{selectedItem.assigned_to}</p>
                   </div>
                 )}
               </div>
@@ -425,8 +346,8 @@ export default function FeedbackComplaintsPage() {
                 <div className="p-4 bg-success/5 border border-success/20 rounded-lg">
                   <p className="text-xs text-success font-medium mb-1">Response</p>
                   <p className="text-sm">{selectedItem.response}</p>
-                  {selectedItem.resolvedAt && (
-                    <p className="text-xs text-muted-foreground mt-2">Resolved on {selectedItem.resolvedAt}</p>
+                  {selectedItem.resolved_at && (
+                    <p className="text-xs text-muted-foreground mt-2">Resolved on {formatDate(selectedItem.resolved_at)}</p>
                   )}
                 </div>
               )}
@@ -449,7 +370,7 @@ export default function FeedbackComplaintsPage() {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">Respond to {selectedItem.ticketId}</h2>
+              <h2 className="text-lg font-semibold text-foreground">Respond to {selectedItem.ticket_number}</h2>
               <button onClick={() => { setShowResponseModal(false); setSelectedItem(null); }} className="p-2 hover:bg-muted rounded-lg"><X size={20} /></button>
             </div>
 
@@ -472,8 +393,13 @@ export default function FeedbackComplaintsPage() {
 
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => { setShowResponseModal(false); setSelectedItem(null); }} className="btn-outline">Cancel</button>
-              <button onClick={handleSubmitResponse} className="btn-primary flex items-center gap-2">
-                <Send size={16} /> Submit Response
+              <button 
+                onClick={handleSubmitResponse} 
+                disabled={respondToTicket.isPending || !responseText.trim()}
+                className="btn-primary flex items-center gap-2"
+              >
+                {respondToTicket.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                Submit Response
               </button>
             </div>
           </motion.div>

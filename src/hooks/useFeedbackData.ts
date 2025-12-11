@@ -33,12 +33,12 @@ export function useFeedbackTickets() {
     queryKey: ['feedback-tickets'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('feedback_tickets')
+        .from('feedback_tickets' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as FeedbackTicket[];
+      return (data || []) as unknown as FeedbackTicket[];
     },
   });
 }
@@ -61,7 +61,7 @@ export function useCreateTicket() {
       const { data: { user } } = await supabase.auth.getUser();
       
       const { data, error } = await supabase
-        .from('feedback_tickets')
+        .from('feedback_tickets' as any)
         .insert({
           ...ticket,
           created_by: user?.id,
@@ -70,7 +70,7 @@ export function useCreateTicket() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as FeedbackTicket;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feedback-tickets'] });
@@ -89,14 +89,14 @@ export function useUpdateTicket() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FeedbackTicket> & { id: string }) => {
       const { data, error } = await supabase
-        .from('feedback_tickets')
+        .from('feedback_tickets' as any)
         .update(updates)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as FeedbackTicket;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feedback-tickets'] });
@@ -116,7 +116,7 @@ export function useRespondToTicket() {
       const { data: { user } } = await supabase.auth.getUser();
       
       const { data, error } = await supabase
-        .from('feedback_tickets')
+        .from('feedback_tickets' as any)
         .update({
           response,
           status: 'resolved',
@@ -128,7 +128,7 @@ export function useRespondToTicket() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as FeedbackTicket;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feedback-tickets'] });
@@ -146,7 +146,7 @@ export function useChangeTicketStatus() {
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: TicketStatus }) => {
-      const updates: Partial<FeedbackTicket> = { status };
+      const updates: Record<string, any> = { status };
       
       if (status === 'resolved' || status === 'closed') {
         const { data: { user } } = await supabase.auth.getUser();
@@ -155,14 +155,14 @@ export function useChangeTicketStatus() {
       }
 
       const { data, error } = await supabase
-        .from('feedback_tickets')
+        .from('feedback_tickets' as any)
         .update(updates)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as FeedbackTicket;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['feedback-tickets'] });
