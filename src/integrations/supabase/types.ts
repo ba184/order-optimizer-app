@@ -1145,6 +1145,57 @@ export type Database = {
         }
         Relationships: []
       }
+      schemes: {
+        Row: {
+          applicable_products: Json | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          discount_percent: number | null
+          end_date: string
+          free_quantity: number | null
+          id: string
+          min_quantity: number | null
+          name: string
+          start_date: string
+          status: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          applicable_products?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          discount_percent?: number | null
+          end_date: string
+          free_quantity?: number | null
+          id?: string
+          min_quantity?: number | null
+          name: string
+          start_date: string
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          applicable_products?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          discount_percent?: number | null
+          end_date?: string
+          free_quantity?: number | null
+          id?: string
+          min_quantity?: number | null
+          name?: string
+          start_date?: string
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       stock_transfer_items: {
         Row: {
           created_at: string | null
