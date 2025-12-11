@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin,
   User,
@@ -11,14 +11,21 @@ import {
   ChevronLeft,
   ChevronRight,
   Save,
-  X,
   Plus,
   Trash2,
   Upload,
-  Eye,
   Check,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRetailer, useCreateRetailer, useUpdateRetailer, useDistributors } from '@/hooks/useOutletsData';
+import { useSchemes } from '@/hooks/useSchemesData';
+import {
+  useRetailerCompetitorAnalysis,
+  useRetailerSchemes,
+  useRetailerImages,
+  useSaveRetailerExtendedData,
+} from '@/hooks/useRetailerExtendedData';
 
 type Step = {
   id: string;
@@ -35,12 +42,6 @@ const steps: Step[] = [
   { id: 'images', title: 'Images', icon: Camera },
 ];
 
-const mockSchemes = [
-  { id: '1', name: 'Summer Sale 2024', type: 'Discount', value: '10%', active: true },
-  { id: '2', name: 'Buy 10 Get 1 Free', type: 'Free Product', value: '1 Free', active: true },
-  { id: '3', name: 'Festive Offer', type: 'Cashback', value: '₹500', active: false },
-];
-
 const competitors = [
   { id: '1', name: 'Competitor A' },
   { id: '2', name: 'Competitor B' },
@@ -53,6 +54,19 @@ export default function RetailerFormPage() {
   const { id } = useParams();
   const isEdit = !!id;
 
+  // Fetch data
+  const { data: retailer, isLoading: retailerLoading } = useRetailer(id || '');
+  const { data: distributors } = useDistributors();
+  const { data: schemes, isLoading: schemesLoading } = useSchemes();
+  const { data: existingCompetitors } = useRetailerCompetitorAnalysis(id);
+  const { data: existingSchemes } = useRetailerSchemes(id);
+  const { data: existingImages } = useRetailerImages(id);
+
+  // Mutations
+  const createRetailer = useCreateRetailer();
+  const updateRetailer = useUpdateRetailer();
+  const saveExtendedData = useSaveRetailerExtendedData();
+
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
     // Visit Info
@@ -63,6 +77,7 @@ export default function RetailerFormPage() {
     geoLocation: { lat: 28.6139, lng: 77.209 },
 
     // Retailer Info
+    code: '',
     shopName: '',
     ownerName: '',
     phone: '',
@@ -82,44 +97,111 @@ export default function RetailerFormPage() {
     yearsInBusiness: 1,
     shopType: 'kirana',
     weeklyOff: 'sunday',
+    status: 'pending',
 
     // Competitor Analysis
-    competitorProducts: [] as { competitorId: string; products: string; pricing: string; display: string; remarks: string }[],
+    competitorProducts: [] as { competitorName: string; products: string; pricing: string; display: string; remarks: string }[],
     marketShare: '',
     competitorStrength: '',
     opportunities: '',
 
     // Schemes
     activeSchemes: [] as string[],
-    schemeUtilization: '',
 
     // Images
-    shopFrontImage: '',
-    interiorImages: [] as string[],
-    displayImages: [] as string[],
-    ownerImage: '',
+    images: [] as { type: string; url: string }[],
   });
+
+  // Load existing retailer data
+  useEffect(() => {
+    if (isEdit && retailer) {
+      setFormData(prev => ({
+        ...prev,
+        code: retailer.code || '',
+        shopName: retailer.shop_name || '',
+        ownerName: retailer.owner_name || '',
+        phone: retailer.phone || '',
+        altPhone: (retailer as any).alt_phone || '',
+        email: retailer.email || '',
+        address: retailer.address || '',
+        city: retailer.city || '',
+        state: retailer.state || '',
+        pincode: (retailer as any).pincode || '',
+        landmark: (retailer as any).landmark || '',
+        category: retailer.category || 'B',
+        distributorId: retailer.distributor_id || '',
+        gstNumber: (retailer as any).gst_number || '',
+        panNumber: (retailer as any).pan_number || '',
+        shopArea: (retailer as any).shop_area || '',
+        employeeCount: Number((retailer as any).employee_count) || 1,
+        yearsInBusiness: Number((retailer as any).years_in_business) || 1,
+        shopType: (retailer as any).shop_type || 'kirana',
+        weeklyOff: (retailer as any).weekly_off || 'sunday',
+        status: retailer.status || 'pending',
+        marketShare: (retailer as any).market_share || '',
+        competitorStrength: (retailer as any).competitor_strength || '',
+        opportunities: (retailer as any).opportunities || '',
+      }));
+    }
+  }, [isEdit, retailer]);
+
+  // Load extended data
+  useEffect(() => {
+    if (existingCompetitors?.length) {
+      setFormData(prev => ({
+        ...prev,
+        competitorProducts: existingCompetitors.map(c => ({
+          competitorName: c.competitor_name,
+          products: c.products || '',
+          pricing: c.pricing || '',
+          display: c.display_quality || '',
+          remarks: c.remarks || '',
+        })),
+      }));
+    }
+  }, [existingCompetitors]);
+
+  useEffect(() => {
+    if (existingSchemes?.length) {
+      setFormData(prev => ({
+        ...prev,
+        activeSchemes: existingSchemes.map(s => s.scheme_id),
+      }));
+    }
+  }, [existingSchemes]);
+
+  useEffect(() => {
+    if (existingImages?.length) {
+      setFormData(prev => ({
+        ...prev,
+        images: existingImages.map(i => ({
+          type: i.image_type,
+          url: i.image_url,
+        })),
+      }));
+    }
+  }, [existingImages]);
 
   const handleSchemeToggle = (schemeId: string) => {
     setFormData(prev => ({
       ...prev,
       activeSchemes: prev.activeSchemes.includes(schemeId)
         ? prev.activeSchemes.filter(id => id !== schemeId)
-        : [...prev.activeSchemes, schemeId]
+        : [...prev.activeSchemes, schemeId],
     }));
   };
 
   const addCompetitorEntry = () => {
     setFormData(prev => ({
       ...prev,
-      competitorProducts: [...prev.competitorProducts, { competitorId: '', products: '', pricing: '', display: '', remarks: '' }]
+      competitorProducts: [...prev.competitorProducts, { competitorName: '', products: '', pricing: '', display: '', remarks: '' }],
     }));
   };
 
   const removeCompetitorEntry = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      competitorProducts: prev.competitorProducts.filter((_, i) => i !== index)
+      competitorProducts: prev.competitorProducts.filter((_, i) => i !== index),
     }));
   };
 
@@ -135,10 +217,78 @@ export default function RetailerFormPage() {
     }
   };
 
-  const handleSubmit = () => {
-    toast.success(isEdit ? 'Retailer updated successfully' : 'Retailer created successfully');
-    navigate('/outlets/retailers');
+  const handleSubmit = async () => {
+    if (!formData.code || !formData.shopName || !formData.ownerName) {
+      toast.error('Please fill in required fields: Code, Shop Name, Owner Name');
+      return;
+    }
+
+    try {
+      const retailerData = {
+        code: formData.code,
+        shop_name: formData.shopName,
+        owner_name: formData.ownerName,
+        phone: formData.phone || undefined,
+        alt_phone: formData.altPhone || undefined,
+        email: formData.email || undefined,
+        address: formData.address || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        pincode: formData.pincode || undefined,
+        landmark: formData.landmark || undefined,
+        category: formData.category,
+        distributor_id: formData.distributorId || undefined,
+        gst_number: formData.gstNumber || undefined,
+        pan_number: formData.panNumber || undefined,
+        shop_area: formData.shopArea || undefined,
+        employee_count: formData.employeeCount,
+        years_in_business: formData.yearsInBusiness,
+        shop_type: formData.shopType,
+        weekly_off: formData.weeklyOff,
+        status: formData.status,
+        market_share: formData.marketShare || undefined,
+        competitor_strength: formData.competitorStrength || undefined,
+        opportunities: formData.opportunities || undefined,
+      };
+
+      let retailerId = id;
+
+      if (isEdit && id) {
+        await updateRetailer.mutateAsync({ id, ...retailerData });
+      } else {
+        const result = await createRetailer.mutateAsync(retailerData);
+        retailerId = result.id;
+      }
+
+      // Save extended data
+      if (retailerId) {
+        await saveExtendedData.mutateAsync({
+          retailerId,
+          competitorAnalysis: formData.competitorProducts
+            .filter(c => c.competitorName)
+            .map(c => ({
+              competitor_name: c.competitorName,
+              products: c.products || undefined,
+              pricing: c.pricing || undefined,
+              display_quality: c.display || undefined,
+              remarks: c.remarks || undefined,
+            })),
+          schemes: formData.activeSchemes,
+          images: formData.images
+            .filter(i => i.type && i.url)
+            .map(i => ({ image_type: i.type, image_url: i.url })),
+        });
+      }
+
+      toast.success(isEdit ? 'Retailer updated successfully' : 'Retailer created successfully');
+      navigate('/outlets/retailers');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save retailer');
+    }
   };
+
+  const isLoading = retailerLoading;
+  const isSaving = createRetailer.isPending || updateRetailer.isPending || saveExtendedData.isPending;
 
   const renderStepContent = () => {
     switch (steps[currentStep].id) {
@@ -209,7 +359,6 @@ export default function RetailerFormPage() {
               />
             </div>
 
-            {/* Mini Map Placeholder */}
             <div className="h-48 bg-muted rounded-xl flex items-center justify-center">
               <div className="text-center text-muted-foreground">
                 <MapPin size={40} className="mx-auto mb-2" />
@@ -228,6 +377,16 @@ export default function RetailerFormPage() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Retailer Code *</label>
+                <input
+                  type="text"
+                  value={formData.code}
+                  onChange={e => setFormData({ ...formData, code: e.target.value })}
+                  placeholder="RET-001"
+                  className="input-field"
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Shop Name *</label>
                 <input
@@ -288,6 +447,19 @@ export default function RetailerFormPage() {
                   <option value="A">Category A (Premium)</option>
                   <option value="B">Category B (Standard)</option>
                   <option value="C">Category C (Basic)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Distributor</label>
+                <select
+                  value={formData.distributorId}
+                  onChange={e => setFormData({ ...formData, distributorId: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="">Select Distributor</option>
+                  {distributors?.map((d: any) => (
+                    <option key={d.id} value={d.id}>{d.firm_name}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -425,74 +597,26 @@ export default function RetailerFormPage() {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-foreground mb-4">Order Information</h3>
-              <p className="text-sm text-muted-foreground mb-4">View order history and place new orders</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {isEdit ? 'View order history for this retailer' : 'Order history will be available after creation'}
+              </p>
             </div>
 
             {isEdit ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="stat-card">
-                    <p className="text-2xl font-bold text-foreground">₹1.5L</p>
-                    <p className="text-sm text-muted-foreground">Total Orders</p>
-                  </div>
-                  <div className="stat-card">
-                    <p className="text-2xl font-bold text-foreground">28</p>
-                    <p className="text-sm text-muted-foreground">Order Count</p>
-                  </div>
-                  <div className="stat-card">
-                    <p className="text-2xl font-bold text-foreground">₹5.4K</p>
-                    <p className="text-sm text-muted-foreground">Avg Order Value</p>
-                  </div>
-                  <div className="stat-card">
-                    <p className="text-2xl font-bold text-foreground">Dec 8</p>
-                    <p className="text-sm text-muted-foreground">Last Order</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-foreground">Recent Orders</h4>
-                  <button className="btn-primary flex items-center gap-2">
-                    <Plus size={16} /> New Order
-                  </button>
-                </div>
-
-                <div className="bg-card rounded-xl border border-border overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Order ID</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Date</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Items</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Amount</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      <tr>
-                        <td className="px-4 py-3 text-sm font-medium">ORD-R-001</td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">Dec 8, 2024</td>
-                        <td className="px-4 py-3 text-sm">5 items</td>
-                        <td className="px-4 py-3 text-sm font-medium">₹8,500</td>
-                        <td className="px-4 py-3"><span className="px-2 py-1 bg-success/10 text-success rounded text-xs">Delivered</span></td>
-                        <td className="px-4 py-3"><button className="p-1 hover:bg-muted rounded"><Eye size={16} /></button></td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3 text-sm font-medium">ORD-R-002</td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">Dec 1, 2024</td>
-                        <td className="px-4 py-3 text-sm">3 items</td>
-                        <td className="px-4 py-3 text-sm font-medium">₹4,200</td>
-                        <td className="px-4 py-3"><span className="px-2 py-1 bg-success/10 text-success rounded text-xs">Delivered</span></td>
-                        <td className="px-4 py-3"><button className="p-1 hover:bg-muted rounded"><Eye size={16} /></button></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+              <div className="text-center py-8 text-muted-foreground">
+                <ShoppingCart size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Order history will appear here</p>
+                <button 
+                  onClick={() => navigate('/orders/new')}
+                  className="btn-primary text-sm mt-4"
+                >
+                  Create New Order
+                </button>
               </div>
             ) : (
-              <div className="p-12 border-2 border-dashed border-border rounded-xl text-center">
-                <ShoppingCart size={48} className="mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Order history will be available after creating the retailer</p>
+              <div className="text-center py-8 text-muted-foreground">
+                <ShoppingCart size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Save the retailer first to create orders</p>
               </div>
             )}
           </div>
@@ -503,152 +627,151 @@ export default function RetailerFormPage() {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-foreground mb-4">Competitor Analysis</h3>
-              <p className="text-sm text-muted-foreground mb-4">Record competitor presence and market insights</p>
+              <p className="text-sm text-muted-foreground mb-4">Record competitor presence and market intelligence</p>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-medium text-foreground">Competitor Products at this Store</h4>
+                <h4 className="font-medium text-foreground">Competitor Products</h4>
                 <button onClick={addCompetitorEntry} className="btn-outline text-sm flex items-center gap-1">
                   <Plus size={14} /> Add Entry
                 </button>
               </div>
 
-              {formData.competitorProducts.length === 0 && (
+              {formData.competitorProducts.length === 0 ? (
                 <div className="p-8 border-2 border-dashed border-border rounded-xl text-center">
                   <Target size={40} className="mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">No competitor data recorded</p>
-                  <button onClick={addCompetitorEntry} className="btn-primary mt-4">
-                    Add Competitor Entry
+                  <p className="text-muted-foreground">No competitor data added</p>
+                  <button onClick={addCompetitorEntry} className="btn-primary text-sm mt-4">
+                    Add Competitor
                   </button>
                 </div>
+              ) : (
+                formData.competitorProducts.map((entry, index) => (
+                  <div key={index} className="p-4 bg-muted/30 rounded-lg space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-medium text-foreground">Competitor {index + 1}</h5>
+                      <button
+                        onClick={() => removeCompetitorEntry(index)}
+                        className="p-2 text-destructive hover:bg-destructive/10 rounded-lg"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">Competitor Name</label>
+                        <select
+                          value={entry.competitorName}
+                          onChange={e => {
+                            const entries = [...formData.competitorProducts];
+                            entries[index].competitorName = e.target.value;
+                            setFormData({ ...formData, competitorProducts: entries });
+                          }}
+                          className="input-field"
+                        >
+                          <option value="">Select Competitor</option>
+                          {competitors.map(c => (
+                            <option key={c.id} value={c.name}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">Products</label>
+                        <input
+                          type="text"
+                          value={entry.products}
+                          onChange={e => {
+                            const entries = [...formData.competitorProducts];
+                            entries[index].products = e.target.value;
+                            setFormData({ ...formData, competitorProducts: entries });
+                          }}
+                          placeholder="Product names"
+                          className="input-field"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">Pricing</label>
+                        <input
+                          type="text"
+                          value={entry.pricing}
+                          onChange={e => {
+                            const entries = [...formData.competitorProducts];
+                            entries[index].pricing = e.target.value;
+                            setFormData({ ...formData, competitorProducts: entries });
+                          }}
+                          placeholder="Price range"
+                          className="input-field"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">Display Quality</label>
+                        <select
+                          value={entry.display}
+                          onChange={e => {
+                            const entries = [...formData.competitorProducts];
+                            entries[index].display = e.target.value;
+                            setFormData({ ...formData, competitorProducts: entries });
+                          }}
+                          className="input-field"
+                        >
+                          <option value="">Select</option>
+                          <option value="excellent">Excellent</option>
+                          <option value="good">Good</option>
+                          <option value="average">Average</option>
+                          <option value="poor">Poor</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Remarks</label>
+                      <input
+                        type="text"
+                        value={entry.remarks}
+                        onChange={e => {
+                          const entries = [...formData.competitorProducts];
+                          entries[index].remarks = e.target.value;
+                          setFormData({ ...formData, competitorProducts: entries });
+                        }}
+                        placeholder="Additional notes"
+                        className="input-field"
+                      />
+                    </div>
+                  </div>
+                ))
               )}
-
-              {formData.competitorProducts.map((entry, index) => (
-                <div key={index} className="p-4 bg-muted/30 rounded-lg space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-foreground">Entry #{index + 1}</span>
-                    <button
-                      onClick={() => removeCompetitorEntry(index)}
-                      className="p-2 text-destructive hover:bg-destructive/10 rounded-lg"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Competitor</label>
-                      <select
-                        value={entry.competitorId}
-                        onChange={e => {
-                          const entries = [...formData.competitorProducts];
-                          entries[index].competitorId = e.target.value;
-                          setFormData({ ...formData, competitorProducts: entries });
-                        }}
-                        className="input-field"
-                      >
-                        <option value="">Select Competitor</option>
-                        {competitors.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Products Stocked</label>
-                      <input
-                        type="text"
-                        value={entry.products}
-                        onChange={e => {
-                          const entries = [...formData.competitorProducts];
-                          entries[index].products = e.target.value;
-                          setFormData({ ...formData, competitorProducts: entries });
-                        }}
-                        placeholder="List products"
-                        className="input-field"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Pricing</label>
-                      <input
-                        type="text"
-                        value={entry.pricing}
-                        onChange={e => {
-                          const entries = [...formData.competitorProducts];
-                          entries[index].pricing = e.target.value;
-                          setFormData({ ...formData, competitorProducts: entries });
-                        }}
-                        placeholder="Price range"
-                        className="input-field"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Display Quality</label>
-                      <select
-                        value={entry.display}
-                        onChange={e => {
-                          const entries = [...formData.competitorProducts];
-                          entries[index].display = e.target.value;
-                          setFormData({ ...formData, competitorProducts: entries });
-                        }}
-                        className="input-field"
-                      >
-                        <option value="">Rate Display</option>
-                        <option value="excellent">Excellent</option>
-                        <option value="good">Good</option>
-                        <option value="average">Average</option>
-                        <option value="poor">Poor</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Remarks</label>
-                    <textarea
-                      value={entry.remarks}
-                      onChange={e => {
-                        const entries = [...formData.competitorProducts];
-                        entries[index].remarks = e.target.value;
-                        setFormData({ ...formData, competitorProducts: entries });
-                      }}
-                      placeholder="Any observations..."
-                      className="input-field min-h-[60px]"
-                    />
-                  </div>
-                </div>
-              ))}
             </div>
 
-            <div className="border-t border-border pt-6 space-y-4">
-              <h4 className="font-medium text-foreground">Market Insights</h4>
-              <div className="grid md:grid-cols-2 gap-6">
+            <div className="border-t border-border pt-6">
+              <h4 className="font-medium text-foreground mb-4">Market Intelligence</h4>
+              <div className="grid md:grid-cols-1 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Estimated Market Share (%)</label>
-                  <input
-                    type="text"
+                  <label className="block text-sm font-medium text-foreground mb-2">Market Share Assessment</label>
+                  <textarea
                     value={formData.marketShare}
                     onChange={e => setFormData({ ...formData, marketShare: e.target.value })}
-                    placeholder="e.g., 30%"
-                    className="input-field"
+                    placeholder="Describe estimated market share..."
+                    className="input-field min-h-[80px]"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Competitor Strengths</label>
-                  <input
-                    type="text"
+                  <textarea
                     value={formData.competitorStrength}
                     onChange={e => setFormData({ ...formData, competitorStrength: e.target.value })}
-                    placeholder="Price, schemes, etc."
-                    className="input-field"
+                    placeholder="What are competitors doing well?"
+                    className="input-field min-h-[80px]"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Growth Opportunities</label>
-                <textarea
-                  value={formData.opportunities}
-                  onChange={e => setFormData({ ...formData, opportunities: e.target.value })}
-                  placeholder="Identify opportunities to increase sales..."
-                  className="input-field min-h-[80px]"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Opportunities</label>
+                  <textarea
+                    value={formData.opportunities}
+                    onChange={e => setFormData({ ...formData, opportunities: e.target.value })}
+                    placeholder="What opportunities exist?"
+                    className="input-field min-h-[80px]"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -659,62 +782,55 @@ export default function RetailerFormPage() {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-foreground mb-4">Schemes & Offers</h3>
-              <p className="text-sm text-muted-foreground mb-4">View and apply available schemes</p>
+              <p className="text-sm text-muted-foreground mb-4">Select applicable schemes for this retailer</p>
             </div>
 
-            <div className="space-y-3">
-              {mockSchemes.map(scheme => (
-                <div
-                  key={scheme.id}
-                  onClick={() => scheme.active && handleSchemeToggle(scheme.id)}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    !scheme.active
-                      ? 'border-border opacity-50 cursor-not-allowed'
-                      : formData.activeSchemes.includes(scheme.id)
-                      ? 'border-primary bg-primary/5 cursor-pointer'
-                      : 'border-border hover:border-primary/50 cursor-pointer'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        formData.activeSchemes.includes(scheme.id)
-                          ? 'border-primary bg-primary'
-                          : 'border-muted-foreground'
-                      }`}>
-                        {formData.activeSchemes.includes(scheme.id) && (
-                          <Check size={12} className="text-primary-foreground" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">{scheme.name}</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs text-muted-foreground">{scheme.type}</p>
-                          {!scheme.active && (
-                            <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded text-xs">Expired</span>
+            {schemesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : schemes?.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No schemes available. Create schemes first.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {schemes?.map(scheme => (
+                  <div
+                    key={scheme.id}
+                    onClick={() => handleSchemeToggle(scheme.id)}
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      formData.activeSchemes.includes(scheme.id)
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          formData.activeSchemes.includes(scheme.id)
+                            ? 'border-primary bg-primary'
+                            : 'border-muted-foreground'
+                        }`}>
+                          {formData.activeSchemes.includes(scheme.id) && (
+                            <Check size={12} className="text-primary-foreground" />
                           )}
                         </div>
+                        <div>
+                          <p className="font-medium text-foreground">{scheme.name}</p>
+                          <p className="text-xs text-muted-foreground">{scheme.type}</p>
+                        </div>
                       </div>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        scheme.status === 'active' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {scheme.discount_percent ? `${scheme.discount_percent}%` : scheme.free_quantity ? `${scheme.free_quantity} Free` : 'Active'}
+                      </span>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      scheme.active ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {scheme.value}
-                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t border-border pt-6">
-              <label className="block text-sm font-medium text-foreground mb-2">Scheme Utilization Notes</label>
-              <textarea
-                value={formData.schemeUtilization}
-                onChange={e => setFormData({ ...formData, schemeUtilization: e.target.value })}
-                placeholder="How are schemes being utilized by this retailer?"
-                className="input-field min-h-[80px]"
-              />
-            </div>
+                ))}
+              </div>
+            )}
 
             <p className="text-sm text-muted-foreground">
               {formData.activeSchemes.length} schemes applied
@@ -726,69 +842,50 @@ export default function RetailerFormPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-4">Store Images</h3>
-              <p className="text-sm text-muted-foreground mb-4">Upload images of the retail outlet</p>
+              <h3 className="text-lg font-semibold text-foreground mb-4">Images</h3>
+              <p className="text-sm text-muted-foreground mb-4">Upload shop photos and images</p>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
-              {/* Shop Front */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-foreground">Shop Front Image *</label>
-                <div className="aspect-video bg-muted rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
-                  <Camera size={40} className="text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Click to upload or take photo</p>
-                  <button className="btn-outline text-sm mt-2">
-                    <Upload size={14} className="mr-1" /> Choose File
+              <div className="p-6 border-2 border-dashed border-border rounded-xl">
+                <div className="text-center">
+                  <Camera size={40} className="mx-auto text-muted-foreground mb-2" />
+                  <p className="font-medium text-foreground">Shop Front</p>
+                  <p className="text-sm text-muted-foreground mb-4">Upload main shop photo</p>
+                  <button className="btn-outline text-sm">
+                    <Upload size={14} className="mr-1" /> Upload
                   </button>
                 </div>
               </div>
-
-              {/* Owner Image */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-foreground">Owner Photo</label>
-                <div className="aspect-video bg-muted rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
-                  <User size={40} className="text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Upload owner photo</p>
-                  <button className="btn-outline text-sm mt-2">
-                    <Upload size={14} className="mr-1" /> Choose File
+              <div className="p-6 border-2 border-dashed border-border rounded-xl">
+                <div className="text-center">
+                  <Camera size={40} className="mx-auto text-muted-foreground mb-2" />
+                  <p className="font-medium text-foreground">Interior</p>
+                  <p className="text-sm text-muted-foreground mb-4">Upload shop interior</p>
+                  <button className="btn-outline text-sm">
+                    <Upload size={14} className="mr-1" /> Upload
                   </button>
                 </div>
               </div>
-            </div>
-
-            {/* Interior Images */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-foreground">Interior Images</label>
-                <button className="btn-outline text-sm flex items-center gap-1">
-                  <Plus size={14} /> Add Image
-                </button>
+              <div className="p-6 border-2 border-dashed border-border rounded-xl">
+                <div className="text-center">
+                  <Camera size={40} className="mx-auto text-muted-foreground mb-2" />
+                  <p className="font-medium text-foreground">Product Display</p>
+                  <p className="text-sm text-muted-foreground mb-4">Upload display area</p>
+                  <button className="btn-outline text-sm">
+                    <Upload size={14} className="mr-1" /> Upload
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="aspect-square bg-muted rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center">
-                    <Camera size={24} className="text-muted-foreground mb-1" />
-                    <p className="text-xs text-muted-foreground">Interior {i}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Display Images */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-foreground">Product Display Images</label>
-                <button className="btn-outline text-sm flex items-center gap-1">
-                  <Plus size={14} /> Add Image
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="aspect-square bg-muted rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center">
-                    <Camera size={24} className="text-muted-foreground mb-1" />
-                    <p className="text-xs text-muted-foreground">Display {i}</p>
-                  </div>
-                ))}
+              <div className="p-6 border-2 border-dashed border-border rounded-xl">
+                <div className="text-center">
+                  <Camera size={40} className="mx-auto text-muted-foreground mb-2" />
+                  <p className="font-medium text-foreground">Owner Photo</p>
+                  <p className="text-sm text-muted-foreground mb-4">Upload owner photo</p>
+                  <button className="btn-outline text-sm">
+                    <Upload size={14} className="mr-1" /> Upload
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -799,86 +896,116 @@ export default function RetailerFormPage() {
     }
   };
 
+  if (isLoading && isEdit) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="module-header">
-        <div>
-          <h1 className="module-title">{isEdit ? 'Edit Retailer' : 'Add Retailer'}</h1>
-          <p className="text-muted-foreground">Complete all steps to {isEdit ? 'update' : 'create'} retailer</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate('/outlets/retailers')} className="p-2 hover:bg-muted rounded-lg">
+            <ChevronLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              {isEdit ? 'Edit Retailer' : 'Add New Retailer'}
+            </h1>
+            <p className="text-muted-foreground">
+              {isEdit ? 'Update retailer information' : 'Complete all steps to create a retailer'}
+            </p>
+          </div>
         </div>
-        <button onClick={() => navigate('/outlets/retailers')} className="btn-outline flex items-center gap-2">
-          <X size={18} />
-          Cancel
-        </button>
       </div>
 
       {/* Steps Indicator */}
       <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex items-center justify-between overflow-x-auto">
-          {steps.map((step, index) => (
-            <div
-              key={step.id}
-              className="flex items-center cursor-pointer"
-              onClick={() => setCurrentStep(index)}
-            >
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                index === currentStep
-                  ? 'bg-primary text-primary-foreground'
-                  : index < currentStep
-                  ? 'bg-success/10 text-success'
-                  : 'text-muted-foreground'
-              }`}>
-                <step.icon size={18} />
-                <span className="text-sm font-medium whitespace-nowrap hidden lg:inline">{step.title}</span>
+        <div className="flex items-center justify-between">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            const isActive = index === currentStep;
+            const isCompleted = index < currentStep;
+
+            return (
+              <div key={step.id} className="flex items-center">
+                <button
+                  onClick={() => setCurrentStep(index)}
+                  className={`flex flex-col items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                    isActive
+                      ? 'bg-primary/10 text-primary'
+                      : isCompleted
+                      ? 'text-success'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : isCompleted
+                      ? 'bg-success text-success-foreground'
+                      : 'bg-muted'
+                  }`}>
+                    {isCompleted ? <Check size={18} /> : <Icon size={18} />}
+                  </div>
+                  <span className="text-xs font-medium hidden md:block">{step.title}</span>
+                </button>
+                {index < steps.length - 1 && (
+                  <div className={`w-8 h-0.5 ${isCompleted ? 'bg-success' : 'bg-muted'}`} />
+                )}
               </div>
-              {index < steps.length - 1 && (
-                <ChevronRight size={20} className="text-muted-foreground mx-1 hidden md:block" />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Step Content */}
-      <motion.div
-        key={currentStep}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
-        className="bg-card rounded-xl border border-border p-6"
-      >
-        {renderStepContent()}
-      </motion.div>
+      <div className="bg-card rounded-xl border border-border p-6">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {renderStepContent()}
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
         <button
           onClick={handlePrevious}
           disabled={currentStep === 0}
-          className="btn-outline flex items-center gap-2 disabled:opacity-50"
+          className="btn-outline flex items-center gap-2"
         >
           <ChevronLeft size={18} />
           Previous
         </button>
 
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">
-            Step {currentStep + 1} of {steps.length}
-          </span>
+          {currentStep === steps.length - 1 ? (
+            <button
+              onClick={handleSubmit}
+              disabled={isSaving}
+              className="btn-primary flex items-center gap-2"
+            >
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {isEdit ? 'Update Retailer' : 'Create Retailer'}
+            </button>
+          ) : (
+            <button onClick={handleNext} className="btn-primary flex items-center gap-2">
+              Next
+              <ChevronRight size={18} />
+            </button>
+          )}
         </div>
-
-        {currentStep === steps.length - 1 ? (
-          <button onClick={handleSubmit} className="btn-primary flex items-center gap-2">
-            <Save size={18} />
-            {isEdit ? 'Update Retailer' : 'Create Retailer'}
-          </button>
-        ) : (
-          <button onClick={handleNext} className="btn-primary flex items-center gap-2">
-            Next
-            <ChevronRight size={18} />
-          </button>
-        )}
       </div>
     </div>
   );

@@ -400,9 +400,195 @@ export type Database = {
           },
         ]
       }
+      distributor_kyc_documents: {
+        Row: {
+          created_at: string | null
+          distributor_id: string
+          document_number: string
+          document_type: string
+          file_url: string | null
+          id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          distributor_id: string
+          document_number: string
+          document_type: string
+          file_url?: string | null
+          id?: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          distributor_id?: string
+          document_number?: string
+          document_type?: string
+          file_url?: string | null
+          id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_kyc_documents_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      distributor_pricing_tiers: {
+        Row: {
+          created_at: string | null
+          distributor_id: string
+          id: string
+          margin_percent: number
+          max_qty: number
+          min_qty: number
+        }
+        Insert: {
+          created_at?: string | null
+          distributor_id: string
+          id?: string
+          margin_percent: number
+          max_qty: number
+          min_qty: number
+        }
+        Update: {
+          created_at?: string | null
+          distributor_id?: string
+          id?: string
+          margin_percent?: number
+          max_qty?: number
+          min_qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_pricing_tiers_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      distributor_products: {
+        Row: {
+          created_at: string | null
+          distributor_id: string
+          id: string
+          margin_percent: number | null
+          product_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          distributor_id: string
+          id?: string
+          margin_percent?: number | null
+          product_id: string
+        }
+        Update: {
+          created_at?: string | null
+          distributor_id?: string
+          id?: string
+          margin_percent?: number | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_products_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "distributor_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      distributor_schemes: {
+        Row: {
+          created_at: string | null
+          distributor_id: string
+          id: string
+          scheme_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          distributor_id: string
+          id?: string
+          scheme_id: string
+        }
+        Update: {
+          created_at?: string | null
+          distributor_id?: string
+          id?: string
+          scheme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_schemes_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "distributor_schemes_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "schemes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      distributor_secondary_counters: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          distributor_id: string
+          id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          distributor_id: string
+          id?: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          distributor_id?: string
+          id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_secondary_counters_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       distributors: {
         Row: {
           address: string | null
+          agreement_end_date: string | null
+          agreement_file_url: string | null
+          agreement_start_date: string | null
           city: string | null
           code: string
           created_at: string | null
@@ -412,15 +598,22 @@ export type Database = {
           gstin: string | null
           id: string
           last_order_date: string | null
+          minimum_order_value: number | null
           outstanding_amount: number | null
           owner_name: string
+          payment_terms: string | null
           phone: string | null
+          return_policy: string | null
           state: string | null
           status: string | null
+          territory_exclusive: boolean | null
           updated_at: string | null
         }
         Insert: {
           address?: string | null
+          agreement_end_date?: string | null
+          agreement_file_url?: string | null
+          agreement_start_date?: string | null
           city?: string | null
           code: string
           created_at?: string | null
@@ -430,15 +623,22 @@ export type Database = {
           gstin?: string | null
           id?: string
           last_order_date?: string | null
+          minimum_order_value?: number | null
           outstanding_amount?: number | null
           owner_name: string
+          payment_terms?: string | null
           phone?: string | null
+          return_policy?: string | null
           state?: string | null
           status?: string | null
+          territory_exclusive?: boolean | null
           updated_at?: string | null
         }
         Update: {
           address?: string | null
+          agreement_end_date?: string | null
+          agreement_file_url?: string | null
+          agreement_start_date?: string | null
           city?: string | null
           code?: string
           created_at?: string | null
@@ -448,11 +648,15 @@ export type Database = {
           gstin?: string | null
           id?: string
           last_order_date?: string | null
+          minimum_order_value?: number | null
           outstanding_amount?: number | null
           owner_name?: string
+          payment_terms?: string | null
           phone?: string | null
+          return_policy?: string | null
           state?: string | null
           status?: string | null
+          territory_exclusive?: boolean | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1397,60 +1601,208 @@ export type Database = {
           },
         ]
       }
+      retailer_competitor_analysis: {
+        Row: {
+          competitor_name: string
+          created_at: string | null
+          display_quality: string | null
+          id: string
+          pricing: string | null
+          products: string | null
+          remarks: string | null
+          retailer_id: string
+        }
+        Insert: {
+          competitor_name: string
+          created_at?: string | null
+          display_quality?: string | null
+          id?: string
+          pricing?: string | null
+          products?: string | null
+          remarks?: string | null
+          retailer_id: string
+        }
+        Update: {
+          competitor_name?: string
+          created_at?: string | null
+          display_quality?: string | null
+          id?: string
+          pricing?: string | null
+          products?: string | null
+          remarks?: string | null
+          retailer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retailer_competitor_analysis_retailer_id_fkey"
+            columns: ["retailer_id"]
+            isOneToOne: false
+            referencedRelation: "retailers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retailer_images: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_type: string
+          image_url: string
+          retailer_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_type: string
+          image_url: string
+          retailer_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_type?: string
+          image_url?: string
+          retailer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retailer_images_retailer_id_fkey"
+            columns: ["retailer_id"]
+            isOneToOne: false
+            referencedRelation: "retailers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retailer_schemes: {
+        Row: {
+          created_at: string | null
+          id: string
+          retailer_id: string
+          scheme_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          retailer_id: string
+          scheme_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          retailer_id?: string
+          scheme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retailer_schemes_retailer_id_fkey"
+            columns: ["retailer_id"]
+            isOneToOne: false
+            referencedRelation: "retailers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retailer_schemes_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "schemes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       retailers: {
         Row: {
           address: string | null
+          alt_phone: string | null
           category: string | null
           city: string | null
           code: string
+          competitor_strength: string | null
           created_at: string | null
           distributor_id: string | null
           email: string | null
+          employee_count: number | null
+          gst_number: string | null
           id: string
+          landmark: string | null
           last_order_value: number | null
           last_visit: string | null
+          market_share: string | null
+          opportunities: string | null
           owner_name: string
+          pan_number: string | null
           phone: string | null
+          pincode: string | null
+          shop_area: string | null
           shop_name: string
+          shop_type: string | null
           state: string | null
           status: string | null
           updated_at: string | null
+          weekly_off: string | null
+          years_in_business: number | null
         }
         Insert: {
           address?: string | null
+          alt_phone?: string | null
           category?: string | null
           city?: string | null
           code: string
+          competitor_strength?: string | null
           created_at?: string | null
           distributor_id?: string | null
           email?: string | null
+          employee_count?: number | null
+          gst_number?: string | null
           id?: string
+          landmark?: string | null
           last_order_value?: number | null
           last_visit?: string | null
+          market_share?: string | null
+          opportunities?: string | null
           owner_name: string
+          pan_number?: string | null
           phone?: string | null
+          pincode?: string | null
+          shop_area?: string | null
           shop_name: string
+          shop_type?: string | null
           state?: string | null
           status?: string | null
           updated_at?: string | null
+          weekly_off?: string | null
+          years_in_business?: number | null
         }
         Update: {
           address?: string | null
+          alt_phone?: string | null
           category?: string | null
           city?: string | null
           code?: string
+          competitor_strength?: string | null
           created_at?: string | null
           distributor_id?: string | null
           email?: string | null
+          employee_count?: number | null
+          gst_number?: string | null
           id?: string
+          landmark?: string | null
           last_order_value?: number | null
           last_visit?: string | null
+          market_share?: string | null
+          opportunities?: string | null
           owner_name?: string
+          pan_number?: string | null
           phone?: string | null
+          pincode?: string | null
+          shop_area?: string | null
           shop_name?: string
+          shop_type?: string | null
           state?: string | null
           status?: string | null
           updated_at?: string | null
+          weekly_off?: string | null
+          years_in_business?: number | null
         }
         Relationships: [
           {

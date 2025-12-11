@@ -89,37 +89,11 @@ export default function RetailersPage() {
   });
 
   const handleCreate = () => {
-    setEditItem(null);
-    setFormData({
-      code: '',
-      shop_name: '',
-      owner_name: '',
-      phone: '',
-      email: '',
-      city: '',
-      address: '',
-      category: 'C',
-      distributor_id: '',
-      status: 'pending',
-    });
-    setShowModal(true);
+    navigate('/outlets/retailers/new');
   };
 
   const handleEdit = (item: Retailer) => {
-    setEditItem(item);
-    setFormData({
-      code: item.code,
-      shop_name: item.shop_name,
-      owner_name: item.owner_name,
-      phone: item.phone || '',
-      email: item.email || '',
-      city: item.city || '',
-      address: item.address || '',
-      category: item.category || 'C',
-      distributor_id: item.distributor_id || '',
-      status: item.status,
-    });
-    setShowModal(true);
+    navigate(`/outlets/retailers/${item.id}/edit`);
   };
 
   const handleSubmit = async () => {

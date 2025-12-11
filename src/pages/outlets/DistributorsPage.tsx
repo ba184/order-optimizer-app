@@ -90,39 +90,11 @@ export default function DistributorsPage() {
   });
 
   const handleCreate = () => {
-    setEditItem(null);
-    setFormData({
-      code: '',
-      firm_name: '',
-      owner_name: '',
-      gstin: '',
-      city: '',
-      state: '',
-      phone: '',
-      email: '',
-      address: '',
-      credit_limit: '',
-      status: 'pending',
-    });
-    setShowModal(true);
+    navigate('/outlets/distributors/new');
   };
 
   const handleEdit = (item: Distributor) => {
-    setEditItem(item);
-    setFormData({
-      code: item.code,
-      firm_name: item.firm_name,
-      owner_name: item.owner_name,
-      gstin: item.gstin || '',
-      city: item.city || '',
-      state: item.state || '',
-      phone: item.phone || '',
-      email: item.email || '',
-      address: item.address || '',
-      credit_limit: item.credit_limit.toString(),
-      status: item.status,
-    });
-    setShowModal(true);
+    navigate(`/outlets/distributors/${item.id}/edit`);
   };
 
   const handleSubmit = async () => {
