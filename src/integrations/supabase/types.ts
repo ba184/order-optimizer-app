@@ -436,6 +436,81 @@ export type Database = {
           },
         ]
       }
+      expense_claims: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          city_category: string
+          claim_number: string
+          created_at: string
+          da_amount: number
+          distance_travelled: number
+          end_date: string
+          fuel_amount: number
+          hotel_amount: number
+          hotel_nights: number
+          id: string
+          other_amount: number
+          other_description: string | null
+          rejection_reason: string | null
+          start_date: string
+          status: string
+          submitted_at: string | null
+          total_amount: number
+          updated_at: string
+          user_id: string
+          working_days: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          city_category?: string
+          claim_number: string
+          created_at?: string
+          da_amount?: number
+          distance_travelled?: number
+          end_date: string
+          fuel_amount?: number
+          hotel_amount?: number
+          hotel_nights?: number
+          id?: string
+          other_amount?: number
+          other_description?: string | null
+          rejection_reason?: string | null
+          start_date: string
+          status?: string
+          submitted_at?: string | null
+          total_amount?: number
+          updated_at?: string
+          user_id: string
+          working_days?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          city_category?: string
+          claim_number?: string
+          created_at?: string
+          da_amount?: number
+          distance_travelled?: number
+          end_date?: string
+          fuel_amount?: number
+          hotel_amount?: number
+          hotel_nights?: number
+          id?: string
+          other_amount?: number
+          other_description?: string | null
+          rejection_reason?: string | null
+          start_date?: string
+          status?: string
+          submitted_at?: string | null
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+          working_days?: number
+        }
+        Relationships: []
+      }
       inventory_batches: {
         Row: {
           approved_at: string | null
