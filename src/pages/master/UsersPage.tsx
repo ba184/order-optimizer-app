@@ -5,6 +5,9 @@ import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { GeoFilter } from '@/components/ui/GeoFilter';
 import { GeoFilter as GeoFilterType } from '@/data/geoData';
+import { useUsersData, useRoles, UserWithRole } from '@/hooks/useUsersData';
+import { useCreateTarget } from '@/hooks/useTargetsData';
+import { StatusType } from '@/components/ui/StatusBadge';
 import {
   Plus,
   Users,
@@ -20,43 +23,18 @@ import {
   Eye,
   X,
   Target,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { UserRole } from '@/types';
 
-interface UserData {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: UserRole;
-  zone: string;
-  city: string;
-  area: string;
-  reportingTo?: string;
-  reportingToName?: string;
-  status: 'active' | 'inactive';
-  createdAt: string;
-}
-
-const mockUsers: UserData[] = [
-  { id: 'admin-001', name: 'Suresh Patel', email: 'suresh@toagosei.com', phone: '+91 98765 43213', role: 'admin', zone: '', city: '', area: '', status: 'active', createdAt: '2024-01-01' },
-  { id: 'rsm-001', name: 'Vikram Singh', email: 'vikram@toagosei.com', phone: '+91 98765 43212', role: 'rsm', zone: 'North Zone', city: '', area: '', reportingTo: 'admin-001', reportingToName: 'Suresh Patel', status: 'active', createdAt: '2024-01-15' },
-  { id: 'asm-001', name: 'Priya Sharma', email: 'priya@toagosei.com', phone: '+91 98765 43211', role: 'asm', zone: 'North Zone', city: 'New Delhi', area: '', reportingTo: 'rsm-001', reportingToName: 'Vikram Singh', status: 'active', createdAt: '2024-02-01' },
-  { id: 'asm-002', name: 'Rahul Mehta', email: 'rahul@toagosei.com', phone: '+91 98765 43214', role: 'asm', zone: 'South Zone', city: 'Mumbai', area: '', reportingTo: 'rsm-001', reportingToName: 'Vikram Singh', status: 'active', createdAt: '2024-02-15' },
-  { id: 'se-001', name: 'Rajesh Kumar', email: 'rajesh@toagosei.com', phone: '+91 98765 43210', role: 'sales_executive', zone: 'North Zone', city: 'New Delhi', area: 'Connaught Place', reportingTo: 'asm-001', reportingToName: 'Priya Sharma', status: 'active', createdAt: '2024-03-01' },
-  { id: 'se-002', name: 'Amit Sharma', email: 'amit@toagosei.com', phone: '+91 98765 43215', role: 'sales_executive', zone: 'North Zone', city: 'New Delhi', area: 'Karol Bagh', reportingTo: 'asm-001', reportingToName: 'Priya Sharma', status: 'active', createdAt: '2024-03-15' },
-  { id: 'se-003', name: 'Priya Singh', email: 'priyasingh@toagosei.com', phone: '+91 98765 43216', role: 'sales_executive', zone: 'North Zone', city: 'New Delhi', area: 'Lajpat Nagar', reportingTo: 'asm-001', reportingToName: 'Priya Sharma', status: 'active', createdAt: '2024-04-01' },
-];
-
-const roleLabels: Record<UserRole, string> = {
+const roleLabels: Record<string, string> = {
   sales_executive: 'Sales Executive',
   asm: 'Area Sales Manager',
   rsm: 'Regional Sales Manager',
   admin: 'Administrator',
 };
 
-const roleColors: Record<UserRole, string> = {
+const roleColors: Record<string, string> = {
   sales_executive: 'bg-info/10 text-info',
   asm: 'bg-secondary/10 text-secondary',
   rsm: 'bg-warning/10 text-warning',
@@ -65,20 +43,26 @@ const roleColors: Record<UserRole, string> = {
 
 export default function UsersPage() {
   const navigate = useNavigate();
+  const { users, isLoading, updateUser, updateUserRole, deleteUser } = useUsersData();
+  const { data: roles = [] } = useRoles();
+  const createTarget = useCreateTarget();
+  
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showTargetModal, setShowTargetModal] = useState<UserData | null>(null);
+  const [showTargetModal, setShowTargetModal] = useState<UserWithRole | null>(null);
+  const [showEditModal, setShowEditModal] = useState<UserWithRole | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    role: 'sales_executive' as UserRole,
-    zone: '',
-    city: '',
-    area: '',
+    role: 'sales_executive',
+    territory: '',
+    region: '',
     reportingTo: '',
   });
+  
   const [targetData, setTargetData] = useState({
     salesTarget: '',
     collectionTarget: '',
@@ -88,10 +72,10 @@ export default function UsersPage() {
     endDate: '',
   });
 
-  const filteredUsers = mockUsers.filter(u => {
-    if (roleFilter !== 'all' && u.role !== roleFilter) return false;
-    if (geoFilter.zone && u.zone !== geoFilter.zone) return false;
-    if (geoFilter.city && u.city !== geoFilter.city) return false;
+  const filteredUsers = users.filter(u => {
+    if (roleFilter !== 'all' && u.role_code !== roleFilter) return false;
+    if (geoFilter.zone && u.region !== geoFilter.zone) return false;
+    if (geoFilter.city && u.territory !== geoFilter.city) return false;
     return true;
   });
 
@@ -100,33 +84,87 @@ export default function UsersPage() {
       toast.error('Please fill required fields');
       return;
     }
-    toast.success('User created successfully');
+    toast.info('User creation requires admin setup. Please use the authentication system to register users.');
     setShowCreateModal(false);
-    setFormData({ name: '', email: '', phone: '', role: 'sales_executive', zone: '', city: '', area: '', reportingTo: '' });
+  };
+
+  const handleUpdate = () => {
+    if (!showEditModal) return;
+    
+    updateUser.mutate({
+      id: showEditModal.id,
+      name: formData.name,
+      phone: formData.phone || undefined,
+      territory: formData.territory || undefined,
+      region: formData.region || undefined,
+      reporting_to: formData.reportingTo || undefined,
+    });
+    
+    if (formData.role && formData.role !== showEditModal.role_code) {
+      updateUserRole.mutate({
+        userId: showEditModal.id,
+        roleCode: formData.role,
+      });
+    }
+    
+    setShowEditModal(null);
+    resetForm();
   };
 
   const handleSetTarget = () => {
-    if (!targetData.salesTarget || !targetData.startDate || !targetData.endDate) {
+    if (!targetData.salesTarget || !targetData.startDate || !targetData.endDate || !showTargetModal) {
       toast.error('Please fill required fields');
       return;
     }
-    toast.success(`Target set for ${showTargetModal?.name}`);
+    
+    createTarget.mutate({
+      user_id: showTargetModal.id,
+      target_type: 'sales',
+      target_value: parseFloat(targetData.salesTarget),
+      start_date: targetData.startDate,
+      end_date: targetData.endDate,
+      period: 'monthly',
+    });
+    
     setShowTargetModal(null);
     setTargetData({ salesTarget: '', collectionTarget: '', visitTarget: '', newOutletTarget: '', startDate: '', endDate: '' });
+  };
+
+  const handleDelete = (user: UserWithRole) => {
+    if (confirm(`Are you sure you want to delete ${user.name}?`)) {
+      deleteUser.mutate(user.id);
+    }
+  };
+
+  const openEditModal = (user: UserWithRole) => {
+    setFormData({
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      role: user.role_code || 'sales_executive',
+      territory: user.territory || '',
+      region: user.region || '',
+      reportingTo: user.reporting_to || '',
+    });
+    setShowEditModal(user);
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '', email: '', phone: '', role: 'sales_executive', territory: '', region: '', reportingTo: '' });
   };
 
   const columns = [
     {
       key: 'name',
       header: 'User',
-      render: (item: UserData) => (
+      render: (item: UserWithRole) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
             <User size={20} className="text-primary" />
           </div>
           <div>
             <p className="font-medium text-foreground">{item.name}</p>
-            <p className="text-xs text-muted-foreground">{item.id}</p>
+            <p className="text-xs text-muted-foreground">{item.id.slice(0, 8)}...</p>
           </div>
         </div>
       ),
@@ -135,36 +173,38 @@ export default function UsersPage() {
     {
       key: 'contact',
       header: 'Contact',
-      render: (item: UserData) => (
+      render: (item: UserWithRole) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sm">
             <Mail size={14} className="text-muted-foreground" />
             <span>{item.email}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Phone size={14} className="text-muted-foreground" />
-            <span>{item.phone}</span>
-          </div>
+          {item.phone && (
+            <div className="flex items-center gap-2 text-sm">
+              <Phone size={14} className="text-muted-foreground" />
+              <span>{item.phone}</span>
+            </div>
+          )}
         </div>
       ),
     },
     {
       key: 'role',
       header: 'Role',
-      render: (item: UserData) => (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${roleColors[item.role]}`}>
-          {roleLabels[item.role]}
+      render: (item: UserWithRole) => (
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${roleColors[item.role_code || ''] || 'bg-muted text-muted-foreground'}`}>
+          {item.role_name || roleLabels[item.role_code || ''] || 'No Role'}
         </span>
       ),
     },
     {
       key: 'territory',
       header: 'Territory',
-      render: (item: UserData) => (
+      render: (item: UserWithRole) => (
         <div className="flex items-center gap-2">
           <MapPin size={14} className="text-muted-foreground" />
           <span className="text-sm">
-            {item.zone || 'All'}{item.city ? ` / ${item.city}` : ''}{item.area ? ` / ${item.area}` : ''}
+            {item.region || 'All'}{item.territory ? ` / ${item.territory}` : ''}
           </span>
         </div>
       ),
@@ -172,9 +212,9 @@ export default function UsersPage() {
     {
       key: 'reportingTo',
       header: 'Reports To',
-      render: (item: UserData) => (
-        item.reportingToName ? (
-          <span className="text-sm">{item.reportingToName}</span>
+      render: (item: UserWithRole) => (
+        item.reporting_to_name ? (
+          <span className="text-sm">{item.reporting_to_name}</span>
         ) : (
           <span className="text-muted-foreground">-</span>
         )
@@ -183,17 +223,17 @@ export default function UsersPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (item: UserData) => <StatusBadge status={item.status} />,
+      render: (item: UserWithRole) => <StatusBadge status={(item.status || 'active') as StatusType} />,
     },
     {
       key: 'actions',
       header: 'Actions',
-      render: (item: UserData) => (
+      render: (item: UserWithRole) => (
         <div className="flex items-center gap-1">
           <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="View">
             <Eye size={16} className="text-muted-foreground" />
           </button>
-          {item.role === 'sales_executive' && (
+          {item.role_code === 'sales_executive' && (
             <button 
               onClick={() => navigate('/sales-team/tracking')}
               className="p-2 hover:bg-primary/10 rounded-lg transition-colors" 
@@ -215,10 +255,18 @@ export default function UsersPage() {
           <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="Reset Password">
             <Key size={16} className="text-muted-foreground" />
           </button>
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="Edit">
+          <button 
+            onClick={() => openEditModal(item)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors" 
+            title="Edit"
+          >
             <Edit size={16} className="text-muted-foreground" />
           </button>
-          <button className="p-2 hover:bg-destructive/10 rounded-lg transition-colors" title="Delete">
+          <button 
+            onClick={() => handleDelete(item)}
+            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors" 
+            title="Delete"
+          >
             <Trash2 size={16} className="text-destructive" />
           </button>
         </div>
@@ -227,12 +275,20 @@ export default function UsersPage() {
   ];
 
   const stats = {
-    total: mockUsers.length,
-    admins: mockUsers.filter(u => u.role === 'admin').length,
-    rsm: mockUsers.filter(u => u.role === 'rsm').length,
-    asm: mockUsers.filter(u => u.role === 'asm').length,
-    se: mockUsers.filter(u => u.role === 'sales_executive').length,
+    total: users.length,
+    admins: users.filter(u => u.role_code === 'admin').length,
+    rsm: users.filter(u => u.role_code === 'rsm').length,
+    asm: users.filter(u => u.role_code === 'asm').length,
+    se: users.filter(u => u.role_code === 'sales_executive').length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -269,7 +325,7 @@ export default function UsersPage() {
             onClick={() => setRoleFilter(stat.role)}
           >
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-xl ${stat.role === 'all' ? 'bg-primary/10' : roleColors[stat.role as UserRole] || 'bg-primary/10'}`}>
+              <div className={`p-3 rounded-xl ${stat.role === 'all' ? 'bg-primary/10' : roleColors[stat.role] || 'bg-primary/10'}`}>
                 <Users size={20} className={stat.role === 'all' ? 'text-primary' : ''} />
               </div>
               <div>
@@ -282,7 +338,12 @@ export default function UsersPage() {
       </div>
 
       {/* Users Table */}
-      <DataTable data={filteredUsers} columns={columns} searchPlaceholder="Search users..." />
+      <DataTable 
+        data={filteredUsers} 
+        columns={columns} 
+        searchPlaceholder="Search users..." 
+        emptyMessage="No users found. Users will appear here when they register."
+      />
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -300,6 +361,13 @@ export default function UsersPage() {
             </div>
             
             <div className="space-y-4">
+              <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg">
+                <p className="text-sm text-warning">
+                  Note: New users should register through the authentication system. 
+                  You can then assign roles and update their profile here.
+                </p>
+              </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Name *</label>
@@ -329,7 +397,7 @@ export default function UsersPage() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="email@toagosei.com"
+                  placeholder="email@company.com"
                   className="input-field"
                 />
               </div>
@@ -338,48 +406,33 @@ export default function UsersPage() {
                 <label className="block text-sm font-medium text-foreground mb-2">Role *</label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="input-field"
                 >
-                  <option value="sales_executive">Sales Executive</option>
-                  <option value="asm">Area Sales Manager</option>
-                  <option value="rsm">Regional Sales Manager</option>
-                  <option value="admin">Administrator</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.code}>{role.name}</option>
+                  ))}
                 </select>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Zone</label>
-                  <select
-                    value={formData.zone}
-                    onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="">All Zones</option>
-                    <option value="North Zone">North Zone</option>
-                    <option value="South Zone">South Zone</option>
-                    <option value="East Zone">East Zone</option>
-                    <option value="West Zone">West Zone</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">City</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Region</label>
                   <input
                     type="text"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    placeholder="City"
+                    value={formData.region}
+                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                    placeholder="Region/Zone"
                     className="input-field"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Area</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Territory</label>
                   <input
                     type="text"
-                    value={formData.area}
-                    onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                    placeholder="Area"
+                    value={formData.territory}
+                    onChange={(e) => setFormData({ ...formData, territory: e.target.value })}
+                    placeholder="Territory/City"
                     className="input-field"
                   />
                 </div>
@@ -393,8 +446,8 @@ export default function UsersPage() {
                   className="input-field"
                 >
                   <option value="">Select Manager</option>
-                  {mockUsers.filter(u => u.role !== 'sales_executive').map((user) => (
-                    <option key={user.id} value={user.id}>{user.name} ({roleLabels[user.role]})</option>
+                  {users.filter(u => u.role_code !== 'sales_executive').map((user) => (
+                    <option key={user.id} value={user.id}>{user.name} ({user.role_name || user.role_code})</option>
                   ))}
                 </select>
               </div>
@@ -403,6 +456,114 @@ export default function UsersPage() {
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => setShowCreateModal(false)} className="btn-outline">Cancel</button>
               <button onClick={handleCreate} className="btn-primary">Create User</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">Edit User</h2>
+              <button onClick={() => setShowEditModal(null)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Name *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter name"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="+91 98765 43210"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  disabled
+                  className="input-field bg-muted"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Role</label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="input-field"
+                >
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.code}>{role.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Region</label>
+                  <input
+                    type="text"
+                    value={formData.region}
+                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                    placeholder="Region/Zone"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Territory</label>
+                  <input
+                    type="text"
+                    value={formData.territory}
+                    onChange={(e) => setFormData({ ...formData, territory: e.target.value })}
+                    placeholder="Territory/City"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Reports To</label>
+                <select
+                  value={formData.reportingTo}
+                  onChange={(e) => setFormData({ ...formData, reportingTo: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="">Select Manager</option>
+                  {users.filter(u => u.id !== showEditModal.id && u.role_code !== 'sales_executive').map((user) => (
+                    <option key={user.id} value={user.id}>{user.name} ({user.role_name || user.role_code})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button onClick={() => setShowEditModal(null)} className="btn-outline">Cancel</button>
+              <button onClick={handleUpdate} className="btn-primary">Update User</button>
             </div>
           </motion.div>
         </div>
@@ -419,7 +580,7 @@ export default function UsersPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Set Target</h2>
-                <p className="text-sm text-muted-foreground">{showTargetModal.name} - {roleLabels[showTargetModal.role]}</p>
+                <p className="text-sm text-muted-foreground">{showTargetModal.name} - {showTargetModal.role_name || showTargetModal.role_code}</p>
               </div>
               <button onClick={() => setShowTargetModal(null)} className="p-2 hover:bg-muted rounded-lg">
                 <X size={20} />
@@ -465,7 +626,7 @@ export default function UsersPage() {
                     type="number"
                     value={targetData.collectionTarget}
                     onChange={(e) => setTargetData({ ...targetData, collectionTarget: e.target.value })}
-                    placeholder="450000"
+                    placeholder="400000"
                     className="input-field"
                   />
                 </div>
@@ -478,7 +639,7 @@ export default function UsersPage() {
                     type="number"
                     value={targetData.visitTarget}
                     onChange={(e) => setTargetData({ ...targetData, visitTarget: e.target.value })}
-                    placeholder="300"
+                    placeholder="200"
                     className="input-field"
                   />
                 </div>
