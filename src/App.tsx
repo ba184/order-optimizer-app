@@ -24,6 +24,7 @@ import RetailerDetailPage from "./pages/outlets/RetailerDetailPage";
 import DistributorFormPage from "./pages/outlets/DistributorFormPage";
 import RetailerFormPage from "./pages/outlets/RetailerFormPage";
 import OrdersListPage from "./pages/orders/OrdersListPage";
+import OrderViewPage from "./pages/orders/OrderViewPage";
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
 import SchemesPage from "./pages/SchemesPage";
 import AdvancedSchemesPage from "./pages/AdvancedSchemesPage";
@@ -108,6 +109,7 @@ function AppRoutes() {
       <Route path="/orders/list" element={<ProtectedRoute><OrdersListPage /></ProtectedRoute>} />
       <Route path="/orders/pending" element={<ProtectedRoute><OrdersListPage /></ProtectedRoute>} />
       <Route path="/orders/new" element={<ProtectedRoute><CreateOrderPage /></ProtectedRoute>} />
+      <Route path="/orders/:id" element={<ProtectedRoute><OrderViewPage /></ProtectedRoute>} />
       
       {/* Pre-Orders */}
       <Route path="/pre-orders" element={<ProtectedRoute><PreOrderBookingPage /></ProtectedRoute>} />
