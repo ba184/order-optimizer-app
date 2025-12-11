@@ -4,65 +4,52 @@ import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { CrudModal, FieldConfig } from '@/components/ui/CrudModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
-import { Plus, Building, Edit, Trash2, Eye } from 'lucide-react';
-import { toast } from 'sonner';
-
-interface City {
-  id: string;
-  name: string;
-  code: string;
-  state: string;
-  country: string;
-  status: 'active' | 'inactive';
-  createdAt: string;
-}
-
-const statesData: Record<string, { value: string; label: string }[]> = {
-  'India': [
-    { value: 'Delhi NCR', label: 'Delhi NCR' },
-    { value: 'Maharashtra', label: 'Maharashtra' },
-    { value: 'Karnataka', label: 'Karnataka' },
-    { value: 'West Bengal', label: 'West Bengal' },
-  ],
-  'United States': [
-    { value: 'California', label: 'California' },
-    { value: 'New York', label: 'New York' },
-  ],
-};
-
-const countries = [
-  { value: 'India', label: 'India' },
-  { value: 'United States', label: 'United States' },
-];
-
-const initialData: City[] = [
-  { id: '1', name: 'New Delhi', code: 'NDL', state: 'Delhi NCR', country: 'India', status: 'active', createdAt: '2024-01-01' },
-  { id: '2', name: 'Mumbai', code: 'MUM', state: 'Maharashtra', country: 'India', status: 'active', createdAt: '2024-01-01' },
-  { id: '3', name: 'Bangalore', code: 'BLR', state: 'Karnataka', country: 'India', status: 'active', createdAt: '2024-01-01' },
-  { id: '4', name: 'Kolkata', code: 'KOL', state: 'West Bengal', country: 'India', status: 'active', createdAt: '2024-01-01' },
-  { id: '5', name: 'Pune', code: 'PUN', state: 'Maharashtra', country: 'India', status: 'active', createdAt: '2024-01-01' },
-  { id: '6', name: 'Gurgaon', code: 'GGN', state: 'Delhi NCR', country: 'India', status: 'active', createdAt: '2024-01-01' },
-];
+import { useCities, useCreateCity, useUpdateCity, useDeleteCity, useStates, useCountries, City } from '@/hooks/useGeoMasterData';
+import { Plus, Building, Edit, Trash2, Eye, Loader2 } from 'lucide-react';
 
 export default function CityMasterPage() {
-  const [data, setData] = useState<City[]>(initialData);
+  const { data: cities = [], isLoading } = useCities();
+  const { data: states = [] } = useStates();
+  const { data: countries = [] } = useCountries();
+  const createCity = useCreateCity();
+  const updateCity = useUpdateCity();
+  const deleteCity = useDeleteCity();
+
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState<City | null>(null);
   const [selectedItem, setSelectedItem] = useState<City | null>(null);
   const [mode, setMode] = useState<'create' | 'edit' | 'view'>('create');
   const [stateFilter, setStateFilter] = useState<string>('all');
 
-  const filteredData = stateFilter === 'all' ? data : data.filter(c => c.state === stateFilter);
+  const filteredData = stateFilter === 'all' 
+    ? cities 
+    : cities.filter(c => c.state_id === stateFilter);
+
+  const stateOptions = states.map(s => ({ 
+    value: s.id, 
+    label: `${s.name} (${(s.country as any)?.name || 'Unknown'})`
+  }));
+
+  const countryOptions = countries.map(c => ({ value: c.id, label: c.name }));
 
   const fields: FieldConfig[] = [
-    { key: 'country', label: 'Country', type: 'select', required: true, options: countries },
     { 
-      key: 'state', 
+      key: 'country_id', 
+      label: 'Country', 
+      type: 'select', 
+      required: true, 
+      options: countryOptions 
+    },
+    { 
+      key: 'state_id', 
       label: 'State', 
       type: 'select', 
       required: true, 
-      dependsOn: 'country',
-      getOptions: (formData) => statesData[formData.country] || []
+      dependsOn: 'country_id',
+      getOptions: (formData) => {
+        const filteredStates = states.filter(s => s.country_id === formData.country_id);
+        return filteredStates.map(s => ({ value: s.id, label: s.name }));
+      }
     },
     { key: 'name', label: 'City Name', type: 'text', required: true, placeholder: 'Enter city name' },
     { key: 'code', label: 'City Code', type: 'text', required: true, placeholder: 'e.g., NDL, MUM' },
@@ -87,35 +74,32 @@ export default function CityMasterPage() {
     setModalOpen(true);
   };
 
-  const handleSubmit = (formData: Record<string, any>) => {
+  const handleSubmit = async (formData: Record<string, any>) => {
     if (mode === 'create') {
-      const newItem: City = {
-        id: Date.now().toString(),
+      await createCity.mutateAsync({
         name: formData.name,
         code: formData.code,
-        state: formData.state,
-        country: formData.country,
+        state_id: formData.state_id,
         status: formData.status || 'active',
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      setData([...data, newItem]);
-      toast.success('City created successfully');
-    } else {
-      setData(data.map(item => item.id === selectedItem?.id ? { ...item, ...formData } : item));
-      toast.success('City updated successfully');
+      });
+    } else if (selectedItem) {
+      await updateCity.mutateAsync({
+        id: selectedItem.id,
+        name: formData.name,
+        code: formData.code,
+        state_id: formData.state_id,
+        status: formData.status,
+      });
     }
     setModalOpen(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteModal) {
-      setData(data.filter(item => item.id !== deleteModal.id));
-      toast.success('City deleted successfully');
+      await deleteCity.mutateAsync(deleteModal.id);
       setDeleteModal(null);
     }
   };
-
-  const allStates = Object.values(statesData).flat();
 
   const columns = [
     {
@@ -134,8 +118,16 @@ export default function CityMasterPage() {
       ),
       sortable: true,
     },
-    { key: 'state', header: 'State' },
-    { key: 'country', header: 'Country' },
+    { 
+      key: 'state', 
+      header: 'State',
+      render: (item: City) => (item.state as any)?.name || '-'
+    },
+    { 
+      key: 'country', 
+      header: 'Country',
+      render: (item: City) => (item.state as any)?.country?.name || '-'
+    },
     {
       key: 'status',
       header: 'Status',
@@ -160,6 +152,14 @@ export default function CityMasterPage() {
     },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="module-header">
@@ -174,17 +174,13 @@ export default function CityMasterPage() {
       </div>
 
       <div className="flex items-center gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="stat-card flex-1"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card flex-1">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-info/10">
               <Building size={24} className="text-info" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{data.length}</p>
+              <p className="text-2xl font-bold text-foreground">{cities.length}</p>
               <p className="text-sm text-muted-foreground">Total Cities</p>
             </div>
           </div>
@@ -197,21 +193,26 @@ export default function CityMasterPage() {
             className="input-field"
           >
             <option value="all">All States</option>
-            {allStates.map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
+            {states.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
         </div>
       </div>
 
-      <DataTable data={filteredData} columns={columns} searchPlaceholder="Search cities..." />
+      <DataTable 
+        data={filteredData} 
+        columns={columns} 
+        searchPlaceholder="Search cities..."
+        emptyMessage="No cities found. Add your first city to get started."
+      />
 
       <CrudModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         title={mode === 'create' ? 'Add City' : mode === 'edit' ? 'Edit City' : 'City Details'}
         fields={fields}
-        initialData={selectedItem || undefined}
+        initialData={selectedItem ? { ...selectedItem, country_id: (selectedItem.state as any)?.country_id } : undefined}
         onSubmit={handleSubmit}
         mode={mode}
       />

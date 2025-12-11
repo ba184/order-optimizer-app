@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
 import { GeoFilter } from '@/components/ui/GeoFilter';
 import { GeoFilter as GeoFilterType } from '@/data/geoData';
+import { useTargets, useCreateTarget, useDeleteTarget, useUsers, Target } from '@/hooks/useTargetsData';
 import {
   Plus,
-  Target,
+  Target as TargetIcon,
   User,
   Calendar,
   TrendingUp,
@@ -20,66 +20,9 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { UserRole } from '@/types';
-
-interface TargetData {
-  id: string;
-  userId: string;
-  userName: string;
-  userRole: UserRole;
-  targetType: 'sales' | 'collection' | 'visits' | 'new_outlets';
-  targetValue: number;
-  achievedValue: number;
-  period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
-  startDate: string;
-  endDate: string;
-  status: 'active' | 'completed' | 'expired';
-  zone: string;
-  city: string;
-}
-
-interface UserData {
-  id: string;
-  name: string;
-  role: UserRole;
-  zone: string;
-  city: string;
-}
-
-const mockUsers: UserData[] = [
-  { id: 'rsm-001', name: 'Vikram Singh', role: 'rsm', zone: 'North Zone', city: '' },
-  { id: 'asm-001', name: 'Priya Sharma', role: 'asm', zone: 'North Zone', city: 'New Delhi' },
-  { id: 'asm-002', name: 'Rahul Mehta', role: 'asm', zone: 'South Zone', city: 'Mumbai' },
-  { id: 'se-001', name: 'Rajesh Kumar', role: 'sales_executive', zone: 'North Zone', city: 'New Delhi' },
-  { id: 'se-002', name: 'Amit Sharma', role: 'sales_executive', zone: 'North Zone', city: 'New Delhi' },
-  { id: 'se-003', name: 'Priya Singh', role: 'sales_executive', zone: 'North Zone', city: 'New Delhi' },
-];
-
-const mockTargets: TargetData[] = [
-  { id: 'TGT-001', userId: 'se-001', userName: 'Rajesh Kumar', userRole: 'sales_executive', targetType: 'sales', targetValue: 500000, achievedValue: 320000, period: 'monthly', startDate: '2024-03-01', endDate: '2024-03-31', status: 'active', zone: 'North Zone', city: 'New Delhi' },
-  { id: 'TGT-002', userId: 'se-001', userName: 'Rajesh Kumar', userRole: 'sales_executive', targetType: 'visits', targetValue: 100, achievedValue: 75, period: 'monthly', startDate: '2024-03-01', endDate: '2024-03-31', status: 'active', zone: 'North Zone', city: 'New Delhi' },
-  { id: 'TGT-003', userId: 'se-002', userName: 'Amit Sharma', userRole: 'sales_executive', targetType: 'sales', targetValue: 450000, achievedValue: 480000, period: 'monthly', startDate: '2024-03-01', endDate: '2024-03-31', status: 'active', zone: 'North Zone', city: 'New Delhi' },
-  { id: 'TGT-004', userId: 'asm-001', userName: 'Priya Sharma', userRole: 'asm', targetType: 'sales', targetValue: 2000000, achievedValue: 1500000, period: 'monthly', startDate: '2024-03-01', endDate: '2024-03-31', status: 'active', zone: 'North Zone', city: 'New Delhi' },
-  { id: 'TGT-005', userId: 'rsm-001', userName: 'Vikram Singh', userRole: 'rsm', targetType: 'sales', targetValue: 10000000, achievedValue: 7500000, period: 'quarterly', startDate: '2024-01-01', endDate: '2024-03-31', status: 'active', zone: 'North Zone', city: '' },
-  { id: 'TGT-006', userId: 'se-003', userName: 'Priya Singh', userRole: 'sales_executive', targetType: 'new_outlets', targetValue: 15, achievedValue: 8, period: 'monthly', startDate: '2024-03-01', endDate: '2024-03-31', status: 'active', zone: 'North Zone', city: 'New Delhi' },
-  { id: 'TGT-007', userId: 'asm-002', userName: 'Rahul Mehta', userRole: 'asm', targetType: 'collection', targetValue: 1500000, achievedValue: 1200000, period: 'monthly', startDate: '2024-03-01', endDate: '2024-03-31', status: 'active', zone: 'South Zone', city: 'Mumbai' },
-];
-
-const roleLabels: Record<UserRole, string> = {
-  sales_executive: 'Sales Executive',
-  asm: 'Area Sales Manager',
-  rsm: 'Regional Sales Manager',
-  admin: 'Administrator',
-};
-
-const roleColors: Record<UserRole, string> = {
-  sales_executive: 'bg-info/10 text-info',
-  asm: 'bg-secondary/10 text-secondary',
-  rsm: 'bg-warning/10 text-warning',
-  admin: 'bg-primary/10 text-primary',
-};
 
 const targetTypeLabels: Record<string, string> = {
   sales: 'Sales Target',
@@ -104,36 +47,44 @@ const periodLabels: Record<string, string> = {
 };
 
 export default function TargetManagementPage() {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState<TargetData | null>(null);
   const [targetTypeFilter, setTargetTypeFilter] = useState<string>('all');
   const [periodFilter, setPeriodFilter] = useState<string>('all');
   const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
+
+  const { data: targets = [], isLoading } = useTargets({ 
+    targetType: targetTypeFilter, 
+    period: periodFilter 
+  });
+  const { data: users = [] } = useUsers();
+  const createTarget = useCreateTarget();
+  const deleteTarget = useDeleteTarget();
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState<Target | null>(null);
   const [formData, setFormData] = useState({
-    userId: '',
-    targetType: 'sales' as 'sales' | 'collection' | 'visits' | 'new_outlets',
-    targetValue: '',
-    period: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly',
-    startDate: '',
-    endDate: '',
+    user_id: '',
+    target_type: 'sales',
+    target_value: '',
+    period: 'monthly',
+    start_date: '',
+    end_date: '',
   });
 
-  const filteredTargets = mockTargets.filter(t => {
-    if (targetTypeFilter !== 'all' && t.targetType !== targetTypeFilter) return false;
-    if (periodFilter !== 'all' && t.period !== periodFilter) return false;
-    if (geoFilter.zone && t.zone !== geoFilter.zone) return false;
-    if (geoFilter.city && t.city !== geoFilter.city) return false;
-    return true;
-  });
-
-  const handleCreate = () => {
-    if (!formData.userId || !formData.targetValue || !formData.startDate || !formData.endDate) {
+  const handleCreate = async () => {
+    if (!formData.user_id || !formData.target_value || !formData.start_date || !formData.end_date) {
       toast.error('Please fill all required fields');
       return;
     }
-    toast.success('Target created successfully');
+    await createTarget.mutateAsync({
+      user_id: formData.user_id,
+      target_type: formData.target_type,
+      target_value: parseFloat(formData.target_value),
+      period: formData.period,
+      start_date: formData.start_date,
+      end_date: formData.end_date,
+    });
     setShowCreateModal(false);
-    setFormData({ userId: '', targetType: 'sales', targetValue: '', period: 'monthly', startDate: '', endDate: '' });
+    setFormData({ user_id: '', target_type: 'sales', target_value: '', period: 'monthly', start_date: '', end_date: '' });
   };
 
   const getProgressColor = (achieved: number, target: number) => {
@@ -159,43 +110,41 @@ export default function TargetManagementPage() {
     {
       key: 'user',
       header: 'Employee',
-      render: (item: TargetData) => (
+      render: (item: Target) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
             <User size={20} className="text-primary" />
           </div>
           <div>
-            <p className="font-medium text-foreground">{item.userName}</p>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${roleColors[item.userRole]}`}>
-              {roleLabels[item.userRole]}
-            </span>
+            <p className="font-medium text-foreground">{(item.user as any)?.name || 'Unknown'}</p>
+            <p className="text-xs text-muted-foreground">{(item.user as any)?.email}</p>
           </div>
         </div>
       ),
       sortable: true,
     },
     {
-      key: 'targetType',
+      key: 'target_type',
       header: 'Target Type',
-      render: (item: TargetData) => (
+      render: (item: Target) => (
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-lg bg-primary/10 text-primary">
-            {targetTypeIcons[item.targetType]}
+            {targetTypeIcons[item.target_type]}
           </div>
-          <span className="font-medium">{targetTypeLabels[item.targetType]}</span>
+          <span className="font-medium">{targetTypeLabels[item.target_type]}</span>
         </div>
       ),
     },
     {
       key: 'progress',
       header: 'Progress',
-      render: (item: TargetData) => {
-        const percentage = getProgressPercentage(item.achievedValue, item.targetValue);
+      render: (item: Target) => {
+        const percentage = getProgressPercentage(item.achieved_value, item.target_value);
         return (
           <div className="space-y-2 min-w-[150px]">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">
-                {formatValue(item.achievedValue, item.targetType)} / {formatValue(item.targetValue, item.targetType)}
+                {formatValue(item.achieved_value, item.target_type)} / {formatValue(item.target_value, item.target_type)}
               </span>
               <span className={`font-medium ${percentage >= 100 ? 'text-success' : percentage >= 75 ? 'text-warning' : 'text-foreground'}`}>
                 {percentage.toFixed(0)}%
@@ -203,7 +152,7 @@ export default function TargetManagementPage() {
             </div>
             <div className="h-2 rounded-full bg-muted overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${getProgressColor(item.achievedValue, item.targetValue)}`}
+                className={`h-full rounded-full transition-all ${getProgressColor(item.achieved_value, item.target_value)}`}
                 style={{ width: `${percentage}%` }}
               />
             </div>
@@ -214,14 +163,14 @@ export default function TargetManagementPage() {
     {
       key: 'period',
       header: 'Period',
-      render: (item: TargetData) => (
+      render: (item: Target) => (
         <div className="space-y-1">
           <span className="px-2 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
             {periodLabels[item.period]}
           </span>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Calendar size={12} />
-            <span>{new Date(item.startDate).toLocaleDateString()} - {new Date(item.endDate).toLocaleDateString()}</span>
+            <span>{new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}</span>
           </div>
         </div>
       ),
@@ -229,8 +178,8 @@ export default function TargetManagementPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (item: TargetData) => {
-        const percentage = (item.achievedValue / item.targetValue) * 100;
+      render: (item: Target) => {
+        const percentage = (item.achieved_value / item.target_value) * 100;
         if (item.status === 'completed' || percentage >= 100) {
           return (
             <div className="flex items-center gap-1.5 text-success">
@@ -258,19 +207,18 @@ export default function TargetManagementPage() {
     {
       key: 'actions',
       header: 'Actions',
-      render: (item: TargetData) => (
+      render: (item: Target) => (
         <div className="flex items-center gap-1">
-          <button 
-            onClick={() => setShowViewModal(item)}
-            className="p-2 hover:bg-muted rounded-lg transition-colors" 
-            title="View"
-          >
+          <button onClick={() => setShowViewModal(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Eye size={16} className="text-muted-foreground" />
           </button>
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="Edit">
+          <button className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Edit size={16} className="text-muted-foreground" />
           </button>
-          <button className="p-2 hover:bg-destructive/10 rounded-lg transition-colors" title="Delete">
+          <button 
+            onClick={() => deleteTarget.mutateAsync(item.id)}
+            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+          >
             <Trash2 size={16} className="text-destructive" />
           </button>
         </div>
@@ -279,15 +227,22 @@ export default function TargetManagementPage() {
   ];
 
   const stats = {
-    total: mockTargets.length,
-    achieved: mockTargets.filter(t => (t.achievedValue / t.targetValue) >= 1).length,
-    inProgress: mockTargets.filter(t => t.status === 'active' && (t.achievedValue / t.targetValue) < 1).length,
-    avgProgress: Math.round(mockTargets.reduce((acc, t) => acc + (t.achievedValue / t.targetValue) * 100, 0) / mockTargets.length),
+    total: targets.length,
+    achieved: targets.filter(t => (t.achieved_value / t.target_value) >= 1).length,
+    inProgress: targets.filter(t => t.status === 'active' && (t.achieved_value / t.target_value) < 1).length,
+    avgProgress: targets.length > 0 ? Math.round(targets.reduce((acc, t) => acc + (t.achieved_value / t.target_value) * 100, 0) / targets.length) : 0,
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="module-header">
         <div>
           <h1 className="module-title">Target Management</h1>
@@ -299,10 +254,8 @@ export default function TargetManagementPage() {
         </button>
       </div>
 
-      {/* Geo Filter */}
       <GeoFilter value={geoFilter} onChange={setGeoFilter} />
 
-      {/* Filters */}
       <div className="flex items-center gap-4">
         <select
           value={targetTypeFilter}
@@ -329,10 +282,9 @@ export default function TargetManagementPage() {
         </select>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Total Targets', value: stats.total, icon: Target, color: 'bg-primary/10 text-primary' },
+          { label: 'Total Targets', value: stats.total, icon: TargetIcon, color: 'bg-primary/10 text-primary' },
           { label: 'Achieved', value: stats.achieved, icon: CheckCircle, color: 'bg-success/10 text-success' },
           { label: 'In Progress', value: stats.inProgress, icon: Clock, color: 'bg-warning/10 text-warning' },
           { label: 'Avg Progress', value: `${stats.avgProgress}%`, icon: TrendingUp, color: 'bg-info/10 text-info' },
@@ -357,10 +309,13 @@ export default function TargetManagementPage() {
         ))}
       </div>
 
-      {/* Targets Table */}
-      <DataTable data={filteredTargets} columns={columns} searchPlaceholder="Search targets..." />
+      <DataTable 
+        data={targets} 
+        columns={columns} 
+        searchPlaceholder="Search targets..."
+        emptyMessage="No targets found. Set your first target to get started."
+      />
 
-      {/* Create Target Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
@@ -382,15 +337,13 @@ export default function TargetManagementPage() {
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Select Employee *</label>
                 <select
-                  value={formData.userId}
-                  onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
+                  value={formData.user_id}
+                  onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
                   className="input-field"
                 >
                   <option value="">Select an employee</option>
-                  {mockUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({roleLabels[user.role]})
-                    </option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>{user.name}</option>
                   ))}
                 </select>
               </div>
@@ -399,8 +352,8 @@ export default function TargetManagementPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Target Type *</label>
                   <select
-                    value={formData.targetType}
-                    onChange={(e) => setFormData({ ...formData, targetType: e.target.value as any })}
+                    value={formData.target_type}
+                    onChange={(e) => setFormData({ ...formData, target_type: e.target.value })}
                     className="input-field"
                   >
                     <option value="sales">Sales Target (₹)</option>
@@ -413,9 +366,9 @@ export default function TargetManagementPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">Target Value *</label>
                   <input
                     type="number"
-                    value={formData.targetValue}
-                    onChange={(e) => setFormData({ ...formData, targetValue: e.target.value })}
-                    placeholder={formData.targetType === 'sales' || formData.targetType === 'collection' ? '₹500000' : '100'}
+                    value={formData.target_value}
+                    onChange={(e) => setFormData({ ...formData, target_value: e.target.value })}
+                    placeholder={formData.target_type === 'sales' || formData.target_type === 'collection' ? '₹500000' : '100'}
                     className="input-field"
                   />
                 </div>
@@ -425,7 +378,7 @@ export default function TargetManagementPage() {
                 <label className="block text-sm font-medium text-foreground mb-2">Period *</label>
                 <select
                   value={formData.period}
-                  onChange={(e) => setFormData({ ...formData, period: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, period: e.target.value })}
                   className="input-field"
                 >
                   <option value="daily">Daily</option>
@@ -441,8 +394,8 @@ export default function TargetManagementPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">Start Date *</label>
                   <input
                     type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    value={formData.start_date}
+                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                     className="input-field"
                   />
                 </div>
@@ -450,8 +403,8 @@ export default function TargetManagementPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">End Date *</label>
                   <input
                     type="date"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    value={formData.end_date}
+                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                     className="input-field"
                   />
                 </div>
@@ -460,13 +413,18 @@ export default function TargetManagementPage() {
 
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => setShowCreateModal(false)} className="btn-outline">Cancel</button>
-              <button onClick={handleCreate} className="btn-primary">Create Target</button>
+              <button 
+                onClick={handleCreate} 
+                disabled={createTarget.isPending}
+                className="btn-primary"
+              >
+                {createTarget.isPending ? 'Creating...' : 'Create'}
+              </button>
             </div>
           </motion.div>
         </div>
       )}
 
-      {/* View Target Modal */}
       {showViewModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
@@ -482,66 +440,31 @@ export default function TargetManagementPage() {
             </div>
             
             <div className="space-y-4">
-              {/* Employee Info */}
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User size={24} className="text-primary" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Employee</p>
+                  <p className="font-medium">{(showViewModal.user as any)?.name || 'Unknown'}</p>
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">{showViewModal.userName}</p>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${roleColors[showViewModal.userRole]}`}>
-                    {roleLabels[showViewModal.userRole]}
-                  </span>
+                  <p className="text-xs text-muted-foreground">Type</p>
+                  <p className="font-medium">{targetTypeLabels[showViewModal.target_type]}</p>
                 </div>
-              </div>
-
-              {/* Target Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-lg bg-muted/30">
-                  <p className="text-xs text-muted-foreground">Target Type</p>
-                  <p className="font-medium text-foreground flex items-center gap-2 mt-1">
-                    {targetTypeIcons[showViewModal.targetType]}
-                    {targetTypeLabels[showViewModal.targetType]}
-                  </p>
+                <div>
+                  <p className="text-xs text-muted-foreground">Target Value</p>
+                  <p className="font-medium">{formatValue(showViewModal.target_value, showViewModal.target_type)}</p>
                 </div>
-                <div className="p-3 rounded-lg bg-muted/30">
+                <div>
+                  <p className="text-xs text-muted-foreground">Achieved Value</p>
+                  <p className="font-medium">{formatValue(showViewModal.achieved_value, showViewModal.target_type)}</p>
+                </div>
+                <div>
                   <p className="text-xs text-muted-foreground">Period</p>
-                  <p className="font-medium text-foreground mt-1">{periodLabels[showViewModal.period]}</p>
+                  <p className="font-medium">{periodLabels[showViewModal.period]}</p>
                 </div>
-              </div>
-
-              {/* Progress */}
-              <div className="p-4 rounded-xl bg-muted/30">
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Progress</span>
-                  <span className="font-bold text-foreground">
-                    {((showViewModal.achievedValue / showViewModal.targetValue) * 100).toFixed(1)}%
-                  </span>
+                <div>
+                  <p className="text-xs text-muted-foreground">Progress</p>
+                  <p className="font-medium">{getProgressPercentage(showViewModal.achieved_value, showViewModal.target_value).toFixed(0)}%</p>
                 </div>
-                <div className="h-3 rounded-full bg-muted overflow-hidden mb-3">
-                  <div
-                    className={`h-full rounded-full transition-all ${getProgressColor(showViewModal.achievedValue, showViewModal.targetValue)}`}
-                    style={{ width: `${getProgressPercentage(showViewModal.achievedValue, showViewModal.targetValue)}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Achieved: <span className="font-medium text-foreground">{formatValue(showViewModal.achievedValue, showViewModal.targetType)}</span>
-                  </span>
-                  <span className="text-muted-foreground">
-                    Target: <span className="font-medium text-foreground">{formatValue(showViewModal.targetValue, showViewModal.targetType)}</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Date Range */}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar size={16} />
-                <span>
-                  {new Date(showViewModal.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} 
-                  {' - '}
-                  {new Date(showViewModal.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </span>
               </div>
             </div>
 

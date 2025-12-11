@@ -4,23 +4,8 @@ import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { CrudModal, FieldConfig } from '@/components/ui/CrudModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
-import { Plus, Globe, Edit, Trash2, Eye } from 'lucide-react';
-import { toast } from 'sonner';
-
-interface Country {
-  id: string;
-  name: string;
-  code: string;
-  currency: string;
-  status: 'active' | 'inactive';
-  createdAt: string;
-}
-
-const initialData: Country[] = [
-  { id: '1', name: 'India', code: 'IN', currency: 'INR', status: 'active', createdAt: '2024-01-01' },
-  { id: '2', name: 'United States', code: 'US', currency: 'USD', status: 'active', createdAt: '2024-01-01' },
-  { id: '3', name: 'United Kingdom', code: 'UK', currency: 'GBP', status: 'active', createdAt: '2024-01-01' },
-];
+import { useCountries, useCreateCountry, useUpdateCountry, useDeleteCountry, Country } from '@/hooks/useGeoMasterData';
+import { Plus, Globe, Edit, Trash2, Eye, Loader2 } from 'lucide-react';
 
 const fields: FieldConfig[] = [
   { key: 'name', label: 'Country Name', type: 'text', required: true, placeholder: 'Enter country name' },
@@ -30,7 +15,11 @@ const fields: FieldConfig[] = [
 ];
 
 export default function CountryMasterPage() {
-  const [data, setData] = useState<Country[]>(initialData);
+  const { data: countries = [], isLoading } = useCountries();
+  const createCountry = useCreateCountry();
+  const updateCountry = useUpdateCountry();
+  const deleteCountry = useDeleteCountry();
+
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState<Country | null>(null);
   const [selectedItem, setSelectedItem] = useState<Country | null>(null);
@@ -54,29 +43,29 @@ export default function CountryMasterPage() {
     setModalOpen(true);
   };
 
-  const handleSubmit = (formData: Record<string, any>) => {
+  const handleSubmit = async (formData: Record<string, any>) => {
     if (mode === 'create') {
-      const newItem: Country = {
-        id: Date.now().toString(),
+      await createCountry.mutateAsync({
         name: formData.name,
         code: formData.code,
         currency: formData.currency,
         status: formData.status || 'active',
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      setData([...data, newItem]);
-      toast.success('Country created successfully');
-    } else {
-      setData(data.map(item => item.id === selectedItem?.id ? { ...item, ...formData } : item));
-      toast.success('Country updated successfully');
+      });
+    } else if (selectedItem) {
+      await updateCountry.mutateAsync({
+        id: selectedItem.id,
+        name: formData.name,
+        code: formData.code,
+        currency: formData.currency,
+        status: formData.status,
+      });
     }
     setModalOpen(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteModal) {
-      setData(data.filter(item => item.id !== deleteModal.id));
-      toast.success('Country deleted successfully');
+      await deleteCountry.mutateAsync(deleteModal.id);
       setDeleteModal(null);
     }
   };
@@ -123,6 +112,14 @@ export default function CountryMasterPage() {
     },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="module-header">
@@ -136,23 +133,24 @@ export default function CountryMasterPage() {
         </button>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="stat-card"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-xl bg-primary/10">
             <Globe size={24} className="text-primary" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{data.length}</p>
+            <p className="text-2xl font-bold text-foreground">{countries.length}</p>
             <p className="text-sm text-muted-foreground">Total Countries</p>
           </div>
         </div>
       </motion.div>
 
-      <DataTable data={data} columns={columns} searchPlaceholder="Search countries..." />
+      <DataTable 
+        data={countries} 
+        columns={columns} 
+        searchPlaceholder="Search countries..."
+        emptyMessage="No countries found. Add your first country to get started."
+      />
 
       <CrudModal
         isOpen={modalOpen}
