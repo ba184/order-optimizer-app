@@ -1,6 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Navigation, MapPin, Clock, Battery, Users, Signal, AlertCircle, Key, Loader2, Route, Package, Building2 } from "lucide-react";
+import {
+  Navigation,
+  MapPin,
+  Clock,
+  Battery,
+  Users,
+  Signal,
+  AlertCircle,
+  Key,
+  Loader2,
+  Route,
+  Package,
+  Building2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useEmployeeLocations } from "@/hooks/useSalesTeamData";
 import { formatDistanceToNow } from "date-fns";
@@ -27,7 +40,7 @@ interface EmployeeLocation {
   is_moving: boolean;
   zone: string;
   city: string;
-  status: 'moving' | 'stationary' | 'traveled';
+  status: "moving" | "stationary" | "traveled";
   traveledKm?: number;
   visitedDistributors?: VisitedDistributor[];
   routeCoordinates?: [number, number][];
@@ -48,7 +61,7 @@ const dummyEmployees: EmployeeLocation[] = [
     is_moving: true,
     zone: "North Delhi",
     city: "New Delhi",
-    status: 'moving',
+    status: "moving",
     currentSpeed: 25,
     traveledKm: 4.2,
     visitedDistributors: [
@@ -57,28 +70,28 @@ const dummyEmployees: EmployeeLocation[] = [
         address: "Karol Bagh, Delhi",
         visitTime: "09:30 AM",
         products: ["Product A", "Product B", "Product C"],
-        orderValue: 15000
-      }
+        orderValue: 15000,
+      },
     ],
     routeCoordinates: [
-      [77.205, 28.610],
+      [77.205, 28.61],
       [77.207, 28.612],
       [77.209, 28.6139],
-    ]
+    ],
   },
   {
     id: "dummy-2",
     user_id: "dummy-user-2",
     userName: "Priya Sharma",
-    latitude: 28.6280,
-    longitude: 77.2190,
+    latitude: 28.628,
+    longitude: 77.219,
     address: "Civil Lines, New Delhi",
     timestamp: "5 minutes ago",
     battery_level: 92,
     is_moving: false,
     zone: "North Delhi",
     city: "New Delhi",
-    status: 'stationary',
+    status: "stationary",
     traveledKm: 2.8,
     visitedDistributors: [
       {
@@ -86,30 +99,30 @@ const dummyEmployees: EmployeeLocation[] = [
         address: "Civil Lines, Delhi",
         visitTime: "10:15 AM",
         products: ["Product D", "Product E"],
-        orderValue: 8500
+        orderValue: 8500,
       },
       {
         name: "Metro Traders",
         address: "Model Town, Delhi",
         visitTime: "11:00 AM",
         products: ["Product A", "Product F"],
-        orderValue: 12000
-      }
-    ]
+        orderValue: 12000,
+      },
+    ],
   },
   {
     id: "dummy-3",
     user_id: "dummy-user-3",
     userName: "Amit Singh",
-    latitude: 28.5850,
-    longitude: 77.2500,
+    latitude: 28.585,
+    longitude: 77.25,
     address: "Lajpat Nagar, New Delhi",
     timestamp: "15 minutes ago",
     battery_level: 67,
     is_moving: false,
     zone: "South Delhi",
     city: "New Delhi",
-    status: 'traveled',
+    status: "traveled",
     traveledKm: 18.5,
     visitedDistributors: [
       {
@@ -117,45 +130,49 @@ const dummyEmployees: EmployeeLocation[] = [
         address: "Saket, Delhi",
         visitTime: "08:00 AM",
         products: ["Product A", "Product B", "Product G"],
-        orderValue: 25000
+        orderValue: 25000,
       },
       {
         name: "National Traders",
         address: "Green Park, Delhi",
         visitTime: "09:30 AM",
         products: ["Product C", "Product D"],
-        orderValue: 18000
+        orderValue: 18000,
       },
       {
         name: "Supreme Wholesalers",
         address: "Defence Colony, Delhi",
         visitTime: "11:00 AM",
         products: ["Product E", "Product F", "Product H"],
-        orderValue: 32000
+        orderValue: 32000,
       },
       {
         name: "Royal Enterprises",
         address: "Lajpat Nagar, Delhi",
         visitTime: "12:30 PM",
         products: ["Product A", "Product I"],
-        orderValue: 15000
-      }
+        orderValue: 15000,
+      },
     ],
     routeCoordinates: [
       [77.2167, 28.5245], // Saket
       [77.2065, 28.5594], // Green Park
       [77.2295, 28.5715], // Defence Colony
-      [77.2500, 28.5850], // Lajpat Nagar (current)
-    ]
-  }
+      [77.25, 28.585], // Lajpat Nagar (current)
+    ],
+  },
 ];
 
 export default function LiveTrackingPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
-  const [mapboxToken, setMapboxToken] = useState("");
+  const [mapboxToken, setMapboxToken] = useState(
+    "pk.eyJ1IjoiYWJoaTAwMDEiLCJhIjoiY21peWlvdGtrMDdyeDNlc2R2YzNmbTgxcyJ9.CFTqYpkBUENiseB1xKMwYQ"
+  );
   const [showTokenInput, setShowTokenInput] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [movingMarkerPosition, setMovingMarkerPosition] = useState<[number, number]>([77.209, 28.6139]);
+  const [movingMarkerPosition, setMovingMarkerPosition] = useState<
+    [number, number]
+  >([77.209, 28.6139]);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const markers = useRef<any[]>([]);
@@ -164,28 +181,33 @@ export default function LiveTrackingPage() {
   const { data: locationsData, isLoading } = useEmployeeLocations();
 
   // Transform real data and merge with dummy data
-  const realLocations: EmployeeLocation[] = (locationsData || []).map((loc: any) => ({
-    id: loc.id,
-    user_id: loc.user_id,
-    userName: loc.profiles?.name || 'Unknown',
-    latitude: Number(loc.latitude),
-    longitude: Number(loc.longitude),
-    address: loc.address || 'Unknown location',
-    timestamp: loc.recorded_at ? formatDistanceToNow(new Date(loc.recorded_at), { addSuffix: true }) : 'N/A',
-    battery_level: loc.battery_level || 100,
-    is_moving: loc.is_moving || false,
-    zone: loc.profiles?.region || 'N/A',
-    city: loc.profiles?.territory || 'N/A',
-    status: loc.is_moving ? 'moving' : 'stationary' as const,
-  }));
+  const realLocations: EmployeeLocation[] = (locationsData || []).map(
+    (loc: any) => ({
+      id: loc.id,
+      user_id: loc.user_id,
+      userName: loc.profiles?.name || "Unknown",
+      latitude: Number(loc.latitude),
+      longitude: Number(loc.longitude),
+      address: loc.address || "Unknown location",
+      timestamp: loc.recorded_at
+        ? formatDistanceToNow(new Date(loc.recorded_at), { addSuffix: true })
+        : "N/A",
+      battery_level: loc.battery_level || 100,
+      is_moving: loc.is_moving || false,
+      zone: loc.profiles?.region || "N/A",
+      city: loc.profiles?.territory || "N/A",
+      status: loc.is_moving ? "moving" : ("stationary" as const),
+    })
+  );
 
   // Combine real and dummy data
   const locations: EmployeeLocation[] = [...dummyEmployees, ...realLocations];
 
   // Animate the moving marker
   useEffect(() => {
-    if (!mapLoaded) return;
-
+    setTimeout(() => {
+      (async () => await initializeMap())();
+    }, 500);
     let step = 0;
     const animateMovingMarker = () => {
       step += 0.002;
@@ -194,14 +216,14 @@ export default function LiveTrackingPage() {
       setMovingMarkerPosition([newLng, newLat]);
 
       // Update the dummy moving employee position
-      if (map.current && map.current.getSource('moving-point')) {
-        map.current.getSource('moving-point').setData({
-          type: 'Feature',
+      if (map.current && map.current.getSource("moving-point")) {
+        map.current.getSource("moving-point").setData({
+          type: "Feature",
           properties: {},
           geometry: {
-            type: 'Point',
-            coordinates: [newLng, newLat]
-          }
+            type: "Point",
+            coordinates: [newLng, newLat],
+          },
         });
       }
 
@@ -218,13 +240,12 @@ export default function LiveTrackingPage() {
   }, [mapLoaded]);
 
   const initializeMap = async () => {
-    if (!mapboxToken || !mapContainer.current) return;
-
     try {
       const mapboxgl = (await import("mapbox-gl")).default;
-      mapboxgl.accessToken = mapboxToken;
+      mapboxgl.accessToken =
+        "pk.eyJ1IjoiYWJoaTAwMDEiLCJhIjoiY21peWlvdGtrMDdyeDNlc2R2YzNmbTgxcyJ9.CFTqYpkBUENiseB1xKMwYQ";
 
-      const center: [number, number] = [77.22, 28.60];
+      const center: [number, number] = [77.22, 28.6];
 
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
@@ -250,59 +271,62 @@ export default function LiveTrackingPage() {
 
   const addRoutesAndMarkers = async (mapboxgl: any) => {
     // Clear existing markers
-    markers.current.forEach(marker => marker.remove());
+    markers.current.forEach((marker) => marker.remove());
     markers.current = [];
 
     // Add traveled route for Amit Singh (dummy-3)
-    const traveledEmployee = dummyEmployees.find(e => e.id === 'dummy-3');
+    const traveledEmployee = dummyEmployees.find((e) => e.id === "dummy-3");
     if (traveledEmployee?.routeCoordinates) {
-      map.current.addSource('traveled-route', {
-        type: 'geojson',
+      map.current.addSource("traveled-route", {
+        type: "geojson",
         data: {
-          type: 'Feature',
+          type: "Feature",
           properties: {},
           geometry: {
-            type: 'LineString',
-            coordinates: traveledEmployee.routeCoordinates
-          }
-        }
+            type: "LineString",
+            coordinates: traveledEmployee.routeCoordinates,
+          },
+        },
       });
 
       // Highlighted route line
       map.current.addLayer({
-        id: 'traveled-route-line',
-        type: 'line',
-        source: 'traveled-route',
+        id: "traveled-route-line",
+        type: "line",
+        source: "traveled-route",
         layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
+          "line-join": "round",
+          "line-cap": "round",
         },
         paint: {
-          'line-color': '#8b5cf6',
-          'line-width': 6,
-          'line-opacity': 0.8
-        }
+          "line-color": "#8b5cf6",
+          "line-width": 6,
+          "line-opacity": 0.8,
+        },
       });
 
       // Glow effect
-      map.current.addLayer({
-        id: 'traveled-route-glow',
-        type: 'line',
-        source: 'traveled-route',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
+      map.current.addLayer(
+        {
+          id: "traveled-route-glow",
+          type: "line",
+          source: "traveled-route",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "#a78bfa",
+            "line-width": 12,
+            "line-opacity": 0.3,
+          },
         },
-        paint: {
-          'line-color': '#a78bfa',
-          'line-width': 12,
-          'line-opacity': 0.3
-        }
-      }, 'traveled-route-line');
+        "traveled-route-line"
+      );
 
       // Add visit point markers along the route
       traveledEmployee.routeCoordinates.forEach((coord, index) => {
-        const visitEl = document.createElement('div');
+        const visitEl = document.createElement("div");
         visitEl.style.cssText = `
           width: 16px;
           height: 16px;
@@ -320,76 +344,84 @@ export default function LiveTrackingPage() {
     }
 
     // Add moving trail for Rajesh Kumar (dummy-1)
-    const movingEmployee = dummyEmployees.find(e => e.id === 'dummy-1');
+    const movingEmployee = dummyEmployees.find((e) => e.id === "dummy-1");
     if (movingEmployee?.routeCoordinates) {
-      map.current.addSource('moving-trail', {
-        type: 'geojson',
+      map.current.addSource("moving-trail", {
+        type: "geojson",
         data: {
-          type: 'Feature',
+          type: "Feature",
           properties: {},
           geometry: {
-            type: 'LineString',
-            coordinates: movingEmployee.routeCoordinates
-          }
-        }
+            type: "LineString",
+            coordinates: movingEmployee.routeCoordinates,
+          },
+        },
       });
 
       map.current.addLayer({
-        id: 'moving-trail-line',
-        type: 'line',
-        source: 'moving-trail',
+        id: "moving-trail-line",
+        type: "line",
+        source: "moving-trail",
         layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
+          "line-join": "round",
+          "line-cap": "round",
         },
         paint: {
-          'line-color': '#22c55e',
-          'line-width': 4,
-          'line-dasharray': [2, 2]
-        }
+          "line-color": "#22c55e",
+          "line-width": 4,
+          "line-dasharray": [2, 2],
+        },
       });
 
       // Moving point source
-      map.current.addSource('moving-point', {
-        type: 'geojson',
+      map.current.addSource("moving-point", {
+        type: "geojson",
         data: {
-          type: 'Feature',
+          type: "Feature",
           properties: {},
           geometry: {
-            type: 'Point',
-            coordinates: [movingEmployee.longitude, movingEmployee.latitude]
-          }
-        }
+            type: "Point",
+            coordinates: [movingEmployee.longitude, movingEmployee.latitude],
+          },
+        },
       });
 
       map.current.addLayer({
-        id: 'moving-point-pulse',
-        type: 'circle',
-        source: 'moving-point',
+        id: "moving-point-pulse",
+        type: "circle",
+        source: "moving-point",
         paint: {
-          'circle-radius': 20,
-          'circle-color': '#22c55e',
-          'circle-opacity': 0.3
-        }
+          "circle-radius": 20,
+          "circle-color": "#22c55e",
+          "circle-opacity": 0.3,
+        },
       });
     }
 
     // Add markers for all employees
     locations.forEach((loc) => {
-      const isDummy = loc.id.startsWith('dummy-');
-      
+      const isDummy = loc.id.startsWith("dummy-");
+
       // Add radius circle for stationary and traveled employees
-      if (loc.status !== 'moving' || !isDummy) {
+      if (loc.status !== "moving" || !isDummy) {
         const radiusSourceId = `radius-${loc.id}`;
-        
+
         if (!map.current.getSource(radiusSourceId)) {
           map.current.addSource(radiusSourceId, {
             type: "geojson",
-            data: createCircleGeoJSON(loc.longitude, loc.latitude, loc.status === 'traveled' ? 0.3 : 0.5),
+            data: createCircleGeoJSON(
+              loc.longitude,
+              loc.latitude,
+              loc.status === "traveled" ? 0.3 : 0.5
+            ),
           });
 
-          const fillColor = loc.status === 'traveled' ? '#8b5cf6' : 
-                           loc.status === 'moving' ? '#22c55e' : '#f59e0b';
+          const fillColor =
+            loc.status === "traveled"
+              ? "#8b5cf6"
+              : loc.status === "moving"
+              ? "#22c55e"
+              : "#f59e0b";
 
           map.current.addLayer({
             id: `${radiusSourceId}-fill`,
@@ -417,10 +449,14 @@ export default function LiveTrackingPage() {
       // Create marker element
       const el = document.createElement("div");
       el.className = "employee-marker";
-      
-      const markerColor = loc.status === 'traveled' ? 'hsl(263, 70%, 50%)' :
-                         loc.status === 'moving' ? 'hsl(142, 71%, 45%)' : 'hsl(38, 92%, 50%)';
-      
+
+      const markerColor =
+        loc.status === "traveled"
+          ? "hsl(263, 70%, 50%)"
+          : loc.status === "moving"
+          ? "hsl(142, 71%, 45%)"
+          : "hsl(38, 92%, 50%)";
+
       el.style.cssText = `
         width: 48px;
         height: 48px;
@@ -438,11 +474,14 @@ export default function LiveTrackingPage() {
         z-index: 10;
         position: relative;
       `;
-      
-      el.innerHTML = loc.userName.split(" ").map(n => n[0]).join("");
+
+      el.innerHTML = loc.userName
+        .split(" ")
+        .map((n) => n[0])
+        .join("");
 
       // Add pulsing animation for moving employee
-      if (loc.status === 'moving' && isDummy) {
+      if (loc.status === "moving" && isDummy) {
         const pulse = document.createElement("div");
         pulse.style.cssText = `
           position: absolute;
@@ -458,10 +497,10 @@ export default function LiveTrackingPage() {
 
       // Create detailed popup
       const popupContent = createPopupContent(loc);
-      const popup = new mapboxgl.Popup({ 
-        offset: 25, 
-        maxWidth: '350px',
-        className: 'custom-popup'
+      const popup = new mapboxgl.Popup({
+        offset: 25,
+        maxWidth: "350px",
+        className: "custom-popup",
       }).setHTML(popupContent);
 
       const marker = new mapboxgl.Marker(el)
@@ -474,7 +513,7 @@ export default function LiveTrackingPage() {
     });
 
     // Add CSS for pulse animation
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       @keyframes pulse {
         0% { transform: scale(1); opacity: 0.7; }
@@ -491,14 +530,26 @@ export default function LiveTrackingPage() {
   };
 
   const createPopupContent = (loc: EmployeeLocation) => {
-    const statusColor = loc.status === 'traveled' ? '#8b5cf6' :
-                       loc.status === 'moving' ? '#22c55e' : '#f59e0b';
-    const statusBg = loc.status === 'traveled' ? '#f3e8ff' :
-                    loc.status === 'moving' ? '#dcfce7' : '#fef3c7';
-    const statusText = loc.status === 'traveled' ? 'Route Completed' :
-                      loc.status === 'moving' ? 'Currently Moving' : 'At Location';
+    const statusColor =
+      loc.status === "traveled"
+        ? "#8b5cf6"
+        : loc.status === "moving"
+        ? "#22c55e"
+        : "#f59e0b";
+    const statusBg =
+      loc.status === "traveled"
+        ? "#f3e8ff"
+        : loc.status === "moving"
+        ? "#dcfce7"
+        : "#fef3c7";
+    const statusText =
+      loc.status === "traveled"
+        ? "Route Completed"
+        : loc.status === "moving"
+        ? "Currently Moving"
+        : "At Location";
 
-    let distributorHtml = '';
+    let distributorHtml = "";
     if (loc.visitedDistributors && loc.visitedDistributors.length > 0) {
       distributorHtml = `
         <div style="border-top: 1px solid #e5e7eb; padding: 12px; background: #f9fafb;">
@@ -508,32 +559,51 @@ export default function LiveTrackingPage() {
             </svg>
             Visited Distributors (${loc.visitedDistributors.length})
           </div>
-          ${loc.visitedDistributors.map((dist, idx) => `
-            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: ${idx < loc.visitedDistributors!.length - 1 ? '8px' : '0'};">
-              <div style="font-weight: 600; font-size: 12px; color: #1f2937;">${dist.name}</div>
-              <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${dist.address}</div>
-              <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">🕐 ${dist.visitTime}</div>
+          ${loc.visitedDistributors
+            .map(
+              (dist, idx) => `
+            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: ${
+              idx < loc.visitedDistributors!.length - 1 ? "8px" : "0"
+            };">
+              <div style="font-weight: 600; font-size: 12px; color: #1f2937;">${
+                dist.name
+              }</div>
+              <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${
+                dist.address
+              }</div>
+              <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">🕐 ${
+                dist.visitTime
+              }</div>
               <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px;">
-                ${dist.products.map(p => `
+                ${dist.products
+                  .map(
+                    (p) => `
                   <span style="background: #e0f2fe; color: #0369a1; font-size: 10px; padding: 2px 6px; border-radius: 4px;">${p}</span>
-                `).join('')}
+                `
+                  )
+                  .join("")}
               </div>
               <div style="margin-top: 8px; font-size: 12px; font-weight: 600; color: #059669;">
                 ₹${dist.orderValue.toLocaleString()}
               </div>
             </div>
-          `).join('')}
+          `
+            )
+            .join("")}
         </div>
       `;
     }
 
-    const totalOrderValue = loc.visitedDistributors?.reduce((sum, d) => sum + d.orderValue, 0) || 0;
+    const totalOrderValue =
+      loc.visitedDistributors?.reduce((sum, d) => sum + d.orderValue, 0) || 0;
 
     return `
       <div style="min-width: 280px; font-family: system-ui, -apple-system, sans-serif;">
         <div style="padding: 16px; background: linear-gradient(135deg, ${statusColor}22, ${statusColor}11);">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <strong style="font-size: 16px; color: #1f2937;">${loc.userName}</strong>
+            <strong style="font-size: 16px; color: #1f2937;">${
+              loc.userName
+            }</strong>
             <span style="background: ${statusBg}; color: ${statusColor}; font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 12px;">
               ${statusText}
             </span>
@@ -549,7 +619,9 @@ export default function LiveTrackingPage() {
         <div style="padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
           <div style="background: #f3f4f6; padding: 8px; border-radius: 8px; text-align: center;">
             <div style="font-size: 11px; color: #6b7280;">Travel Distance</div>
-            <div style="font-size: 16px; font-weight: 700; color: #1f2937;">${loc.traveledKm || 0} km</div>
+            <div style="font-size: 16px; font-weight: 700; color: #1f2937;">${
+              loc.traveledKm || 0
+            } km</div>
           </div>
           <div style="background: #f3f4f6; padding: 8px; border-radius: 8px; text-align: center;">
             <div style="font-size: 11px; color: #6b7280;">Total Orders</div>
@@ -557,18 +629,26 @@ export default function LiveTrackingPage() {
           </div>
           <div style="background: #f3f4f6; padding: 8px; border-radius: 8px; text-align: center;">
             <div style="font-size: 11px; color: #6b7280;">Battery</div>
-            <div style="font-size: 16px; font-weight: 700; color: ${loc.battery_level < 50 ? '#f59e0b' : '#22c55e'};">${loc.battery_level}%</div>
+            <div style="font-size: 16px; font-weight: 700; color: ${
+              loc.battery_level < 50 ? "#f59e0b" : "#22c55e"
+            };">${loc.battery_level}%</div>
           </div>
           <div style="background: #f3f4f6; padding: 8px; border-radius: 8px; text-align: center;">
             <div style="font-size: 11px; color: #6b7280;">Last Update</div>
-            <div style="font-size: 12px; font-weight: 600; color: #1f2937;">${loc.timestamp}</div>
+            <div style="font-size: 12px; font-weight: 600; color: #1f2937;">${
+              loc.timestamp
+            }</div>
           </div>
-          ${loc.currentSpeed !== undefined ? `
+          ${
+            loc.currentSpeed !== undefined
+              ? `
             <div style="background: #dcfce7; padding: 8px; border-radius: 8px; text-align: center; grid-column: span 2;">
               <div style="font-size: 11px; color: #166534;">Current Speed</div>
               <div style="font-size: 16px; font-weight: 700; color: #166534;">${loc.currentSpeed} km/h</div>
             </div>
-          ` : ''}
+          `
+              : ""
+          }
         </div>
 
         ${distributorHtml}
@@ -579,19 +659,19 @@ export default function LiveTrackingPage() {
   const createCircleGeoJSON = (lng: number, lat: number, radiusKm: number) => {
     const points = 64;
     const coords: [number, number][] = [];
-    
+
     for (let i = 0; i < points; i++) {
       const angle = (i / points) * 2 * Math.PI;
       const dx = radiusKm * Math.cos(angle);
       const dy = radiusKm * Math.sin(angle);
-      
-      const dLng = dx / (111.32 * Math.cos(lat * Math.PI / 180));
+
+      const dLng = dx / (111.32 * Math.cos((lat * Math.PI) / 180));
       const dLat = dy / 110.574;
-      
+
       coords.push([lng + dLng, lat + dLat]);
     }
     coords.push(coords[0]);
-    
+
     return {
       type: "Feature" as const,
       properties: {},
@@ -617,11 +697,14 @@ export default function LiveTrackingPage() {
         zoom: 14,
         duration: 1000,
       });
-      
+
       // Open the popup for this employee
-      const marker = markers.current.find(m => {
+      const marker = markers.current.find((m) => {
         const lngLat = m.getLngLat();
-        return Math.abs(lngLat.lng - loc.longitude) < 0.001 && Math.abs(lngLat.lat - loc.latitude) < 0.001;
+        return (
+          Math.abs(lngLat.lng - loc.longitude) < 0.001 &&
+          Math.abs(lngLat.lat - loc.latitude) < 0.001
+        );
       });
       if (marker) {
         marker.togglePopup();
@@ -631,9 +714,9 @@ export default function LiveTrackingPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'moving':
+      case "moving":
         return <Navigation size={14} className="text-success animate-pulse" />;
-      case 'traveled':
+      case "traveled":
         return <Route size={14} className="text-violet-500" />;
       default:
         return <MapPin size={14} className="text-warning" />;
@@ -642,17 +725,21 @@ export default function LiveTrackingPage() {
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      moving: 'bg-success/10 text-success',
-      traveled: 'bg-violet-500/10 text-violet-500',
-      stationary: 'bg-warning/10 text-warning'
+      moving: "bg-success/10 text-success",
+      traveled: "bg-violet-500/10 text-violet-500",
+      stationary: "bg-warning/10 text-warning",
     };
     const labels = {
-      moving: 'Moving',
-      traveled: 'Completed',
-      stationary: 'Stationary'
+      moving: "Moving",
+      traveled: "Completed",
+      stationary: "Stationary",
     };
     return (
-      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${styles[status as keyof typeof styles]}`}>
+      <span
+        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+          styles[status as keyof typeof styles]
+        }`}
+      >
         {labels[status as keyof typeof labels]}
       </span>
     );
@@ -671,12 +758,16 @@ export default function LiveTrackingPage() {
       <div className="module-header">
         <div>
           <h1 className="module-title">Live GPS Tracking</h1>
-          <p className="text-muted-foreground">Real-time employee location monitoring</p>
+          <p className="text-muted-foreground">
+            Real-time employee location monitoring
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-success/10 rounded-lg">
             <Signal size={16} className="text-success" />
-            <span className="text-sm text-success font-medium">{locations.length} Online</span>
+            <span className="text-sm text-success font-medium">
+              {locations.length} Online
+            </span>
           </div>
         </div>
       </div>
@@ -685,7 +776,7 @@ export default function LiveTrackingPage() {
         {/* Map Container */}
         <div className="lg:col-span-2 bg-card rounded-xl border border-border overflow-hidden">
           <div className="h-[500px] relative">
-            {showTokenInput ? (
+            {/* {showTokenInput ? (
               <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -730,14 +821,17 @@ export default function LiveTrackingPage() {
                   </div>
                 </motion.div>
               </div>
-            ) : null}
+            ) : null} */}
 
             <div ref={mapContainer} className="absolute inset-0" />
 
             {!mapLoaded && !showTokenInput && (
               <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
                 <div className="text-center">
-                  <Navigation size={48} className="text-muted-foreground mx-auto mb-4 animate-pulse" />
+                  <Navigation
+                    size={48}
+                    className="text-muted-foreground mx-auto mb-4 animate-pulse"
+                  />
                   <p className="text-muted-foreground">Loading map...</p>
                 </div>
               </div>
@@ -775,7 +869,9 @@ export default function LiveTrackingPage() {
           </h3>
           <div className="space-y-3 max-h-[520px] overflow-y-auto scrollbar-thin">
             {locations.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No active employees found</p>
+              <p className="text-center text-muted-foreground py-8">
+                No active employees found
+              </p>
             ) : (
               locations.map((loc) => (
                 <motion.div
@@ -783,14 +879,18 @@ export default function LiveTrackingPage() {
                   whileHover={{ scale: 1.02 }}
                   onClick={() => focusOnEmployee(loc)}
                   className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                    selectedEmployee === loc.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                    selectedEmployee === loc.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       {getStatusIcon(loc.status)}
                       <div>
-                        <p className="font-medium text-foreground">{loc.userName}</p>
+                        <p className="font-medium text-foreground">
+                          {loc.userName}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {loc.zone} • {loc.city}
                         </p>
@@ -802,7 +902,7 @@ export default function LiveTrackingPage() {
                     <MapPin size={12} />
                     <span className="truncate">{loc.address}</span>
                   </div>
-                  
+
                   {/* Additional info for dummy employees */}
                   {loc.traveledKm !== undefined && (
                     <div className="mt-2 flex items-center gap-4 text-xs">
@@ -819,19 +919,31 @@ export default function LiveTrackingPage() {
                       {loc.visitedDistributors && (
                         <div className="flex items-center gap-1 text-success">
                           <Package size={12} />
-                          <span>₹{loc.visitedDistributors.reduce((s, d) => s + d.orderValue, 0).toLocaleString()}</span>
+                          <span>
+                            ₹
+                            {loc.visitedDistributors
+                              .reduce((s, d) => s + d.orderValue, 0)
+                              .toLocaleString()}
+                          </span>
                         </div>
                       )}
                     </div>
                   )}
-                  
+
                   <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Clock size={12} />
                       {loc.timestamp}
                     </div>
                     <div className="flex items-center gap-1">
-                      <Battery size={12} className={loc.battery_level < 50 ? "text-warning" : "text-success"} />
+                      <Battery
+                        size={12}
+                        className={
+                          loc.battery_level < 50
+                            ? "text-warning"
+                            : "text-success"
+                        }
+                      />
                       {loc.battery_level}%
                     </div>
                   </div>
