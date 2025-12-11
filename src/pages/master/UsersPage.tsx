@@ -24,6 +24,8 @@ import {
   X,
   Target,
   Loader2,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,19 +45,24 @@ const roleColors: Record<string, string> = {
 
 export default function UsersPage() {
   const navigate = useNavigate();
-  const { users, isLoading, updateUser, updateUserRole, deleteUser } = useUsersData();
+  const { users, isLoading, createUser, updateUser, updateUserRole, deleteUser, resetPassword } = useUsersData();
   const { data: roles = [] } = useRoles();
   const createTarget = useCreateTarget();
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTargetModal, setShowTargetModal] = useState<UserWithRole | null>(null);
   const [showEditModal, setShowEditModal] = useState<UserWithRole | null>(null);
+  const [showViewModal, setShowViewModal] = useState<UserWithRole | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState<UserWithRole | null>(null);
+  const [showPermissionsModal, setShowPermissionsModal] = useState<UserWithRole | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
+  const [isCreating, setIsCreating] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     phone: '',
     role: 'sales_executive',
     territory: '',
@@ -72,6 +79,8 @@ export default function UsersPage() {
     endDate: '',
   });
 
+  const [newPassword, setNewPassword] = useState('');
+
   const filteredUsers = users.filter(u => {
     if (roleFilter !== 'all' && u.role_code !== roleFilter) return false;
     if (geoFilter.zone && u.region !== geoFilter.zone) return false;
@@ -79,36 +88,63 @@ export default function UsersPage() {
     return true;
   });
 
-  const handleCreate = () => {
-    if (!formData.name || !formData.email || !formData.role) {
-      toast.error('Please fill required fields');
+  const handleCreate = async () => {
+    if (!formData.name || !formData.email || !formData.password || !formData.role) {
+      toast.error('Please fill all required fields');
       return;
     }
-    toast.info('User creation requires admin setup. Please use the authentication system to register users.');
-    setShowCreateModal(false);
+
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      await createUser.mutateAsync({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone || undefined,
+        territory: formData.territory || undefined,
+        region: formData.region || undefined,
+        reporting_to: formData.reportingTo || undefined,
+        role_code: formData.role,
+      });
+      setShowCreateModal(false);
+      resetForm();
+    } catch (error) {
+      // Error handled by mutation
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (!showEditModal) return;
     
-    updateUser.mutate({
-      id: showEditModal.id,
-      name: formData.name,
-      phone: formData.phone || undefined,
-      territory: formData.territory || undefined,
-      region: formData.region || undefined,
-      reporting_to: formData.reportingTo || undefined,
-    });
-    
-    if (formData.role && formData.role !== showEditModal.role_code) {
-      updateUserRole.mutate({
-        userId: showEditModal.id,
-        roleCode: formData.role,
+    try {
+      await updateUser.mutateAsync({
+        id: showEditModal.id,
+        name: formData.name,
+        phone: formData.phone || undefined,
+        territory: formData.territory || undefined,
+        region: formData.region || undefined,
+        reporting_to: formData.reportingTo || undefined,
       });
+      
+      if (formData.role && formData.role !== showEditModal.role_code) {
+        await updateUserRole.mutateAsync({
+          userId: showEditModal.id,
+          roleCode: formData.role,
+        });
+      }
+      
+      setShowEditModal(null);
+      resetForm();
+    } catch (error) {
+      // Error handled by mutation
     }
-    
-    setShowEditModal(null);
-    resetForm();
   };
 
   const handleSetTarget = () => {
@@ -131,8 +167,43 @@ export default function UsersPage() {
   };
 
   const handleDelete = (user: UserWithRole) => {
-    if (confirm(`Are you sure you want to delete ${user.name}?`)) {
+    if (confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
       deleteUser.mutate(user.id);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!showPasswordModal || !newPassword) {
+      toast.error('Please enter a new password');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      await resetPassword.mutateAsync({
+        userId: showPasswordModal.id,
+        newPassword,
+      });
+      setShowPasswordModal(null);
+      setNewPassword('');
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleToggleStatus = async (user: UserWithRole) => {
+    const newStatus = user.status === 'active' ? 'inactive' : 'active';
+    try {
+      await updateUser.mutateAsync({
+        id: user.id,
+        status: newStatus,
+      });
+    } catch (error) {
+      // Error handled by mutation
     }
   };
 
@@ -140,6 +211,7 @@ export default function UsersPage() {
     setFormData({
       name: user.name,
       email: user.email,
+      password: '',
       phone: user.phone || '',
       role: user.role_code || 'sales_executive',
       territory: user.territory || '',
@@ -150,7 +222,7 @@ export default function UsersPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', phone: '', role: 'sales_executive', territory: '', region: '', reportingTo: '' });
+    setFormData({ name: '', email: '', password: '', phone: '', role: 'sales_executive', territory: '', region: '', reportingTo: '' });
   };
 
   const columns = [
@@ -230,7 +302,11 @@ export default function UsersPage() {
       header: 'Actions',
       render: (item: UserWithRole) => (
         <div className="flex items-center gap-1">
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="View">
+          <button 
+            onClick={() => setShowViewModal(item)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors" 
+            title="View"
+          >
             <Eye size={16} className="text-muted-foreground" />
           </button>
           {item.role_code === 'sales_executive' && (
@@ -249,11 +325,30 @@ export default function UsersPage() {
           >
             <Target size={16} className="text-success" />
           </button>
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="Permissions">
+          <button 
+            onClick={() => setShowPermissionsModal(item)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors" 
+            title="Permissions"
+          >
             <Shield size={16} className="text-muted-foreground" />
           </button>
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="Reset Password">
+          <button 
+            onClick={() => setShowPasswordModal(item)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors" 
+            title="Reset Password"
+          >
             <Key size={16} className="text-muted-foreground" />
+          </button>
+          <button 
+            onClick={() => handleToggleStatus(item)}
+            className={`p-2 rounded-lg transition-colors ${item.status === 'active' ? 'hover:bg-destructive/10' : 'hover:bg-success/10'}`}
+            title={item.status === 'active' ? 'Deactivate' : 'Activate'}
+          >
+            {item.status === 'active' ? (
+              <UserX size={16} className="text-destructive" />
+            ) : (
+              <UserCheck size={16} className="text-success" />
+            )}
           </button>
           <button 
             onClick={() => openEditModal(item)}
@@ -298,7 +393,7 @@ export default function UsersPage() {
           <h1 className="module-title">User Management</h1>
           <p className="text-muted-foreground">Manage users, roles, permissions, and targets</p>
         </div>
-        <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-2">
+        <button onClick={() => { resetForm(); setShowCreateModal(true); }} className="btn-primary flex items-center gap-2">
           <Plus size={18} />
           Add User
         </button>
@@ -342,7 +437,7 @@ export default function UsersPage() {
         data={filteredUsers} 
         columns={columns} 
         searchPlaceholder="Search users..." 
-        emptyMessage="No users found. Users will appear here when they register."
+        emptyMessage="No users found. Click 'Add User' to create one."
       />
 
       {/* Create Modal */}
@@ -351,23 +446,16 @@ export default function UsersPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg"
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">Add User</h2>
+              <h2 className="text-lg font-semibold text-foreground">Add New User</h2>
               <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-muted rounded-lg">
                 <X size={20} />
               </button>
             </div>
             
             <div className="space-y-4">
-              <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg">
-                <p className="text-sm text-warning">
-                  Note: New users should register through the authentication system. 
-                  You can then assign roles and update their profile here.
-                </p>
-              </div>
-              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Name *</label>
@@ -398,6 +486,17 @@ export default function UsersPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="email@company.com"
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Password *</label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Minimum 6 characters"
                   className="input-field"
                 />
               </div>
@@ -455,7 +554,14 @@ export default function UsersPage() {
 
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => setShowCreateModal(false)} className="btn-outline">Cancel</button>
-              <button onClick={handleCreate} className="btn-primary">Create User</button>
+              <button 
+                onClick={handleCreate} 
+                className="btn-primary flex items-center gap-2"
+                disabled={isCreating}
+              >
+                {isCreating && <Loader2 size={16} className="animate-spin" />}
+                Create User
+              </button>
             </div>
           </motion.div>
         </div>
@@ -564,6 +670,160 @@ export default function UsersPage() {
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => setShowEditModal(null)} className="btn-outline">Cancel</button>
               <button onClick={handleUpdate} className="btn-primary">Update User</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* View Modal */}
+      {showViewModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">User Details</h2>
+              <button onClick={() => setShowViewModal(null)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User size={32} className="text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-foreground">{showViewModal.name}</h3>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${roleColors[showViewModal.role_code || ''] || 'bg-muted text-muted-foreground'}`}>
+                    {showViewModal.role_name || showViewModal.role_code || 'No Role'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+                <div>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="font-medium">{showViewModal.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Phone</p>
+                  <p className="font-medium">{showViewModal.phone || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Region</p>
+                  <p className="font-medium">{showViewModal.region || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Territory</p>
+                  <p className="font-medium">{showViewModal.territory || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Reports To</p>
+                  <p className="font-medium">{showViewModal.reporting_to_name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <StatusBadge status={(showViewModal.status || 'active') as StatusType} />
+                </div>
+                <div className="col-span-2">
+                  <p className="text-sm text-muted-foreground">User ID</p>
+                  <p className="font-mono text-sm">{showViewModal.id}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button onClick={() => setShowViewModal(null)} className="btn-outline">Close</button>
+              <button onClick={() => { openEditModal(showViewModal); setShowViewModal(null); }} className="btn-primary">Edit User</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Reset Password</h2>
+                <p className="text-sm text-muted-foreground">{showPasswordModal.name}</p>
+              </div>
+              <button onClick={() => setShowPasswordModal(null)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">New Password *</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  className="input-field"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button onClick={() => { setShowPasswordModal(null); setNewPassword(''); }} className="btn-outline">Cancel</button>
+              <button onClick={handleResetPassword} className="btn-primary">Reset Password</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Permissions Modal */}
+      {showPermissionsModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Permissions</h2>
+                <p className="text-sm text-muted-foreground">{showPermissionsModal.name} - {showPermissionsModal.role_name || showPermissionsModal.role_code}</p>
+              </div>
+              <button onClick={() => setShowPermissionsModal(null)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="p-4 bg-info/10 border border-info/20 rounded-lg">
+                <p className="text-sm text-info">
+                  Permissions are managed through roles. To change permissions for this user, 
+                  either change their role or modify the role's permissions in the Roles & Permissions page.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Current Role: <span className="text-primary">{showPermissionsModal.role_name || showPermissionsModal.role_code || 'No Role'}</span></p>
+                <p className="text-sm text-muted-foreground">
+                  Navigate to Master → Roles & Permissions to manage role-based permissions.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button onClick={() => setShowPermissionsModal(null)} className="btn-outline">Close</button>
+              <button 
+                onClick={() => { navigate('/master/roles'); setShowPermissionsModal(null); }}
+                className="btn-primary"
+              >
+                Manage Roles
+              </button>
             </div>
           </motion.div>
         </div>

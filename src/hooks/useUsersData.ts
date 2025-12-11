@@ -87,17 +87,24 @@ export function useUsersData() {
     mutationFn: async (userData: {
       name: string;
       email: string;
+      password: string;
       phone?: string;
       territory?: string;
       region?: string;
       reporting_to?: string;
       role_code?: string;
     }) => {
-      // Note: Creating auth users requires admin privileges
-      // This would typically be done via an edge function
-      // For now, we'll just create the profile (user must exist in auth.users)
-      toast.error('User creation requires admin authentication setup');
-      throw new Error('User creation requires admin authentication setup');
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          action: 'create',
+          ...userData,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
@@ -180,18 +187,44 @@ export function useUsersData() {
 
   const deleteUser = useMutation({
     mutationFn: async (id: string) => {
-      // Note: Deleting users requires admin privileges
-      // This would cascade from auth.users deletion
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', id);
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          action: 'delete',
+          user_id: id,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
       toast.success('User deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          action: 'reset-password',
+          user_id: userId,
+          new_password: newPassword,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Password reset successfully');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -206,6 +239,7 @@ export function useUsersData() {
     updateUser,
     updateUserRole,
     deleteUser,
+    resetPassword,
   };
 }
 
