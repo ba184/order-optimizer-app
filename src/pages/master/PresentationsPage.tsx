@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { usePresentations, useCreatePresentation, useDeletePresentation, Presentation } from '@/hooks/usePresentationsData';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Plus,
   GraduationCap,
   FileText,
   Video,
-  Image,
   Eye,
   Edit,
   Trash2,
@@ -15,40 +17,10 @@ import {
   Package,
   Clock,
   HelpCircle,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface Presentation {
-  id: string;
-  title: string;
-  productId: string;
-  productName: string;
-  type: 'ppt' | 'pdf' | 'video';
-  description: string;
-  duration: number;
-  hasQuiz: boolean;
-  quizQuestions: number;
-  viewCount: number;
-  completionRate: number;
-  status: 'active' | 'inactive';
-  createdAt: string;
-  createdBy: string;
-}
-
-const mockPresentations: Presentation[] = [
-  { id: 'pres-001', title: 'Alpha Series Product Training', productId: 'p-001', productName: 'Alpha Pro 500', type: 'ppt', description: 'Complete product training for Alpha Pro series', duration: 30, hasQuiz: true, quizQuestions: 10, viewCount: 156, completionRate: 78, status: 'active', createdAt: '2024-12-01', createdBy: 'Admin' },
-  { id: 'pres-002', title: 'Beta Range Overview', productId: 'p-002', productName: 'Beta Max 1000', type: 'video', description: 'Video walkthrough of Beta range features', duration: 15, hasQuiz: true, quizQuestions: 5, viewCount: 89, completionRate: 92, status: 'active', createdAt: '2024-11-25', createdBy: 'Admin' },
-  { id: 'pres-003', title: 'Gamma Plus Benefits', productId: 'p-003', productName: 'Gamma Plus', type: 'pdf', description: 'PDF guide on Gamma Plus benefits', duration: 20, hasQuiz: false, quizQuestions: 0, viewCount: 67, completionRate: 85, status: 'active', createdAt: '2024-11-20', createdBy: 'Admin' },
-  { id: 'pres-004', title: 'New Product Launch 2024', productId: 'p-004', productName: 'Delta Series', type: 'ppt', description: 'Launch presentation for Delta series', duration: 45, hasQuiz: true, quizQuestions: 15, viewCount: 234, completionRate: 65, status: 'active', createdAt: '2024-11-15', createdBy: 'Admin' },
-];
-
-const mockProducts = [
-  { id: 'p-001', name: 'Alpha Pro 500' },
-  { id: 'p-002', name: 'Beta Max 1000' },
-  { id: 'p-003', name: 'Gamma Plus' },
-  { id: 'p-004', name: 'Delta Series' },
-  { id: 'p-005', name: 'Sigma Elite' },
-];
 
 const typeIcons = {
   ppt: FileText,
@@ -63,25 +35,48 @@ const typeColors = {
 };
 
 export default function PresentationsPage() {
+  const { data: presentations = [], isLoading } = usePresentations();
+  const createPresentation = useCreatePresentation();
+  const deletePresentation = useDeletePresentation();
+
+  const { data: products = [] } = useQuery({
+    queryKey: ['products-for-presentations'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('products').select('id, name').eq('status', 'active');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
-    productId: '',
+    product_id: '',
     type: 'ppt',
     description: '',
     duration: '',
-    hasQuiz: false,
-    quizQuestions: [] as { question: string; options: string[]; correctAnswer: number }[],
+    has_quiz: false,
   });
 
-  const handleCreate = () => {
-    if (!formData.title || !formData.productId) {
+  const handleCreate = async () => {
+    if (!formData.title) {
       toast.error('Please fill required fields');
       return;
     }
-    toast.success('Presentation created successfully');
+    await createPresentation.mutateAsync({
+      title: formData.title,
+      product_id: formData.product_id || undefined,
+      type: formData.type,
+      description: formData.description || undefined,
+      duration: parseInt(formData.duration) || 0,
+      has_quiz: formData.has_quiz,
+    });
     setShowCreateModal(false);
-    setFormData({ title: '', productId: '', type: 'ppt', description: '', duration: '', hasQuiz: false, quizQuestions: [] });
+    setFormData({ title: '', product_id: '', type: 'ppt', description: '', duration: '', has_quiz: false });
+  };
+
+  const handleDelete = async (id: string) => {
+    await deletePresentation.mutateAsync(id);
   };
 
   const columns = [
@@ -89,15 +84,15 @@ export default function PresentationsPage() {
       key: 'title',
       header: 'Presentation',
       render: (item: Presentation) => {
-        const TypeIcon = typeIcons[item.type];
+        const TypeIcon = typeIcons[item.type as keyof typeof typeIcons] || FileText;
         return (
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${typeColors[item.type]}`}>
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${typeColors[item.type as keyof typeof typeColors] || 'bg-muted'}`}>
               <TypeIcon size={20} />
             </div>
             <div>
               <p className="font-medium text-foreground">{item.title}</p>
-              <p className="text-xs text-muted-foreground">{item.id}</p>
+              <p className="text-xs text-muted-foreground">{item.id.slice(0, 8)}</p>
             </div>
           </div>
         );
@@ -105,12 +100,12 @@ export default function PresentationsPage() {
       sortable: true,
     },
     {
-      key: 'productName',
+      key: 'product',
       header: 'Product',
       render: (item: Presentation) => (
         <div className="flex items-center gap-2">
           <Package size={14} className="text-muted-foreground" />
-          <span>{item.productName}</span>
+          <span>{(item.product as any)?.name || '-'}</span>
         </div>
       ),
     },
@@ -118,7 +113,7 @@ export default function PresentationsPage() {
       key: 'type',
       header: 'Type',
       render: (item: Presentation) => (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${typeColors[item.type]}`}>
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${typeColors[item.type as keyof typeof typeColors] || 'bg-muted'}`}>
           {item.type.toUpperCase()}
         </span>
       ),
@@ -134,13 +129,13 @@ export default function PresentationsPage() {
       ),
     },
     {
-      key: 'hasQuiz',
+      key: 'has_quiz',
       header: 'Quiz',
       render: (item: Presentation) => (
-        item.hasQuiz ? (
+        item.has_quiz ? (
           <div className="flex items-center gap-2">
             <HelpCircle size={14} className="text-success" />
-            <span className="text-success">{item.quizQuestions} Qs</span>
+            <span className="text-success">{(item.quiz_questions as any[])?.length || 0} Qs</span>
           </div>
         ) : (
           <span className="text-muted-foreground">No Quiz</span>
@@ -152,8 +147,8 @@ export default function PresentationsPage() {
       header: 'Stats',
       render: (item: Presentation) => (
         <div>
-          <p className="text-sm">{item.viewCount} views</p>
-          <p className="text-xs text-muted-foreground">{item.completionRate}% completion</p>
+          <p className="text-sm">{item.view_count} views</p>
+          <p className="text-xs text-muted-foreground">{item.completion_rate}% completion</p>
         </div>
       ),
     },
@@ -173,7 +168,10 @@ export default function PresentationsPage() {
           <button className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Edit size={16} className="text-muted-foreground" />
           </button>
-          <button className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
+          <button 
+            onClick={() => handleDelete(item.id)}
+            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+          >
             <Trash2 size={16} className="text-destructive" />
           </button>
         </div>
@@ -182,15 +180,22 @@ export default function PresentationsPage() {
   ];
 
   const stats = {
-    total: mockPresentations.length,
-    active: mockPresentations.filter(p => p.status === 'active').length,
-    withQuiz: mockPresentations.filter(p => p.hasQuiz).length,
-    totalViews: mockPresentations.reduce((sum, p) => sum + p.viewCount, 0),
+    total: presentations.length,
+    active: presentations.filter(p => p.status === 'active').length,
+    withQuiz: presentations.filter(p => p.has_quiz).length,
+    totalViews: presentations.reduce((sum, p) => sum + p.view_count, 0),
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="module-header">
         <div>
           <h1 className="module-title">Presentation Master</h1>
@@ -202,7 +207,6 @@ export default function PresentationsPage() {
         </button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
@@ -250,10 +254,13 @@ export default function PresentationsPage() {
         </motion.div>
       </div>
 
-      {/* Presentations Table */}
-      <DataTable data={mockPresentations} columns={columns} searchPlaceholder="Search presentations..." />
+      <DataTable 
+        data={presentations} 
+        columns={columns} 
+        searchPlaceholder="Search presentations..."
+        emptyMessage="No presentations found. Create your first presentation to get started."
+      />
 
-      {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
@@ -261,7 +268,12 @@ export default function PresentationsPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-6">Create Presentation</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">Create Presentation</h2>
+              <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
             
             <div className="space-y-4">
               <div>
@@ -277,14 +289,14 @@ export default function PresentationsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Product *</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Product</label>
                   <select
-                    value={formData.productId}
-                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+                    value={formData.product_id}
+                    onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
                     className="input-field"
                   >
                     <option value="">Select Product</option>
-                    {mockProducts.map((product) => (
+                    {products.map((product) => (
                       <option key={product.id} value={product.id}>{product.name}</option>
                     ))}
                   </select>
@@ -325,38 +337,35 @@ export default function PresentationsPage() {
                 />
               </div>
 
-              {/* File Upload */}
               <div className="p-4 border-2 border-dashed border-border rounded-lg text-center">
                 <Upload size={24} className="mx-auto text-muted-foreground mb-2" />
                 <p className="text-sm text-foreground">Upload Presentation File</p>
                 <p className="text-xs text-muted-foreground">PPT, PDF, or Video (Max 100MB)</p>
               </div>
 
-              {/* Quiz Toggle */}
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
                   id="hasQuiz"
-                  checked={formData.hasQuiz}
-                  onChange={(e) => setFormData({ ...formData, hasQuiz: e.target.checked })}
+                  checked={formData.has_quiz}
+                  onChange={(e) => setFormData({ ...formData, has_quiz: e.target.checked })}
                   className="w-4 h-4 rounded border-border"
                 />
                 <label htmlFor="hasQuiz" className="text-sm font-medium text-foreground">
                   Add Quiz after presentation
                 </label>
               </div>
-
-              {formData.hasQuiz && (
-                <div className="p-4 bg-muted/30 rounded-lg">
-                  <p className="text-sm text-foreground mb-2">Quiz Questions</p>
-                  <p className="text-xs text-muted-foreground">Quiz builder will be available after saving the presentation</p>
-                </div>
-              )}
             </div>
 
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => setShowCreateModal(false)} className="btn-outline">Cancel</button>
-              <button onClick={handleCreate} className="btn-primary">Create</button>
+              <button 
+                onClick={handleCreate} 
+                disabled={createPresentation.isPending}
+                className="btn-primary"
+              >
+                {createPresentation.isPending ? 'Creating...' : 'Create'}
+              </button>
             </div>
           </motion.div>
         </div>

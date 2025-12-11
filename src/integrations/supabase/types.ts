@@ -243,6 +243,74 @@ export type Database = {
           },
         ]
       }
+      cities: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          name: string
+          state_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          state_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          state_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cities_state_id_fkey"
+            columns: ["state_id"]
+            isOneToOne: false
+            referencedRelation: "states"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      countries: {
+        Row: {
+          code: string
+          created_at: string
+          currency: string
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          currency?: string
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       daily_sales_reports: {
         Row: {
           area: string | null
@@ -1171,6 +1239,75 @@ export type Database = {
           },
         ]
       }
+      presentations: {
+        Row: {
+          completion_rate: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration: number
+          file_url: string | null
+          has_quiz: boolean
+          id: string
+          product_id: string | null
+          quiz_questions: Json | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          completion_rate?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration?: number
+          file_url?: string | null
+          has_quiz?: boolean
+          id?: string
+          product_id?: string | null
+          quiz_questions?: Json | null
+          status?: string
+          title: string
+          type?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          completion_rate?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration?: number
+          file_url?: string | null
+          has_quiz?: boolean
+          id?: string
+          product_id?: string | null
+          quiz_questions?: Json | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presentations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presentations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string | null
@@ -1613,6 +1750,44 @@ export type Database = {
         }
         Relationships: []
       }
+      states: {
+        Row: {
+          code: string
+          country_id: string
+          created_at: string
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          country_id: string
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          country_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "states_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_transfer_items: {
         Row: {
           created_at: string | null
@@ -1735,6 +1910,174 @@ export type Database = {
           },
         ]
       }
+      targets: {
+        Row: {
+          achieved_value: number
+          city_id: string | null
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          period: string
+          start_date: string
+          status: string
+          target_type: string
+          target_value: number
+          updated_at: string
+          user_id: string
+          zone_id: string | null
+        }
+        Insert: {
+          achieved_value?: number
+          city_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          id?: string
+          period?: string
+          start_date: string
+          status?: string
+          target_type?: string
+          target_value?: number
+          updated_at?: string
+          user_id: string
+          zone_id?: string | null
+        }
+        Update: {
+          achieved_value?: number
+          city_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          period?: string
+          start_date?: string
+          status?: string
+          target_type?: string
+          target_value?: number
+          updated_at?: string
+          user_id?: string
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "targets_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "targets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "targets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "targets_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      territories: {
+        Row: {
+          city_id: string | null
+          country_id: string | null
+          created_at: string
+          id: string
+          manager_id: string | null
+          name: string
+          parent_id: string | null
+          state_id: string | null
+          status: string
+          type: string
+          updated_at: string
+          zone_id: string | null
+        }
+        Insert: {
+          city_id?: string | null
+          country_id?: string | null
+          created_at?: string
+          id?: string
+          manager_id?: string | null
+          name: string
+          parent_id?: string | null
+          state_id?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          zone_id?: string | null
+        }
+        Update: {
+          city_id?: string | null
+          country_id?: string | null
+          created_at?: string
+          id?: string
+          manager_id?: string | null
+          name?: string
+          parent_id?: string | null
+          state_id?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territories_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territories_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territories_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territories_state_id_fkey"
+            columns: ["state_id"]
+            isOneToOne: false
+            referencedRelation: "states"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territories_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           assigned_at: string | null
@@ -1766,6 +2109,90 @@ export type Database = {
             foreignKeyName: "user_roles_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zone_states: {
+        Row: {
+          created_at: string
+          id: string
+          state_id: string
+          zone_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          state_id: string
+          zone_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          state_id?: string
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zone_states_state_id_fkey"
+            columns: ["state_id"]
+            isOneToOne: false
+            referencedRelation: "states"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zone_states_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zones: {
+        Row: {
+          code: string
+          country_id: string
+          created_at: string
+          id: string
+          manager_id: string | null
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          country_id: string
+          created_at?: string
+          id?: string
+          manager_id?: string | null
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          country_id?: string
+          created_at?: string
+          id?: string
+          manager_id?: string | null
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zones_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zones_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
