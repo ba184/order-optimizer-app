@@ -11,66 +11,48 @@ import {
   Edit,
   Trash2,
   Eye,
+  Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
-
-interface Product {
-  id: string;
-  sku: string;
-  name: string;
-  category: string;
-  subCategory: string;
-  mrp: number;
-  ptr: number;
-  gst: number;
-  unit: string;
-  packSize: number;
-  status: 'active' | 'inactive';
-}
-
-const initialProducts: Product[] = [
-  { id: 'p-001', sku: 'PA-500', name: 'Product Alpha 500ml', category: 'Beverages', subCategory: 'Energy Drinks', mrp: 150, ptr: 120, gst: 18, unit: 'Bottle', packSize: 24, status: 'active' },
-  { id: 'p-002', sku: 'PB-1L', name: 'Product Beta 1L', category: 'Beverages', subCategory: 'Health Drinks', mrp: 275, ptr: 220, gst: 18, unit: 'Bottle', packSize: 12, status: 'active' },
-  { id: 'p-003', sku: 'PG-250', name: 'Product Gamma 250g', category: 'Food', subCategory: 'Snacks', mrp: 110, ptr: 85, gst: 12, unit: 'Pack', packSize: 48, status: 'active' },
-  { id: 'p-004', sku: 'PD-PK', name: 'Product Delta Pack', category: 'Combo', subCategory: 'Value Pack', mrp: 450, ptr: 350, gst: 18, unit: 'Combo', packSize: 6, status: 'active' },
-  { id: 'p-005', sku: 'PE-2L', name: 'Product Epsilon 2L', category: 'Beverages', subCategory: 'Family Pack', mrp: 480, ptr: 380, gst: 18, unit: 'Bottle', packSize: 6, status: 'inactive' },
-];
+import {
+  useProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+  Product,
+} from '@/hooks/useProductsData';
 
 const categories = [
   { value: 'Beverages', label: 'Beverages' },
   { value: 'Food', label: 'Food' },
   { value: 'Combo', label: 'Combo' },
-];
-
-const units = [
-  { value: 'Bottle', label: 'Bottle' },
-  { value: 'Pack', label: 'Pack' },
-  { value: 'Combo', label: 'Combo' },
-  { value: 'Box', label: 'Box' },
+  { value: 'Health', label: 'Health' },
+  { value: 'Personal Care', label: 'Personal Care' },
 ];
 
 const fields: FieldConfig[] = [
   { key: 'sku', label: 'SKU', type: 'text', required: true, placeholder: 'e.g., PA-500' },
   { key: 'name', label: 'Product Name', type: 'text', required: true, placeholder: 'Enter product name' },
   { key: 'category', label: 'Category', type: 'select', required: true, options: categories },
-  { key: 'subCategory', label: 'Sub Category', type: 'text', placeholder: 'Enter sub-category' },
   { key: 'mrp', label: 'MRP (₹)', type: 'number', required: true, placeholder: '0' },
   { key: 'ptr', label: 'PTR (₹)', type: 'number', required: true, placeholder: '0' },
   { key: 'gst', label: 'GST (%)', type: 'number', required: true, placeholder: '18' },
-  { key: 'unit', label: 'Unit', type: 'select', required: true, options: units },
-  { key: 'packSize', label: 'Pack Size', type: 'number', required: true, placeholder: '12' },
+  { key: 'stock', label: 'Stock', type: 'number', placeholder: '0' },
   { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] },
 ];
 
 export default function ProductsPage() {
-  const [data, setData] = useState<Product[]>(initialProducts);
+  const { data: products = [], isLoading } = useProducts();
+  const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
+  const deleteProduct = useDeleteProduct();
+
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState<Product | null>(null);
   const [selectedItem, setSelectedItem] = useState<Product | null>(null);
   const [mode, setMode] = useState<'create' | 'edit' | 'view'>('create');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  const filteredData = categoryFilter === 'all' ? data : data.filter(p => p.category === categoryFilter);
+  const filteredData = categoryFilter === 'all' ? products : products.filter(p => p.category === categoryFilter);
 
   const handleCreate = () => {
     setSelectedItem(null);
@@ -92,41 +74,48 @@ export default function ProductsPage() {
 
   const handleSubmit = (formData: Record<string, any>) => {
     if (mode === 'create') {
-      const newItem: Product = {
-        id: Date.now().toString(),
+      createProduct.mutate({
         sku: formData.sku,
         name: formData.name,
         category: formData.category,
-        subCategory: formData.subCategory || '',
         mrp: Number(formData.mrp),
         ptr: Number(formData.ptr),
         gst: Number(formData.gst),
-        unit: formData.unit,
-        packSize: Number(formData.packSize),
+        stock: Number(formData.stock) || 0,
         status: formData.status || 'active',
-      };
-      setData([...data, newItem]);
-      toast.success('Product created successfully');
-    } else {
-      setData(data.map(item => item.id === selectedItem?.id ? { ...item, ...formData, mrp: Number(formData.mrp), ptr: Number(formData.ptr), gst: Number(formData.gst), packSize: Number(formData.packSize) } : item));
-      toast.success('Product updated successfully');
+      }, {
+        onSuccess: () => setModalOpen(false),
+      });
+    } else if (selectedItem) {
+      updateProduct.mutate({
+        id: selectedItem.id,
+        sku: formData.sku,
+        name: formData.name,
+        category: formData.category,
+        mrp: Number(formData.mrp),
+        ptr: Number(formData.ptr),
+        gst: Number(formData.gst),
+        stock: Number(formData.stock),
+        status: formData.status,
+      }, {
+        onSuccess: () => setModalOpen(false),
+      });
     }
-    setModalOpen(false);
   };
 
   const handleDelete = () => {
     if (deleteModal) {
-      setData(data.filter(item => item.id !== deleteModal.id));
-      toast.success('Product deleted successfully');
-      setDeleteModal(null);
+      deleteProduct.mutate(deleteModal.id, {
+        onSuccess: () => setDeleteModal(null),
+      });
     }
   };
 
   const stats = {
-    total: data.length,
-    active: data.filter(p => p.status === 'active').length,
-    inactive: data.filter(p => p.status === 'inactive').length,
-    categories: [...new Set(data.map(p => p.category))].length,
+    total: products.length,
+    active: products.filter(p => p.status === 'active').length,
+    inactive: products.filter(p => p.status === 'inactive').length,
+    categories: [...new Set(products.map(p => p.category).filter(Boolean))].length,
   };
 
   const columns = [
@@ -150,10 +139,7 @@ export default function ProductsPage() {
       key: 'category',
       header: 'Category',
       render: (item: Product) => (
-        <div>
-          <p className="text-sm">{item.category}</p>
-          <p className="text-xs text-muted-foreground">{item.subCategory}</p>
-        </div>
+        <span className="text-sm">{item.category || '-'}</span>
       ),
       sortable: true,
     },
@@ -175,14 +161,16 @@ export default function ProductsPage() {
       render: (item: Product) => <span>{item.gst}%</span>,
     },
     {
-      key: 'packSize',
-      header: 'Pack Size',
-      render: (item: Product) => <span>{item.packSize} {item.unit}</span>,
+      key: 'stock',
+      header: 'Stock',
+      render: (item: Product) => (
+        <span className={item.stock < 50 ? 'text-destructive font-medium' : ''}>{item.stock}</span>
+      ),
     },
     {
       key: 'status',
       header: 'Status',
-      render: (item: Product) => <StatusBadge status={item.status} />,
+      render: (item: Product) => <StatusBadge status={item.status === 'active' ? 'active' : 'inactive'} />,
     },
     {
       key: 'actions',
@@ -202,6 +190,14 @@ export default function ProductsPage() {
       ),
     },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
