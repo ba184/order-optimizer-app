@@ -137,6 +137,28 @@ export default function CreateOrderPage() {
           <h1 className="module-title">Create Order</h1>
           <p className="text-muted-foreground">Create new primary or secondary order</p>
         </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => handleSubmit(true)}
+            disabled={createOrder.isPending || cartItems.length === 0}
+            className="btn-outline flex items-center gap-2"
+          >
+            <FileText size={18} />
+            Save
+          </button>
+          <button
+            onClick={() => handleSubmit(false)}
+            disabled={createOrder.isPending || cartItems.length === 0}
+            className="btn-primary flex items-center gap-2"
+          >
+            {createOrder.isPending ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Send size={18} />
+            )}
+            Submit
+          </button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
