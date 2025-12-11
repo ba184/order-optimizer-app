@@ -5,86 +5,24 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   Plus,
   IndianRupee,
-  Car,
-  Hotel,
   Fuel,
-  Receipt,
+  Hotel,
   Upload,
-  Calendar,
   Eye,
   CheckCircle,
   Clock,
   Download,
   MapPin,
+  Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
-
-interface ExpenseClaim {
-  id: string;
-  claimNumber: string;
-  userId: string;
-  userName: string;
-  period: string;
-  daAmount: number;
-  taAmount: number;
-  hotelAmount: number;
-  fuelAmount: number;
-  otherAmount: number;
-  totalAmount: number;
-  status: 'draft' | 'pending' | 'approved' | 'rejected';
-  submittedAt?: string;
-  approvedBy?: string;
-}
-
-const mockExpenses: ExpenseClaim[] = [
-  {
-    id: 'exp-001',
-    claimNumber: 'EXP-2024-089',
-    userId: 'se-001',
-    userName: 'Rajesh Kumar',
-    period: 'Dec 1-7, 2024',
-    daAmount: 4200,
-    taAmount: 3500,
-    hotelAmount: 0,
-    fuelAmount: 2800,
-    otherAmount: 500,
-    totalAmount: 11000,
-    status: 'pending',
-    submittedAt: '2024-12-08',
-  },
-  {
-    id: 'exp-002',
-    claimNumber: 'EXP-2024-088',
-    userId: 'se-002',
-    userName: 'Amit Sharma',
-    period: 'Nov 25-30, 2024',
-    daAmount: 3600,
-    taAmount: 2800,
-    hotelAmount: 5500,
-    fuelAmount: 1500,
-    otherAmount: 300,
-    totalAmount: 13700,
-    status: 'approved',
-    submittedAt: '2024-12-01',
-    approvedBy: 'Priya Sharma (ASM)',
-  },
-  {
-    id: 'exp-003',
-    claimNumber: 'EXP-2024-087',
-    userId: 'se-003',
-    userName: 'Priya Singh',
-    period: 'Nov 20-25, 2024',
-    daAmount: 3000,
-    taAmount: 4200,
-    hotelAmount: 3000,
-    fuelAmount: 2200,
-    otherAmount: 800,
-    totalAmount: 13200,
-    status: 'approved',
-    submittedAt: '2024-11-26',
-    approvedBy: 'Priya Sharma (ASM)',
-  },
-];
+import { format } from 'date-fns';
+import {
+  useExpenseClaims,
+  useCreateExpenseClaim,
+  useApproveExpenseClaim,
+  useRejectExpenseClaim,
+  ExpenseClaim,
+} from '@/hooks/useExpensesData';
 
 const cityCategories = {
   A: { cities: ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata'], da: 800 },
@@ -92,71 +30,10 @@ const cityCategories = {
   C: { cities: ['Other cities'], da: 400 },
 };
 
-const columns = [
-  {
-    key: 'claimNumber',
-    header: 'Claim #',
-    render: (item: ExpenseClaim) => (
-      <div>
-        <p className="font-medium text-foreground">{item.claimNumber}</p>
-        <p className="text-xs text-muted-foreground">{item.period}</p>
-      </div>
-    ),
-  },
-  {
-    key: 'userName',
-    header: 'Employee',
-  },
-  {
-    key: 'daAmount',
-    header: 'DA',
-    render: (item: ExpenseClaim) => <span>₹{item.daAmount.toLocaleString()}</span>,
-  },
-  {
-    key: 'taAmount',
-    header: 'TA',
-    render: (item: ExpenseClaim) => <span>₹{item.taAmount.toLocaleString()}</span>,
-  },
-  {
-    key: 'fuelAmount',
-    header: 'Fuel',
-    render: (item: ExpenseClaim) => <span>₹{item.fuelAmount.toLocaleString()}</span>,
-  },
-  {
-    key: 'hotelAmount',
-    header: 'Hotel',
-    render: (item: ExpenseClaim) => <span>₹{item.hotelAmount.toLocaleString()}</span>,
-  },
-  {
-    key: 'totalAmount',
-    header: 'Total',
-    render: (item: ExpenseClaim) => (
-      <span className="font-semibold text-primary">₹{item.totalAmount.toLocaleString()}</span>
-    ),
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    render: (item: ExpenseClaim) => <StatusBadge status={item.status} />,
-  },
-  {
-    key: 'actions',
-    header: 'Actions',
-    render: (item: ExpenseClaim) => (
-      <div className="flex items-center gap-1">
-        <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-          <Eye size={16} className="text-muted-foreground" />
-        </button>
-        <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-          <Download size={16} className="text-muted-foreground" />
-        </button>
-      </div>
-    ),
-  },
-];
-
 export default function ExpenseManagementPage() {
   const [showClaimModal, setShowClaimModal] = useState(false);
+  const [viewingClaim, setViewingClaim] = useState<ExpenseClaim | null>(null);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [claimData, setClaimData] = useState({
     startDate: '',
     endDate: '',
@@ -169,21 +46,128 @@ export default function ExpenseManagementPage() {
     otherDescription: '',
   });
 
-  const calculateDA = () => claimData.workingDays * cityCategories[claimData.cityCategory as keyof typeof cityCategories].da;
-  const calculateFuel = () => claimData.distanceTravelled * 5; // ₹5 per km
+  const { data: expenses = [], isLoading } = useExpenseClaims(statusFilter);
+  const createMutation = useCreateExpenseClaim();
+  const approveMutation = useApproveExpenseClaim();
+  const rejectMutation = useRejectExpenseClaim();
+
+  const calculateDA = () =>
+    claimData.workingDays * cityCategories[claimData.cityCategory as keyof typeof cityCategories].da;
+  const calculateFuel = () => claimData.distanceTravelled * 5;
   const calculateTotal = () => calculateDA() + calculateFuel() + claimData.hotelAmount + claimData.otherExpenses;
 
   const handleSubmitClaim = () => {
-    toast.success('Expense claim submitted for approval');
+    createMutation.mutate({
+      start_date: claimData.startDate,
+      end_date: claimData.endDate,
+      city_category: claimData.cityCategory,
+      working_days: claimData.workingDays,
+      da_amount: calculateDA(),
+      distance_travelled: claimData.distanceTravelled,
+      fuel_amount: calculateFuel(),
+      hotel_nights: claimData.hotelNights,
+      hotel_amount: claimData.hotelAmount,
+      other_amount: claimData.otherExpenses,
+      other_description: claimData.otherDescription || undefined,
+      total_amount: calculateTotal(),
+    });
     setShowClaimModal(false);
+    setClaimData({
+      startDate: '',
+      endDate: '',
+      cityCategory: 'B',
+      workingDays: 0,
+      distanceTravelled: 0,
+      hotelNights: 0,
+      hotelAmount: 0,
+      otherExpenses: 0,
+      otherDescription: '',
+    });
   };
 
-  const stats = {
-    pending: mockExpenses.filter(e => e.status === 'pending').length,
-    approved: mockExpenses.filter(e => e.status === 'approved').length,
-    totalPending: mockExpenses.filter(e => e.status === 'pending').reduce((sum, e) => sum + e.totalAmount, 0),
-    totalApproved: mockExpenses.filter(e => e.status === 'approved').reduce((sum, e) => sum + e.totalAmount, 0),
+  const formatPeriod = (startDate: string, endDate: string) => {
+    try {
+      return `${format(new Date(startDate), 'MMM d')} - ${format(new Date(endDate), 'd, yyyy')}`;
+    } catch {
+      return `${startDate} - ${endDate}`;
+    }
   };
+
+  const columns = [
+    {
+      key: 'claim_number',
+      header: 'Claim #',
+      render: (item: ExpenseClaim) => (
+        <div>
+          <p className="font-medium text-foreground">{item.claim_number}</p>
+          <p className="text-xs text-muted-foreground">{formatPeriod(item.start_date, item.end_date)}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'user_name',
+      header: 'Employee',
+    },
+    {
+      key: 'da_amount',
+      header: 'DA',
+      render: (item: ExpenseClaim) => <span>₹{Number(item.da_amount).toLocaleString()}</span>,
+    },
+    {
+      key: 'fuel_amount',
+      header: 'Fuel',
+      render: (item: ExpenseClaim) => <span>₹{Number(item.fuel_amount).toLocaleString()}</span>,
+    },
+    {
+      key: 'hotel_amount',
+      header: 'Hotel',
+      render: (item: ExpenseClaim) => <span>₹{Number(item.hotel_amount).toLocaleString()}</span>,
+    },
+    {
+      key: 'total_amount',
+      header: 'Total',
+      render: (item: ExpenseClaim) => (
+        <span className="font-semibold text-primary">₹{Number(item.total_amount).toLocaleString()}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (item: ExpenseClaim) => <StatusBadge status={item.status as any} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (item: ExpenseClaim) => (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setViewingClaim(item)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+          >
+            <Eye size={16} className="text-muted-foreground" />
+          </button>
+          <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+            <Download size={16} className="text-muted-foreground" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const stats = {
+    pending: expenses.filter((e) => e.status === 'pending').length,
+    approved: expenses.filter((e) => e.status === 'approved').length,
+    totalPending: expenses.filter((e) => e.status === 'pending').reduce((sum, e) => sum + Number(e.total_amount), 0),
+    totalApproved: expenses.filter((e) => e.status === 'approved').reduce((sum, e) => sum + Number(e.total_amount), 0),
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -272,8 +256,25 @@ export default function ExpenseManagementPage() {
         </p>
       </motion.div>
 
+      {/* Filter Tabs */}
+      <div className="flex gap-2">
+        {['all', 'pending', 'approved', 'rejected'].map((status) => (
+          <button
+            key={status}
+            onClick={() => setStatusFilter(status)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              statusFilter === status
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </button>
+        ))}
+      </div>
+
       {/* Claims Table */}
-      <DataTable data={mockExpenses} columns={columns} searchPlaceholder="Search claims..." />
+      <DataTable data={expenses} columns={columns} searchPlaceholder="Search claims..." />
 
       {/* New Claim Modal */}
       {showClaimModal && (
@@ -284,7 +285,7 @@ export default function ExpenseManagementPage() {
             className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
             <h2 className="text-lg font-semibold text-foreground mb-6">New Expense Claim</h2>
-            
+
             <div className="space-y-6">
               {/* Period */}
               <div className="grid grid-cols-2 gap-4">
@@ -293,7 +294,7 @@ export default function ExpenseManagementPage() {
                   <input
                     type="date"
                     value={claimData.startDate}
-                    onChange={e => setClaimData({ ...claimData, startDate: e.target.value })}
+                    onChange={(e) => setClaimData({ ...claimData, startDate: e.target.value })}
                     className="input-field"
                   />
                 </div>
@@ -302,7 +303,7 @@ export default function ExpenseManagementPage() {
                   <input
                     type="date"
                     value={claimData.endDate}
-                    onChange={e => setClaimData({ ...claimData, endDate: e.target.value })}
+                    onChange={(e) => setClaimData({ ...claimData, endDate: e.target.value })}
                     className="input-field"
                   />
                 </div>
@@ -319,7 +320,7 @@ export default function ExpenseManagementPage() {
                     <label className="block text-sm text-muted-foreground mb-2">City Category</label>
                     <select
                       value={claimData.cityCategory}
-                      onChange={e => setClaimData({ ...claimData, cityCategory: e.target.value })}
+                      onChange={(e) => setClaimData({ ...claimData, cityCategory: e.target.value })}
                       className="input-field"
                     >
                       <option value="A">Category A (₹800/day)</option>
@@ -332,7 +333,7 @@ export default function ExpenseManagementPage() {
                     <input
                       type="number"
                       value={claimData.workingDays}
-                      onChange={e => setClaimData({ ...claimData, workingDays: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setClaimData({ ...claimData, workingDays: parseInt(e.target.value) || 0 })}
                       className="input-field"
                     />
                   </div>
@@ -353,7 +354,9 @@ export default function ExpenseManagementPage() {
                   <input
                     type="number"
                     value={claimData.distanceTravelled}
-                    onChange={e => setClaimData({ ...claimData, distanceTravelled: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setClaimData({ ...claimData, distanceTravelled: parseInt(e.target.value) || 0 })
+                    }
                     className="input-field"
                     placeholder="Auto-filled from GPS tracking"
                   />
@@ -375,7 +378,7 @@ export default function ExpenseManagementPage() {
                     <input
                       type="number"
                       value={claimData.hotelNights}
-                      onChange={e => setClaimData({ ...claimData, hotelNights: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setClaimData({ ...claimData, hotelNights: parseInt(e.target.value) || 0 })}
                       className="input-field"
                     />
                   </div>
@@ -384,7 +387,7 @@ export default function ExpenseManagementPage() {
                     <input
                       type="number"
                       value={claimData.hotelAmount}
-                      onChange={e => setClaimData({ ...claimData, hotelAmount: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setClaimData({ ...claimData, hotelAmount: parseInt(e.target.value) || 0 })}
                       className="input-field"
                     />
                   </div>
@@ -397,12 +400,12 @@ export default function ExpenseManagementPage() {
                 <input
                   type="number"
                   value={claimData.otherExpenses}
-                  onChange={e => setClaimData({ ...claimData, otherExpenses: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => setClaimData({ ...claimData, otherExpenses: parseInt(e.target.value) || 0 })}
                   className="input-field"
                 />
                 <textarea
                   value={claimData.otherDescription}
-                  onChange={e => setClaimData({ ...claimData, otherDescription: e.target.value })}
+                  onChange={(e) => setClaimData({ ...claimData, otherDescription: e.target.value })}
                   placeholder="Description of other expenses..."
                   rows={2}
                   className="input-field mt-2 resize-none"
@@ -426,8 +429,106 @@ export default function ExpenseManagementPage() {
             </div>
 
             <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowClaimModal(false)} className="btn-outline">Cancel</button>
-              <button onClick={handleSubmitClaim} className="btn-primary">Submit Claim</button>
+              <button onClick={() => setShowClaimModal(false)} className="btn-outline">
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitClaim}
+                disabled={createMutation.isPending || !claimData.startDate || !claimData.endDate}
+                className="btn-primary"
+              >
+                {createMutation.isPending ? 'Submitting...' : 'Submit Claim'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* View Claim Modal */}
+      {viewingClaim && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg"
+          >
+            <h2 className="text-lg font-semibold text-foreground mb-4">Expense Claim Details</h2>
+
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Claim Number</span>
+                <span className="font-medium">{viewingClaim.claim_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Employee</span>
+                <span className="font-medium">{viewingClaim.user_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Period</span>
+                <span className="font-medium">{formatPeriod(viewingClaim.start_date, viewingClaim.end_date)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status</span>
+                <StatusBadge status={viewingClaim.status as any} />
+              </div>
+
+              <div className="border-t border-border pt-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Daily Allowance</span>
+                  <span>₹{Number(viewingClaim.da_amount).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Fuel ({viewingClaim.distance_travelled} km)</span>
+                  <span>₹{Number(viewingClaim.fuel_amount).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Hotel ({viewingClaim.hotel_nights} nights)</span>
+                  <span>₹{Number(viewingClaim.hotel_amount).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Other Expenses</span>
+                  <span>₹{Number(viewingClaim.other_amount).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between font-semibold text-lg border-t border-border pt-2">
+                  <span>Total</span>
+                  <span className="text-primary">₹{Number(viewingClaim.total_amount).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {viewingClaim.other_description && (
+                <div className="border-t border-border pt-4">
+                  <p className="text-sm text-muted-foreground">Other Expenses Description:</p>
+                  <p className="text-sm">{viewingClaim.other_description}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              {viewingClaim.status === 'pending' && (
+                <>
+                  <button
+                    onClick={() => {
+                      rejectMutation.mutate({ id: viewingClaim.id, reason: 'Rejected by manager' });
+                      setViewingClaim(null);
+                    }}
+                    className="btn-outline text-destructive"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    onClick={() => {
+                      approveMutation.mutate(viewingClaim.id);
+                      setViewingClaim(null);
+                    }}
+                    className="btn-primary"
+                  >
+                    Approve
+                  </button>
+                </>
+              )}
+              <button onClick={() => setViewingClaim(null)} className="btn-outline">
+                Close
+              </button>
             </div>
           </motion.div>
         </div>
