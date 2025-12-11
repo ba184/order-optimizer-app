@@ -808,6 +808,156 @@ export type Database = {
           },
         ]
       }
+      pre_order_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          pre_order_id: string
+          product_id: string | null
+          quantity: number
+          total_amount: number | null
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          pre_order_id: string
+          product_id?: string | null
+          quantity?: number
+          total_amount?: number | null
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          pre_order_id?: string
+          product_id?: string | null
+          quantity?: number
+          total_amount?: number | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_order_items_pre_order_id_fkey"
+            columns: ["pre_order_id"]
+            isOneToOne: false
+            referencedRelation: "pre_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pre_order_schemes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          launch_date: string
+          name: string
+          pre_order_achieved: number | null
+          pre_order_end: string | null
+          pre_order_start: string | null
+          pre_order_target: number | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          launch_date: string
+          name: string
+          pre_order_achieved?: number | null
+          pre_order_end?: string | null
+          pre_order_start?: string | null
+          pre_order_target?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          launch_date?: string
+          name?: string
+          pre_order_achieved?: number | null
+          pre_order_end?: string | null
+          pre_order_start?: string | null
+          pre_order_target?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      pre_orders: {
+        Row: {
+          actual_delivery: string | null
+          advance_collected: number | null
+          created_at: string | null
+          created_by: string
+          distributor_id: string | null
+          expected_delivery: string | null
+          id: string
+          order_number: string
+          remarks: string | null
+          scheme_id: string | null
+          status: string | null
+          total_value: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          actual_delivery?: string | null
+          advance_collected?: number | null
+          created_at?: string | null
+          created_by: string
+          distributor_id?: string | null
+          expected_delivery?: string | null
+          id?: string
+          order_number: string
+          remarks?: string | null
+          scheme_id?: string | null
+          status?: string | null
+          total_value?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          actual_delivery?: string | null
+          advance_collected?: number | null
+          created_at?: string | null
+          created_by?: string
+          distributor_id?: string | null
+          expected_delivery?: string | null
+          id?: string
+          order_number?: string
+          remarks?: string | null
+          scheme_id?: string | null
+          status?: string | null
+          total_value?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_orders_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_orders_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "pre_order_schemes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string | null
