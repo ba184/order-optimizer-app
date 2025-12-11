@@ -49,13 +49,25 @@ export function usePreOrderSchemes() {
     queryKey: ['pre-order-schemes'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pre_order_schemes' as any)
+        .from('schemes')
         .select('*')
         .eq('status', 'active')
-        .order('launch_date');
+        .order('start_date');
       
       if (error) throw error;
-      return (data || []) as unknown as PreOrderScheme[];
+      
+      // Map schemes to PreOrderScheme format
+      return (data || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        launch_date: s.start_date,
+        pre_order_start: s.start_date,
+        pre_order_end: s.end_date,
+        pre_order_target: s.min_quantity || 0,
+        pre_order_achieved: 0,
+        status: s.status,
+      })) as PreOrderScheme[];
     },
   });
 }
@@ -68,9 +80,8 @@ export function usePreOrders() {
         .from('pre_orders' as any)
         .select(`
           *,
-          scheme:pre_order_schemes(name),
-          distributor:distributors(firm_name),
-          creator:profiles!pre_orders_created_by_fkey(name)
+          scheme:schemes(name),
+          distributor:distributors(firm_name)
         `)
         .order('created_at', { ascending: false });
       
