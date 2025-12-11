@@ -168,10 +168,14 @@ export function useCreateOrder() {
 
       const totalAmount = subtotal + gstAmount - totalDiscount;
 
+      // Generate order number
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+
       // Create order
       const { data: order, error: orderError } = await supabase
         .from('orders' as any)
         .insert({
+          order_number: orderNumber,
           order_type: orderType,
           distributor_id: distributorId,
           retailer_id: retailerId || null,
