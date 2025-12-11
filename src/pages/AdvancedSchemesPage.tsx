@@ -16,71 +16,18 @@ import {
   X,
   Store,
   Building2,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface AdvancedScheme {
-  id: string;
-  name: string;
-  code: string;
-  type: 'slab' | 'buy_x_get_y' | 'combo' | 'bill_wise' | 'value_wise' | 'display';
-  description: string;
-  startDate: string;
-  endDate: string;
-  applicability: string;
-  benefit: string;
-  minValue?: number;
-  maxBenefit?: number;
-  claimsGenerated: number;
-  claimsApproved: number;
-  totalPayout: number;
-  status: 'active' | 'pending' | 'inactive';
-}
-
-interface SchemeApplicant {
-  id: string;
-  name: string;
-  type: 'retailer' | 'distributor';
-  code: string;
-  city: string;
-  claimStatus: 'approved' | 'pending' | 'rejected';
-  claimAmount: number;
-}
-
-const mockSchemes: AdvancedScheme[] = [
-  { id: 's-001', name: 'Slab Discount Dec 2024', code: 'SLAB-DEC-24', type: 'slab', description: '5% on ₹50K, 7% on ₹1L, 10% on ₹2L+', startDate: '2024-12-01', endDate: '2024-12-31', applicability: 'All Distributors', benefit: 'Up to 10% discount', minValue: 50000, maxBenefit: 25000, claimsGenerated: 45, claimsApproved: 38, totalPayout: 285000, status: 'active' },
-  { id: 's-002', name: 'Buy 10 Get 1 Free', code: 'B10G1-DEC', type: 'buy_x_get_y', description: 'On Alpha & Beta series', startDate: '2024-12-01', endDate: '2024-12-31', applicability: 'All Outlets', benefit: '1 free per 10', claimsGenerated: 120, claimsApproved: 115, totalPayout: 172500, status: 'active' },
-  { id: 's-003', name: 'Festive Combo Pack', code: 'FEST-COMBO', type: 'combo', description: 'Alpha + Beta + Gamma at 15% off', startDate: '2024-12-15', endDate: '2024-12-31', applicability: 'All Outlets', benefit: '15% on combo', claimsGenerated: 25, claimsApproved: 20, totalPayout: 45000, status: 'active' },
-  { id: 's-004', name: 'Bill Value Bonus', code: 'BILL-BONUS', type: 'bill_wise', description: '₹500 off on bills above ₹25,000', startDate: '2024-12-01', endDate: '2024-12-31', applicability: 'Retailers Only', benefit: '₹500 flat off', minValue: 25000, claimsGenerated: 85, claimsApproved: 82, totalPayout: 41000, status: 'active' },
-  { id: 's-005', name: 'Display Incentive', code: 'DISP-INC', type: 'display', description: '₹1000 for premium display placement', startDate: '2024-12-01', endDate: '2024-12-31', applicability: 'Selected Retailers', benefit: '₹1000 incentive', claimsGenerated: 35, claimsApproved: 28, totalPayout: 28000, status: 'active' },
-];
-
-const mockApplicants: Record<string, SchemeApplicant[]> = {
-  's-001': [
-    { id: 'a1', name: 'ABC Distributors', type: 'distributor', code: 'DIST-001', city: 'Mumbai', claimStatus: 'approved', claimAmount: 15000 },
-    { id: 'a2', name: 'XYZ Wholesale', type: 'distributor', code: 'DIST-002', city: 'Delhi', claimStatus: 'approved', claimAmount: 22000 },
-    { id: 'a3', name: 'PQR Trading', type: 'distributor', code: 'DIST-003', city: 'Chennai', claimStatus: 'pending', claimAmount: 18000 },
-  ],
-  's-002': [
-    { id: 'a4', name: 'Sharma Retail Store', type: 'retailer', code: 'RET-001', city: 'Bangalore', claimStatus: 'approved', claimAmount: 5000 },
-    { id: 'a5', name: 'Kumar General Store', type: 'retailer', code: 'RET-002', city: 'Hyderabad', claimStatus: 'approved', claimAmount: 3500 },
-    { id: 'a6', name: 'Singh Mart', type: 'retailer', code: 'RET-003', city: 'Pune', claimStatus: 'rejected', claimAmount: 0 },
-    { id: 'a7', name: 'Metro Distributors', type: 'distributor', code: 'DIST-004', city: 'Kolkata', claimStatus: 'approved', claimAmount: 12000 },
-  ],
-  's-003': [
-    { id: 'a8', name: 'Patel Stores', type: 'retailer', code: 'RET-004', city: 'Ahmedabad', claimStatus: 'approved', claimAmount: 8000 },
-    { id: 'a9', name: 'City Mart', type: 'retailer', code: 'RET-005', city: 'Jaipur', claimStatus: 'pending', claimAmount: 6500 },
-  ],
-  's-004': [
-    { id: 'a10', name: 'Gupta Electronics', type: 'retailer', code: 'RET-006', city: 'Lucknow', claimStatus: 'approved', claimAmount: 500 },
-    { id: 'a11', name: 'Verma Traders', type: 'retailer', code: 'RET-007', city: 'Chandigarh', claimStatus: 'approved', claimAmount: 500 },
-    { id: 'a12', name: 'Reddy Retail', type: 'retailer', code: 'RET-008', city: 'Visakhapatnam', claimStatus: 'pending', claimAmount: 500 },
-  ],
-  's-005': [
-    { id: 'a13', name: 'Premium Store Mumbai', type: 'retailer', code: 'RET-009', city: 'Mumbai', claimStatus: 'approved', claimAmount: 1000 },
-    { id: 'a14', name: 'Elite Retail Delhi', type: 'retailer', code: 'RET-010', city: 'Delhi', claimStatus: 'approved', claimAmount: 1000 },
-  ],
-};
+import { format } from 'date-fns';
+import {
+  useAdvancedSchemes,
+  useSchemeClaims,
+  useCreateAdvancedScheme,
+  useDeleteAdvancedScheme,
+  AdvancedScheme,
+  SchemeClaim,
+} from '@/hooks/useAdvancedSchemesData';
 
 const schemeTypeColors: Record<string, string> = {
   slab: 'bg-primary/10 text-primary',
@@ -101,6 +48,10 @@ const schemeTypeLabels: Record<string, string> = {
 };
 
 export default function AdvancedSchemesPage() {
+  const { data: schemes = [], isLoading } = useAdvancedSchemes();
+  const createScheme = useCreateAdvancedScheme();
+  const deleteScheme = useDeleteAdvancedScheme();
+
   const [selectedType, setSelectedType] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState<AdvancedScheme | null>(null);
@@ -109,33 +60,71 @@ export default function AdvancedSchemesPage() {
     code: '',
     type: 'slab',
     description: '',
-    startDate: '',
-    endDate: '',
+    start_date: '',
+    end_date: '',
     applicability: 'All Outlets',
     benefit: '',
-    minValue: '',
-    maxBenefit: '',
+    min_value: '',
+    max_benefit: '',
+    status: 'pending',
   });
 
   const filteredSchemes = selectedType === 'all' 
-    ? mockSchemes 
-    : mockSchemes.filter(s => s.type === selectedType);
+    ? schemes 
+    : schemes.filter(s => s.type === selectedType);
 
   const stats = {
-    activeSchemes: mockSchemes.filter(s => s.status === 'active').length,
-    totalClaims: mockSchemes.reduce((sum, s) => sum + s.claimsGenerated, 0),
-    approvedClaims: mockSchemes.reduce((sum, s) => sum + s.claimsApproved, 0),
-    totalPayout: mockSchemes.reduce((sum, s) => sum + s.totalPayout, 0),
+    activeSchemes: schemes.filter(s => s.status === 'active').length,
+    totalClaims: schemes.reduce((sum, s) => sum + s.claims_generated, 0),
+    approvedClaims: schemes.reduce((sum, s) => sum + s.claims_approved, 0),
+    totalPayout: schemes.reduce((sum, s) => sum + Number(s.total_payout), 0),
   };
 
-  const handleCreate = () => {
-    if (!formData.name || !formData.code || !formData.startDate || !formData.endDate) {
+  const handleCreate = async () => {
+    if (!formData.name || !formData.code || !formData.start_date || !formData.end_date) {
       toast.error('Please fill all required fields');
       return;
     }
-    toast.success('Scheme created successfully');
+
+    await createScheme.mutateAsync({
+      name: formData.name,
+      code: formData.code,
+      type: formData.type,
+      description: formData.description || null,
+      start_date: formData.start_date,
+      end_date: formData.end_date,
+      applicability: formData.applicability,
+      benefit: formData.benefit || null,
+      min_value: formData.min_value ? parseFloat(formData.min_value) : null,
+      max_benefit: formData.max_benefit ? parseFloat(formData.max_benefit) : null,
+      status: formData.status,
+      created_by: null,
+    });
+
     setShowCreateModal(false);
-    setFormData({ name: '', code: '', type: 'slab', description: '', startDate: '', endDate: '', applicability: 'All Outlets', benefit: '', minValue: '', maxBenefit: '' });
+    resetForm();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this scheme?')) {
+      await deleteScheme.mutateAsync(id);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      code: '',
+      type: 'slab',
+      description: '',
+      start_date: '',
+      end_date: '',
+      applicability: 'All Outlets',
+      benefit: '',
+      min_value: '',
+      max_benefit: '',
+      status: 'pending',
+    });
   };
 
   const columns = [
@@ -158,8 +147,8 @@ export default function AdvancedSchemesPage() {
       key: 'type',
       header: 'Type',
       render: (item: AdvancedScheme) => (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${schemeTypeColors[item.type]}`}>
-          {schemeTypeLabels[item.type]}
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${schemeTypeColors[item.type] || 'bg-muted text-muted-foreground'}`}>
+          {schemeTypeLabels[item.type] || item.type}
         </span>
       ),
     },
@@ -168,7 +157,7 @@ export default function AdvancedSchemesPage() {
       header: 'Benefit',
       render: (item: AdvancedScheme) => (
         <div className="max-w-[200px]">
-          <p className="text-sm truncate">{item.description}</p>
+          <p className="text-sm truncate">{item.description || '-'}</p>
           <p className="text-xs text-muted-foreground">{item.applicability}</p>
         </div>
       ),
@@ -179,7 +168,9 @@ export default function AdvancedSchemesPage() {
       render: (item: AdvancedScheme) => (
         <div className="flex items-center gap-2 text-sm">
           <Calendar size={14} className="text-muted-foreground" />
-          <span>{item.startDate} - {item.endDate}</span>
+          <span>
+            {format(new Date(item.start_date), 'dd MMM')} - {format(new Date(item.end_date), 'dd MMM yyyy')}
+          </span>
         </div>
       ),
     },
@@ -190,9 +181,9 @@ export default function AdvancedSchemesPage() {
         <div className="text-sm">
           <p className="flex items-center gap-1">
             <CheckCircle size={12} className="text-success" />
-            {item.claimsApproved} approved
+            {item.claims_approved} approved
           </p>
-          <p className="text-xs text-muted-foreground">{item.claimsGenerated} generated</p>
+          <p className="text-xs text-muted-foreground">{item.claims_generated} generated</p>
         </div>
       ),
     },
@@ -200,13 +191,13 @@ export default function AdvancedSchemesPage() {
       key: 'totalPayout',
       header: 'Payout',
       render: (item: AdvancedScheme) => (
-        <span className="font-semibold text-primary">₹{(item.totalPayout / 1000).toFixed(1)}K</span>
+        <span className="font-semibold text-primary">₹{(Number(item.total_payout) / 1000).toFixed(1)}K</span>
       ),
     },
     {
       key: 'status',
       header: 'Status',
-      render: (item: AdvancedScheme) => <StatusBadge status={item.status} />,
+      render: (item: AdvancedScheme) => <StatusBadge status={item.status as any} />,
     },
     {
       key: 'actions',
@@ -222,13 +213,24 @@ export default function AdvancedSchemesPage() {
           <button className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Copy size={16} className="text-muted-foreground" />
           </button>
-          <button className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+          >
             <Trash2 size={16} className="text-destructive" />
           </button>
         </div>
       ),
     },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -307,7 +309,19 @@ export default function AdvancedSchemesPage() {
       </div>
 
       {/* Schemes Table */}
-      <DataTable data={filteredSchemes} columns={columns} searchPlaceholder="Search schemes..." />
+      {filteredSchemes.length > 0 ? (
+        <DataTable data={filteredSchemes} columns={columns} searchPlaceholder="Search schemes..." />
+      ) : (
+        <div className="card p-12 text-center">
+          <Gift size={48} className="mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No Schemes Found</h3>
+          <p className="text-muted-foreground mb-4">Create your first advanced scheme to get started</p>
+          <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
+            <Plus size={18} className="mr-2" />
+            Create Scheme
+          </button>
+        </div>
+      )}
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -348,17 +362,31 @@ export default function AdvancedSchemesPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Scheme Type *</label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  className="input-field"
-                >
-                  {Object.entries(schemeTypeLabels).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Scheme Type *</label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className="input-field"
+                  >
+                    {Object.entries(schemeTypeLabels).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -376,8 +404,8 @@ export default function AdvancedSchemesPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">Start Date *</label>
                   <input
                     type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    value={formData.start_date}
+                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                     className="input-field"
                   />
                 </div>
@@ -385,8 +413,8 @@ export default function AdvancedSchemesPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">End Date *</label>
                   <input
                     type="date"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    value={formData.end_date}
+                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                     className="input-field"
                   />
                 </div>
@@ -412,7 +440,7 @@ export default function AdvancedSchemesPage() {
                     type="text"
                     value={formData.benefit}
                     onChange={(e) => setFormData({ ...formData, benefit: e.target.value })}
-                    placeholder="e.g., Up to 10% discount"
+                    placeholder="e.g., 10% discount"
                     className="input-field"
                   />
                 </div>
@@ -423,8 +451,8 @@ export default function AdvancedSchemesPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">Min Value (₹)</label>
                   <input
                     type="number"
-                    value={formData.minValue}
-                    onChange={(e) => setFormData({ ...formData, minValue: e.target.value })}
+                    value={formData.min_value}
+                    onChange={(e) => setFormData({ ...formData, min_value: e.target.value })}
                     placeholder="0"
                     className="input-field"
                   />
@@ -433,8 +461,8 @@ export default function AdvancedSchemesPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">Max Benefit (₹)</label>
                   <input
                     type="number"
-                    value={formData.maxBenefit}
-                    onChange={(e) => setFormData({ ...formData, maxBenefit: e.target.value })}
+                    value={formData.max_benefit}
+                    onChange={(e) => setFormData({ ...formData, max_benefit: e.target.value })}
                     placeholder="0"
                     className="input-field"
                   />
@@ -442,9 +470,14 @@ export default function AdvancedSchemesPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowCreateModal(false)} className="btn-outline">Cancel</button>
-              <button onClick={handleCreate} className="btn-primary">Create Scheme</button>
+            <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-border">
+              <button onClick={() => { setShowCreateModal(false); resetForm(); }} className="btn-outline">
+                Cancel
+              </button>
+              <button onClick={handleCreate} disabled={createScheme.isPending} className="btn-primary flex items-center gap-2">
+                {createScheme.isPending && <Loader2 size={16} className="animate-spin" />}
+                Create Scheme
+              </button>
             </div>
           </motion.div>
         </div>
@@ -452,106 +485,116 @@ export default function AdvancedSchemesPage() {
 
       {/* View Modal */}
       {showViewModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">Scheme Details</h2>
-              <button onClick={() => setShowViewModal(null)} className="p-2 hover:bg-muted rounded-lg">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                  <Gift size={24} className="text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">{showViewModal.name}</h3>
-                  <p className="text-sm text-muted-foreground">{showViewModal.code}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-                <div>
-                  <p className="text-sm text-muted-foreground">Type</p>
-                  <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium mt-1 ${schemeTypeColors[showViewModal.type]}`}>
-                    {schemeTypeLabels[showViewModal.type]}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <div className="mt-1"><StatusBadge status={showViewModal.status} /></div>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Validity</p>
-                  <p className="text-sm font-medium">{showViewModal.startDate} - {showViewModal.endDate}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Applicability</p>
-                  <p className="text-sm font-medium">{showViewModal.applicability}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Claims Approved</p>
-                  <p className="text-sm font-medium">{showViewModal.claimsApproved} / {showViewModal.claimsGenerated}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Payout</p>
-                  <p className="text-sm font-medium text-primary">₹{showViewModal.totalPayout.toLocaleString()}</p>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-border">
-                <p className="text-sm text-muted-foreground mb-1">Description</p>
-                <p className="text-sm">{showViewModal.description}</p>
-              </div>
-
-              {/* Applied Retailers/Distributors List */}
-              <div className="pt-4 border-t border-border">
-                <p className="text-sm font-medium text-foreground mb-3">Applied Retailers & Distributors</p>
-                {mockApplicants[showViewModal.id]?.length > 0 ? (
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                    {mockApplicants[showViewModal.id].map((applicant) => (
-                      <div key={applicant.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${applicant.type === 'retailer' ? 'bg-info/10' : 'bg-primary/10'}`}>
-                            {applicant.type === 'retailer' ? (
-                              <Store size={16} className="text-info" />
-                            ) : (
-                              <Building2 size={16} className="text-primary" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">{applicant.name}</p>
-                            <p className="text-xs text-muted-foreground">{applicant.code} • {applicant.city}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <StatusBadge status={applicant.claimStatus} />
-                          {applicant.claimAmount > 0 && (
-                            <p className="text-xs text-muted-foreground mt-1">₹{applicant.claimAmount.toLocaleString()}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">No retailers or distributors have applied this scheme yet.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowViewModal(null)} className="btn-outline">Close</button>
-              <button className="btn-primary">Edit Scheme</button>
-            </div>
-          </motion.div>
-        </div>
+        <SchemeViewModal scheme={showViewModal} onClose={() => setShowViewModal(null)} />
       )}
+    </div>
+  );
+}
+
+function SchemeViewModal({ scheme, onClose }: { scheme: AdvancedScheme; onClose: () => void }) {
+  const { data: claims = [], isLoading } = useSchemeClaims(scheme.id);
+
+  return (
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">{scheme.name}</h2>
+            <p className="text-sm text-muted-foreground">{scheme.code}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Scheme Details */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <p className="text-sm text-muted-foreground">Type</p>
+            <p className="font-medium">{schemeTypeLabels[scheme.type] || scheme.type}</p>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <p className="text-sm text-muted-foreground">Validity</p>
+            <p className="font-medium">
+              {format(new Date(scheme.start_date), 'dd MMM')} - {format(new Date(scheme.end_date), 'dd MMM yyyy')}
+            </p>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <p className="text-sm text-muted-foreground">Claims</p>
+            <p className="font-medium">{scheme.claims_approved} / {scheme.claims_generated}</p>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <p className="text-sm text-muted-foreground">Total Payout</p>
+            <p className="font-medium text-primary">₹{Number(scheme.total_payout).toLocaleString()}</p>
+          </div>
+        </div>
+
+        {/* Claims/Applicants */}
+        <div>
+          <h3 className="font-semibold mb-4">Applicants & Claims</h3>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : claims.length > 0 ? (
+            <div className="border border-border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-3 text-sm font-medium">Applicant</th>
+                    <th className="text-left p-3 text-sm font-medium">Type</th>
+                    <th className="text-left p-3 text-sm font-medium">City</th>
+                    <th className="text-left p-3 text-sm font-medium">Amount</th>
+                    <th className="text-left p-3 text-sm font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {claims.map(claim => (
+                    <tr key={claim.id} className="border-t border-border">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          {claim.applicant_type === 'retailer' ? (
+                            <Store size={16} className="text-primary" />
+                          ) : (
+                            <Building2 size={16} className="text-secondary" />
+                          )}
+                          <span>
+                            {claim.applicant_type === 'retailer' 
+                              ? claim.retailer?.shop_name 
+                              : claim.distributor?.firm_name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3 capitalize">{claim.applicant_type}</td>
+                      <td className="p-3">
+                        {claim.applicant_type === 'retailer' 
+                          ? claim.retailer?.city 
+                          : claim.distributor?.city}
+                      </td>
+                      <td className="p-3 font-medium">₹{Number(claim.claim_amount).toLocaleString()}</td>
+                      <td className="p-3">
+                        <StatusBadge status={claim.claim_status as any} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No claims recorded for this scheme yet
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end mt-6 pt-6 border-t border-border">
+          <button onClick={onClose} className="btn-secondary">Close</button>
+        </div>
+      </motion.div>
     </div>
   );
 }
