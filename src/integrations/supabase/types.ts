@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      advanced_schemes: {
+        Row: {
+          applicability: string | null
+          benefit: string | null
+          claims_approved: number | null
+          claims_generated: number | null
+          code: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          end_date: string
+          id: string
+          max_benefit: number | null
+          min_value: number | null
+          name: string
+          start_date: string
+          status: string | null
+          total_payout: number | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          applicability?: string | null
+          benefit?: string | null
+          claims_approved?: number | null
+          claims_generated?: number | null
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_date: string
+          id?: string
+          max_benefit?: number | null
+          min_value?: number | null
+          name: string
+          start_date: string
+          status?: string | null
+          total_payout?: number | null
+          type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          applicability?: string | null
+          benefit?: string | null
+          claims_approved?: number | null
+          claims_generated?: number | null
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_date?: string
+          id?: string
+          max_benefit?: number | null
+          min_value?: number | null
+          name?: string
+          start_date?: string
+          status?: string | null
+          total_payout?: number | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           created_at: string | null
@@ -1144,6 +1207,73 @@ export type Database = {
           status?: string | null
         }
         Relationships: []
+      }
+      scheme_claims: {
+        Row: {
+          applicant_type: string
+          approved_at: string | null
+          approved_by: string | null
+          claim_amount: number | null
+          claim_status: string | null
+          created_at: string | null
+          distributor_id: string | null
+          id: string
+          remarks: string | null
+          retailer_id: string | null
+          scheme_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          applicant_type?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          claim_amount?: number | null
+          claim_status?: string | null
+          created_at?: string | null
+          distributor_id?: string | null
+          id?: string
+          remarks?: string | null
+          retailer_id?: string | null
+          scheme_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          applicant_type?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          claim_amount?: number | null
+          claim_status?: string | null
+          created_at?: string | null
+          distributor_id?: string | null
+          id?: string
+          remarks?: string | null
+          retailer_id?: string | null
+          scheme_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheme_claims_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheme_claims_retailer_id_fkey"
+            columns: ["retailer_id"]
+            isOneToOne: false
+            referencedRelation: "retailers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheme_claims_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "advanced_schemes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       schemes: {
         Row: {
