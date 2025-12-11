@@ -1,7 +1,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import {
+  useReturns,
+  useReturnItems,
+  useCreateReturn,
+  useUpdateReturnStatus,
+  Return,
+  ReturnStatus,
+  ReturnType,
+} from '@/hooks/useReturnsData';
+import { useProducts } from '@/hooks/useProductsData';
 import {
   Package,
   RotateCcw,
@@ -13,144 +22,14 @@ import {
   X,
   Filter,
   Plus,
-  Camera,
-  Upload,
   Truck,
   Calendar,
   IndianRupee,
-  FileText,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
-
-type ReturnStatus = 'pending' | 'approved' | 'rejected' | 'processing' | 'completed' | 'refunded';
-type ReturnType = 'return' | 'damage' | 'expiry' | 'wrong_product';
-type ReturnReason = 'damaged_in_transit' | 'manufacturing_defect' | 'expired' | 'wrong_item' | 'quality_issue' | 'customer_return';
-
-interface ReturnItem {
-  productId: string;
-  productName: string;
-  sku: string;
-  quantity: number;
-  unitPrice: number;
-  reason: ReturnReason;
-}
-
-interface ReturnRequest {
-  id: string;
-  returnId: string;
-  type: ReturnType;
-  source: 'retailer' | 'distributor';
-  sourceName: string;
-  sourceId: string;
-  orderId?: string;
-  items: ReturnItem[];
-  totalValue: number;
-  status: ReturnStatus;
-  reason: string;
-  images: string[];
-  approvedBy?: string;
-  rejectionReason?: string;
-  createdAt: string;
-  updatedAt: string;
-  processedAt?: string;
-}
-
-const initialData: ReturnRequest[] = [
-  {
-    id: '1',
-    returnId: 'RET-2024-001',
-    type: 'damage',
-    source: 'distributor',
-    sourceName: 'Krishna Traders',
-    sourceId: 'd-001',
-    orderId: 'ORD-2024-156',
-    items: [
-      { productId: 'p-001', productName: 'Product Alpha 500ml', sku: 'PA-500', quantity: 10, unitPrice: 120, reason: 'damaged_in_transit' },
-    ],
-    totalValue: 1200,
-    status: 'pending',
-    reason: 'Products damaged during transit. Boxes were crushed.',
-    images: [],
-    createdAt: '2024-12-08',
-    updatedAt: '2024-12-08',
-  },
-  {
-    id: '2',
-    returnId: 'RET-2024-002',
-    type: 'expiry',
-    source: 'retailer',
-    sourceName: 'New Sharma Store',
-    sourceId: 'r-001',
-    items: [
-      { productId: 'p-002', productName: 'Product Beta 1L', sku: 'PB-1L', quantity: 5, unitPrice: 220, reason: 'expired' },
-    ],
-    totalValue: 1100,
-    status: 'approved',
-    reason: 'Products expired on shelf. Requesting replacement.',
-    images: [],
-    approvedBy: 'Admin',
-    createdAt: '2024-12-07',
-    updatedAt: '2024-12-08',
-  },
-  {
-    id: '3',
-    returnId: 'RET-2024-003',
-    type: 'wrong_product',
-    source: 'distributor',
-    sourceName: 'Sharma Distributors',
-    sourceId: 'd-002',
-    orderId: 'ORD-2024-142',
-    items: [
-      { productId: 'p-003', productName: 'Product Gamma 250g', sku: 'PG-250', quantity: 24, unitPrice: 85, reason: 'wrong_item' },
-    ],
-    totalValue: 2040,
-    status: 'processing',
-    reason: 'Received wrong product variant. Ordered 500g but received 250g.',
-    images: [],
-    approvedBy: 'Admin',
-    createdAt: '2024-12-06',
-    updatedAt: '2024-12-08',
-    processedAt: '2024-12-08',
-  },
-  {
-    id: '4',
-    returnId: 'RET-2024-004',
-    type: 'return',
-    source: 'retailer',
-    sourceName: 'Gupta General Store',
-    sourceId: 'r-002',
-    items: [
-      { productId: 'p-001', productName: 'Product Alpha 500ml', sku: 'PA-500', quantity: 6, unitPrice: 120, reason: 'customer_return' },
-    ],
-    totalValue: 720,
-    status: 'rejected',
-    reason: 'Customer returned due to taste preference.',
-    images: [],
-    rejectionReason: 'Taste preference is not a valid return reason as per policy.',
-    createdAt: '2024-12-05',
-    updatedAt: '2024-12-06',
-  },
-  {
-    id: '5',
-    returnId: 'RET-2024-005',
-    type: 'damage',
-    source: 'distributor',
-    sourceName: 'Patel Trading Co',
-    sourceId: 'd-003',
-    orderId: 'ORD-2024-138',
-    items: [
-      { productId: 'p-004', productName: 'Product Delta Pack', sku: 'PD-PK', quantity: 3, unitPrice: 350, reason: 'manufacturing_defect' },
-    ],
-    totalValue: 1050,
-    status: 'completed',
-    reason: 'Manufacturing defect - seals broken on multiple packs.',
-    images: [],
-    approvedBy: 'Admin',
-    createdAt: '2024-12-04',
-    updatedAt: '2024-12-07',
-    processedAt: '2024-12-07',
-  },
-];
 
 const typeConfig: Record<ReturnType, { label: string; color: string; icon: React.ElementType }> = {
   return: { label: 'Return', color: 'bg-info/10 text-info', icon: RotateCcw },
@@ -174,93 +53,146 @@ const formatCurrency = (value: number) => {
   return `₹${value}`;
 };
 
+interface ReturnItemInput {
+  product_id: string;
+  product_name: string;
+  sku: string;
+  quantity: number;
+  unit_price: number;
+  reason: string;
+}
+
 export default function ReturnsManagementPage() {
-  const [data, setData] = useState<ReturnRequest[]>(initialData);
-  const [selectedItem, setSelectedItem] = useState<ReturnRequest | null>(null);
+  const { data: returns = [], isLoading } = useReturns();
+  const { data: products = [] } = useProducts();
+  const createReturn = useCreateReturn();
+  const updateStatus = useUpdateReturnStatus();
+
+  const [selectedItem, setSelectedItem] = useState<Return | null>(null);
   const [showActionModal, setShowActionModal] = useState<'approve' | 'reject' | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [actionReason, setActionReason] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
-  const filteredData = data.filter(item => {
+  // Create form state
+  const [formData, setFormData] = useState({
+    return_type: 'return' as ReturnType,
+    source: 'retailer',
+    source_name: '',
+    reason: '',
+  });
+  const [formItems, setFormItems] = useState<ReturnItemInput[]>([
+    { product_id: '', product_name: '', sku: '', quantity: 1, unit_price: 0, reason: '' }
+  ]);
+
+  const filteredData = returns.filter(item => {
     if (statusFilter !== 'all' && item.status !== statusFilter) return false;
-    if (typeFilter !== 'all' && item.type !== typeFilter) return false;
+    if (typeFilter !== 'all' && item.return_type !== typeFilter) return false;
     return true;
   });
 
   const stats = {
-    total: data.length,
-    pending: data.filter(r => r.status === 'pending').length,
-    approved: data.filter(r => r.status === 'approved' || r.status === 'processing').length,
-    completed: data.filter(r => r.status === 'completed' || r.status === 'refunded').length,
-    totalValue: data.filter(r => r.status !== 'rejected').reduce((sum, r) => sum + r.totalValue, 0),
+    total: returns.length,
+    pending: returns.filter(r => r.status === 'pending').length,
+    approved: returns.filter(r => r.status === 'approved' || r.status === 'processing').length,
+    completed: returns.filter(r => r.status === 'completed' || r.status === 'refunded').length,
+    totalValue: returns.filter(r => r.status !== 'rejected').reduce((sum, r) => sum + Number(r.total_value), 0),
   };
 
-  const handleView = (item: ReturnRequest) => {
+  const handleView = (item: Return) => {
     setSelectedItem(item);
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!selectedItem) return;
-    setData(data.map(item => 
-      item.id === selectedItem.id 
-        ? { ...item, status: 'approved' as ReturnStatus, approvedBy: 'Admin', updatedAt: new Date().toISOString().split('T')[0] }
-        : item
-    ));
-    toast.success('Return request approved');
+    await updateStatus.mutateAsync({ id: selectedItem.id, status: 'approved' });
     setShowActionModal(null);
     setSelectedItem(null);
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!selectedItem || !actionReason.trim()) {
       toast.error('Please provide a rejection reason');
       return;
     }
-    setData(data.map(item => 
-      item.id === selectedItem.id 
-        ? { ...item, status: 'rejected' as ReturnStatus, rejectionReason: actionReason, updatedAt: new Date().toISOString().split('T')[0] }
-        : item
-    ));
-    toast.success('Return request rejected');
+    await updateStatus.mutateAsync({ id: selectedItem.id, status: 'rejected', rejection_reason: actionReason });
     setShowActionModal(null);
     setSelectedItem(null);
     setActionReason('');
   };
 
-  const handleMarkProcessing = (item: ReturnRequest) => {
-    setData(data.map(r => 
-      r.id === item.id 
-        ? { ...r, status: 'processing' as ReturnStatus, processedAt: new Date().toISOString().split('T')[0], updatedAt: new Date().toISOString().split('T')[0] }
-        : r
-    ));
-    toast.success('Marked as processing');
+  const handleMarkProcessing = async (item: Return) => {
+    await updateStatus.mutateAsync({ id: item.id, status: 'processing' });
   };
 
-  const handleMarkCompleted = (item: ReturnRequest) => {
-    setData(data.map(r => 
-      r.id === item.id 
-        ? { ...r, status: 'completed' as ReturnStatus, updatedAt: new Date().toISOString().split('T')[0] }
-        : r
-    ));
-    toast.success('Return completed');
+  const handleMarkCompleted = async (item: Return) => {
+    await updateStatus.mutateAsync({ id: item.id, status: 'completed' });
+  };
+
+  const handleProductChange = (index: number, productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (product) {
+      const newItems = [...formItems];
+      newItems[index] = {
+        ...newItems[index],
+        product_id: productId,
+        product_name: product.name,
+        sku: product.sku,
+        unit_price: product.ptr,
+      };
+      setFormItems(newItems);
+    }
+  };
+
+  const handleAddItem = () => {
+    setFormItems([...formItems, { product_id: '', product_name: '', sku: '', quantity: 1, unit_price: 0, reason: '' }]);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    if (formItems.length > 1) {
+      setFormItems(formItems.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleCreateReturn = async () => {
+    if (!formData.source_name.trim()) {
+      toast.error('Please enter source name');
+      return;
+    }
+    if (formItems.some(item => !item.product_name)) {
+      toast.error('Please select products for all items');
+      return;
+    }
+
+    await createReturn.mutateAsync({
+      return_type: formData.return_type,
+      source: formData.source,
+      source_name: formData.source_name,
+      reason: formData.reason,
+      items: formItems,
+    });
+
+    setShowCreateModal(false);
+    setFormData({ return_type: 'return', source: 'retailer', source_name: '', reason: '' });
+    setFormItems([{ product_id: '', product_name: '', sku: '', quantity: 1, unit_price: 0, reason: '' }]);
   };
 
   const columns = [
     {
-      key: 'returnId',
+      key: 'return_number',
       header: 'Return ID',
-      render: (item: ReturnRequest) => {
-        const TypeIcon = typeConfig[item.type].icon;
+      render: (item: Return) => {
+        const TypeIcon = typeConfig[item.return_type]?.icon || RotateCcw;
         return (
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${typeConfig[item.type].color}`}>
+            <div className={`p-2 rounded-lg ${typeConfig[item.return_type]?.color || 'bg-muted'}`}>
               <TypeIcon size={18} />
             </div>
             <div>
-              <p className="font-medium text-foreground">{item.returnId}</p>
-              <span className={`px-2 py-0.5 rounded text-xs ${typeConfig[item.type].color}`}>
-                {typeConfig[item.type].label}
+              <p className="font-medium text-foreground">{item.return_number}</p>
+              <span className={`px-2 py-0.5 rounded text-xs ${typeConfig[item.return_type]?.color || 'bg-muted'}`}>
+                {typeConfig[item.return_type]?.label || item.return_type}
               </span>
             </div>
           </div>
@@ -271,53 +203,43 @@ export default function ReturnsManagementPage() {
     {
       key: 'source',
       header: 'Source',
-      render: (item: ReturnRequest) => (
+      render: (item: Return) => (
         <div>
-          <p className="font-medium text-foreground">{item.sourceName}</p>
+          <p className="font-medium text-foreground">{item.source_name}</p>
           <p className="text-xs text-muted-foreground capitalize">{item.source}</p>
         </div>
       ),
     },
     {
-      key: 'items',
-      header: 'Items',
-      render: (item: ReturnRequest) => (
-        <div>
-          <p className="text-sm">{item.items.length} item(s)</p>
-          <p className="text-xs text-muted-foreground">{item.items.reduce((sum, i) => sum + i.quantity, 0)} units</p>
-        </div>
-      ),
-    },
-    {
-      key: 'totalValue',
+      key: 'total_value',
       header: 'Value',
-      render: (item: ReturnRequest) => (
-        <span className="font-medium text-foreground">{formatCurrency(item.totalValue)}</span>
+      render: (item: Return) => (
+        <span className="font-medium text-foreground">{formatCurrency(Number(item.total_value))}</span>
       ),
       sortable: true,
     },
     {
       key: 'status',
       header: 'Status',
-      render: (item: ReturnRequest) => {
-        const StatusIcon = statusConfig[item.status].icon;
+      render: (item: Return) => {
+        const StatusIcon = statusConfig[item.status]?.icon || Clock;
         return (
           <div className="flex items-center gap-1">
             <StatusIcon size={14} />
-            <span className={`px-2 py-0.5 rounded text-xs ${statusConfig[item.status].color}`}>
-              {statusConfig[item.status].label}
+            <span className={`px-2 py-0.5 rounded text-xs ${statusConfig[item.status]?.color || 'bg-muted'}`}>
+              {statusConfig[item.status]?.label || item.status}
             </span>
           </div>
         );
       },
     },
     {
-      key: 'createdAt',
+      key: 'created_at',
       header: 'Date',
-      render: (item: ReturnRequest) => (
+      render: (item: Return) => (
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <Calendar size={14} />
-          {item.createdAt}
+          {format(new Date(item.created_at), 'dd MMM yyyy')}
         </div>
       ),
       sortable: true,
@@ -325,7 +247,7 @@ export default function ReturnsManagementPage() {
     {
       key: 'actions',
       header: 'Actions',
-      render: (item: ReturnRequest) => (
+      render: (item: Return) => (
         <div className="flex items-center gap-1">
           <button onClick={() => handleView(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Eye size={16} className="text-muted-foreground" />
@@ -355,6 +277,14 @@ export default function ReturnsManagementPage() {
     },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -363,6 +293,10 @@ export default function ReturnsManagementPage() {
           <h1 className="module-title">Returns & Damage Management</h1>
           <p className="text-muted-foreground">Manage product returns, damages, and replacements</p>
         </div>
+        <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-2">
+          <Plus size={18} />
+          Create Return
+        </button>
       </div>
 
       {/* Stats */}
@@ -444,76 +378,52 @@ export default function ReturnsManagementPage() {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">{selectedItem.returnId}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{selectedItem.return_number}</h2>
               <button onClick={() => setSelectedItem(null)} className="p-2 hover:bg-muted rounded-lg"><X size={20} /></button>
             </div>
             
             <div className="space-y-6">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${typeConfig[selectedItem.type].color}`}>{typeConfig[selectedItem.type].label}</span>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig[selectedItem.status].color}`}>{statusConfig[selectedItem.status].label}</span>
-                {selectedItem.orderId && (
-                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">Order: {selectedItem.orderId}</span>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${typeConfig[selectedItem.return_type]?.color}`}>{typeConfig[selectedItem.return_type]?.label}</span>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig[selectedItem.status]?.color}`}>{statusConfig[selectedItem.status]?.label}</span>
+                {selectedItem.order?.order_number && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">Order: {selectedItem.order.order_number}</span>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
                 <div>
                   <p className="text-xs text-muted-foreground">Source</p>
-                  <p className="font-medium">{selectedItem.sourceName}</p>
+                  <p className="font-medium">{selectedItem.source_name}</p>
                   <p className="text-xs text-muted-foreground capitalize">{selectedItem.source}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Total Value</p>
-                  <p className="font-medium text-lg">{formatCurrency(selectedItem.totalValue)}</p>
+                  <p className="font-medium text-lg">{formatCurrency(Number(selectedItem.total_value))}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Created</p>
-                  <p className="font-medium">{selectedItem.createdAt}</p>
+                  <p className="font-medium">{format(new Date(selectedItem.created_at), 'dd MMM yyyy')}</p>
                 </div>
-                {selectedItem.approvedBy && (
+                {selectedItem.processed_at && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Approved By</p>
-                    <p className="font-medium">{selectedItem.approvedBy}</p>
+                    <p className="text-xs text-muted-foreground">Processed</p>
+                    <p className="font-medium">{format(new Date(selectedItem.processed_at), 'dd MMM yyyy')}</p>
                   </div>
                 )}
               </div>
 
-              <div>
-                <h4 className="font-medium text-foreground mb-2">Reason</h4>
-                <p className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">{selectedItem.reason}</p>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-foreground mb-3">Items</h4>
-                <div className="border border-border rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Product</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">SKU</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Qty</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {selectedItem.items.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-2 text-sm">{item.productName}</td>
-                          <td className="px-4 py-2 text-sm text-muted-foreground">{item.sku}</td>
-                          <td className="px-4 py-2 text-sm">{item.quantity}</td>
-                          <td className="px-4 py-2 text-sm font-medium">₹{item.quantity * item.unitPrice}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {selectedItem.reason && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Reason</p>
+                  <p className="text-sm">{selectedItem.reason}</p>
                 </div>
-              </div>
+              )}
 
-              {selectedItem.rejectionReason && (
+              {selectedItem.rejection_reason && (
                 <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
                   <p className="text-xs text-destructive font-medium mb-1">Rejection Reason</p>
-                  <p className="text-sm">{selectedItem.rejectionReason}</p>
+                  <p className="text-sm">{selectedItem.rejection_reason}</p>
                 </div>
               )}
             </div>
@@ -522,8 +432,12 @@ export default function ReturnsManagementPage() {
               <button onClick={() => setSelectedItem(null)} className="btn-outline">Close</button>
               {selectedItem.status === 'pending' && (
                 <>
-                  <button onClick={() => setShowActionModal('reject')} className="px-4 py-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">Reject</button>
-                  <button onClick={() => setShowActionModal('approve')} className="btn-primary">Approve</button>
+                  <button onClick={() => setShowActionModal('approve')} className="btn-primary flex items-center gap-2">
+                    <CheckCircle size={16} /> Approve
+                  </button>
+                  <button onClick={() => setShowActionModal('reject')} className="btn-outline text-destructive flex items-center gap-2">
+                    <XCircle size={16} /> Reject
+                  </button>
                 </>
               )}
             </div>
@@ -535,49 +449,178 @@ export default function ReturnsManagementPage() {
       {showActionModal && selectedItem && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              {showActionModal === 'approve' ? 'Approve Return' : 'Reject Return'}
+            </h2>
+            <p className="text-muted-foreground mb-4">
+              {showActionModal === 'approve' 
+                ? `Are you sure you want to approve return ${selectedItem.return_number}?`
+                : `Please provide a reason for rejecting return ${selectedItem.return_number}.`}
+            </p>
+            {showActionModal === 'reject' && (
+              <textarea
+                value={actionReason}
+                onChange={(e) => setActionReason(e.target.value)}
+                placeholder="Enter rejection reason..."
+                className="input-field min-h-[100px] mb-4"
+              />
+            )}
+            <div className="flex items-center justify-end gap-3">
+              <button onClick={() => { setShowActionModal(null); setActionReason(''); }} className="btn-outline">Cancel</button>
+              <button 
+                onClick={showActionModal === 'approve' ? handleApprove : handleReject}
+                disabled={updateStatus.isPending}
+                className={showActionModal === 'approve' ? 'btn-primary' : 'btn-primary bg-destructive hover:bg-destructive/90'}
+              >
+                {updateStatus.isPending ? <Loader2 size={16} className="animate-spin" /> : showActionModal === 'approve' ? 'Approve' : 'Reject'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Create Return Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">
-                {showActionModal === 'approve' ? 'Approve Return' : 'Reject Return'}
-              </h2>
-              <button onClick={() => { setShowActionModal(null); setActionReason(''); }} className="p-2 hover:bg-muted rounded-lg"><X size={20} /></button>
+              <h2 className="text-lg font-semibold text-foreground">Create Return Request</h2>
+              <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-muted rounded-lg"><X size={20} /></button>
             </div>
 
             <div className="space-y-4">
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <p className="font-medium text-foreground">{selectedItem.returnId}</p>
-                <p className="text-sm text-muted-foreground">{selectedItem.sourceName} • {formatCurrency(selectedItem.totalValue)}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Return Type *</label>
+                  <select
+                    value={formData.return_type}
+                    onChange={(e) => setFormData({ ...formData, return_type: e.target.value as ReturnType })}
+                    className="input-field"
+                  >
+                    <option value="return">Return</option>
+                    <option value="damage">Damage</option>
+                    <option value="expiry">Expiry</option>
+                    <option value="wrong_product">Wrong Product</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Source Type *</label>
+                  <select
+                    value={formData.source}
+                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="retailer">Retailer</option>
+                    <option value="distributor">Distributor</option>
+                  </select>
+                </div>
               </div>
 
-              {showActionModal === 'reject' && (
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Rejection Reason *</label>
-                  <textarea
-                    value={actionReason}
-                    onChange={(e) => setActionReason(e.target.value)}
-                    placeholder="Enter reason for rejection..."
-                    className="input-field min-h-[100px]"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Source Name *</label>
+                <input
+                  type="text"
+                  value={formData.source_name}
+                  onChange={(e) => setFormData({ ...formData, source_name: e.target.value })}
+                  placeholder="Enter retailer/distributor name"
+                  className="input-field"
+                />
+              </div>
 
-              {showActionModal === 'approve' && (
-                <p className="text-sm text-muted-foreground">
-                  Are you sure you want to approve this return request? The return process will be initiated.
-                </p>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Reason</label>
+                <textarea
+                  value={formData.reason}
+                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                  placeholder="Enter reason for return..."
+                  className="input-field min-h-[80px]"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-foreground">Return Items *</label>
+                  <button onClick={handleAddItem} className="text-sm text-primary hover:underline flex items-center gap-1">
+                    <Plus size={14} /> Add Item
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {formItems.map((item, index) => (
+                    <div key={index} className="p-4 border border-border rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Item {index + 1}</span>
+                        {formItems.length > 1 && (
+                          <button onClick={() => handleRemoveItem(index)} className="p-1 hover:bg-destructive/10 rounded">
+                            <Trash2 size={14} className="text-destructive" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
+                          <select
+                            value={item.product_id}
+                            onChange={(e) => handleProductChange(index, e.target.value)}
+                            className="input-field"
+                          >
+                            <option value="">Select Product</option>
+                            {products.map(p => (
+                              <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Quantity</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const newItems = [...formItems];
+                              newItems[index].quantity = parseInt(e.target.value) || 1;
+                              setFormItems(newItems);
+                            }}
+                            className="input-field"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Unit Price</label>
+                          <input
+                            type="number"
+                            value={item.unit_price}
+                            onChange={(e) => {
+                              const newItems = [...formItems];
+                              newItems[index].unit_price = parseFloat(e.target.value) || 0;
+                              setFormItems(newItems);
+                            }}
+                            className="input-field"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 bg-muted/30 rounded-lg">
+                <div className="flex justify-between">
+                  <span className="font-medium">Total Value</span>
+                  <span className="font-bold text-lg">
+                    {formatCurrency(formItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0))}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => { setShowActionModal(null); setActionReason(''); }} className="btn-outline">Cancel</button>
-              {showActionModal === 'approve' ? (
-                <button onClick={handleApprove} className="btn-primary flex items-center gap-2">
-                  <CheckCircle size={16} /> Approve
-                </button>
-              ) : (
-                <button onClick={handleReject} className="px-4 py-2 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors flex items-center gap-2">
-                  <XCircle size={16} /> Reject
-                </button>
-              )}
+              <button onClick={() => setShowCreateModal(false)} className="btn-outline">Cancel</button>
+              <button 
+                onClick={handleCreateReturn}
+                disabled={createReturn.isPending}
+                className="btn-primary flex items-center gap-2"
+              >
+                {createReturn.isPending ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                Create Return
+              </button>
             </div>
           </motion.div>
         </div>
