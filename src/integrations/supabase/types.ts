@@ -511,6 +511,81 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback_tickets: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          priority: string
+          resolved_at: string | null
+          resolved_by: string | null
+          response: string | null
+          source: string
+          source_id: string | null
+          source_name: string
+          status: string
+          subject: string
+          ticket_number: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          priority?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response?: string | null
+          source?: string
+          source_id?: string | null
+          source_name: string
+          status?: string
+          subject: string
+          ticket_number: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          priority?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response?: string | null
+          source?: string
+          source_id?: string | null
+          source_name?: string
+          status?: string
+          subject?: string
+          ticket_number?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_tickets_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_batches: {
         Row: {
           approved_at: string | null
