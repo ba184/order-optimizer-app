@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
@@ -23,6 +24,7 @@ const formatCurrency = (value: number) => {
 };
 
 export default function OrdersListPage() {
+  const navigate = useNavigate();
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   
@@ -109,10 +111,18 @@ export default function OrdersListPage() {
       header: 'Actions',
       render: (item: typeof orders[0]) => (
         <div className="flex items-center gap-1">
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="View">
+          <button 
+            onClick={() => navigate(`/orders/${item.id}`)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors" 
+            title="View"
+          >
             <Eye size={16} className="text-muted-foreground" />
           </button>
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="Invoice">
+          <button 
+            onClick={() => navigate(`/orders/${item.id}?invoice=true`)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors" 
+            title="Invoice"
+          >
             <FileText size={16} className="text-muted-foreground" />
           </button>
         </div>
