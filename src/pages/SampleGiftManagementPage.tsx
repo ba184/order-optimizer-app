@@ -28,6 +28,7 @@ import {
 } from '@/hooks/useSamplesData';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useProducts } from '@/hooks/useProductsData';
 
 export default function SampleGiftManagementPage() {
   const [activeTab, setActiveTab] = useState<'samples' | 'issues'>('samples');
@@ -50,11 +51,13 @@ export default function SampleGiftManagementPage() {
     cost_price: 0,
     stock: 0,
     description: '',
+    product_id: '',
   });
 
   const { data: samples = [], isLoading: loadingSamples } = useSamples();
   const { data: issues = [], isLoading: loadingIssues } = useSampleIssues();
   const { data: budget } = useCurrentBudget();
+  const { data: products = [] } = useProducts();
   const createSampleMutation = useCreateSample();
   const issueMutation = useIssueSample();
 
@@ -98,7 +101,7 @@ export default function SampleGiftManagementPage() {
     createSampleMutation.mutate(sampleData, {
       onSuccess: () => {
         setShowCreateModal(false);
-        setSampleData({ sku: '', name: '', type: 'sample', cost_price: 0, stock: 0, description: '' });
+        setSampleData({ sku: '', name: '', type: 'sample', cost_price: 0, stock: 0, description: '', product_id: '' });
       },
     });
   };
@@ -442,6 +445,34 @@ export default function SampleGiftManagementPage() {
             <h2 className="text-lg font-semibold text-foreground mb-4">Add Sample/Gift</h2>
             <div className="space-y-4">
               <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Link to Product (Optional)</label>
+                <select
+                  value={sampleData.product_id}
+                  onChange={(e) => {
+                    const selectedProduct = products.find(p => p.id === e.target.value);
+                    if (selectedProduct) {
+                      setSampleData({
+                        ...sampleData,
+                        product_id: e.target.value,
+                        sku: `SMP-${selectedProduct.sku}`,
+                        name: `${selectedProduct.name} (Sample)`,
+                        cost_price: Math.round(selectedProduct.ptr * 0.5),
+                      });
+                    } else {
+                      setSampleData({ ...sampleData, product_id: '' });
+                    }
+                  }}
+                  className="input-field"
+                >
+                  <option value="">Select a product (optional)</option>
+                  {products.filter(p => p.status === 'active').map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.sku})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-foreground mb-2">SKU Code</label>
                 <input
                   type="text"
@@ -458,7 +489,7 @@ export default function SampleGiftManagementPage() {
                   value={sampleData.name}
                   onChange={(e) => setSampleData({ ...sampleData, name: e.target.value })}
                   className="input-field"
-                  placeholder="Product name"
+                  placeholder="Sample/Gift name"
                 />
               </div>
               <div>
