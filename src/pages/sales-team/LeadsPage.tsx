@@ -2,22 +2,32 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
-import { useLeads, useCreateLead, useUpdateLead } from '@/hooks/useSalesTeamData';
+import { useLeads, useCreateLead, useUpdateLead, useProfiles } from '@/hooks/useSalesTeamData';
+import { useProducts } from '@/hooks/useProductsData';
+import { useCountries, useStates, useCities, useZones } from '@/hooks/useGeoMasterData';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   UserPlus,
   Phone,
-  MapPin,
   Store,
   Building2,
+  User,
   Eye,
-  Edit,
   CheckCircle,
   Clock,
   TrendingUp,
   Loader2,
   X,
+  Plus,
+  Trash2,
+  ShieldCheck,
 } from 'lucide-react';
+
+interface Competitor {
+  name: string;
+  price: string;
+  strategy: string;
+}
 
 interface Lead {
   id: string;
@@ -26,14 +36,30 @@ interface Lead {
   phone: string | null;
   address: string | null;
   city: string | null;
+  state: string | null;
+  country: string | null;
+  zone: string | null;
+  pincode: string | null;
   lead_type: string | null;
   status: string | null;
-  notes: string | null;
+  approval_status: string | null;
+  source: string | null;
+  interested_products: string[] | null;
+  expected_conversion_date: string | null;
+  competitors: Competitor[] | null;
+  converted_to: string | null;
   created_by: string;
   created_at: string;
-  assigned_to: string | null;
-  follow_up_date?: string | null;
+  profiles?: { name: string };
 }
+
+const competitorOptions = [
+  'Competitor A',
+  'Competitor B',
+  'Competitor C',
+  'Competitor D',
+  'Other',
+];
 
 export default function LeadsPage() {
   const { user } = useAuth();
@@ -41,15 +67,28 @@ export default function LeadsPage() {
   const [showViewModal, setShowViewModal] = useState<Lead | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    shop_name: '',
     phone: '',
-    address: '',
-    city: '',
+    shop_name: '',
     lead_type: 'retailer',
-    notes: '',
+    country: '',
+    state: '',
+    city: '',
+    zone: '',
+    pincode: '',
+    address: '',
+    interested_products: [] as string[],
+    expected_conversion_date: '',
+    source: 'online',
   });
+  const [competitors, setCompetitors] = useState<Competitor[]>([]);
 
   const { data: leadsData, isLoading } = useLeads();
+  const { data: productsData } = useProducts();
+  const { data: countriesData } = useCountries();
+  const { data: statesData } = useStates();
+  const { data: citiesData } = useCities();
+  const { data: zonesData } = useZones();
+  const { data: profilesData } = useProfiles();
   const createLead = useCreateLead();
   const updateLead = useUpdateLead();
 
@@ -57,42 +96,140 @@ export default function LeadsPage() {
     ...l,
     lead_type: l.lead_type || 'retailer',
     status: l.status || 'new',
+    approval_status: l.approval_status || 'pending',
+    competitors: l.competitors || [],
+    interested_products: l.interested_products || [],
   }));
 
   const handleCreate = async () => {
-    if (!formData.name || !formData.shop_name) {
+    if (!formData.name || !formData.shop_name || !formData.phone) {
       return;
     }
-    await createLead.mutateAsync(formData);
+    await createLead.mutateAsync({
+      name: formData.name,
+      phone: formData.phone,
+      shop_name: formData.shop_name,
+      lead_type: formData.lead_type,
+      country: formData.country,
+      state: formData.state,
+      city: formData.city,
+      zone: formData.zone || undefined,
+      pincode: formData.pincode,
+      address: formData.address,
+      interested_products: formData.interested_products,
+      expected_conversion_date: formData.expected_conversion_date || undefined,
+      source: formData.source,
+      competitors: competitors,
+    });
     setShowAddModal(false);
-    setFormData({ name: '', shop_name: '', phone: '', address: '', city: '', lead_type: 'retailer', notes: '' });
+    resetForm();
   };
 
-  const handleConvert = async (id: string) => {
-    await updateLead.mutateAsync({ id, status: 'converted' });
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      phone: '',
+      shop_name: '',
+      lead_type: 'retailer',
+      country: '',
+      state: '',
+      city: '',
+      zone: '',
+      pincode: '',
+      address: '',
+      interested_products: [],
+      expected_conversion_date: '',
+      source: 'online',
+    });
+    setCompetitors([]);
+  };
+
+  const handleApprove = async (id: string) => {
+    await updateLead.mutateAsync({ id, approval_status: 'approved' });
+  };
+
+  const handleConvert = async (lead: Lead) => {
+    await updateLead.mutateAsync({ 
+      id: lead.id, 
+      status: 'converted',
+      converted_to: lead.lead_type 
+    });
+  };
+
+  const addCompetitor = () => {
+    setCompetitors([...competitors, { name: '', price: '', strategy: '' }]);
+  };
+
+  const removeCompetitor = (index: number) => {
+    setCompetitors(competitors.filter((_, i) => i !== index));
+  };
+
+  const updateCompetitor = (index: number, field: keyof Competitor, value: string) => {
+    const updated = [...competitors];
+    updated[index][field] = value;
+    setCompetitors(updated);
+  };
+
+  const toggleProduct = (productId: string) => {
+    const current = formData.interested_products;
+    if (current.includes(productId)) {
+      setFormData({ ...formData, interested_products: current.filter(p => p !== productId) });
+    } else {
+      setFormData({ ...formData, interested_products: [...current, productId] });
+    }
+  };
+
+  const getCreatedByName = (createdBy: string) => {
+    const profile = profilesData?.find(p => p.id === createdBy);
+    return profile?.name || 'FSE';
+  };
+
+  const getProductNames = (productIds: string[] | null) => {
+    if (!productIds || productIds.length === 0) return 'N/A';
+    return productIds.map(id => {
+      const product = productsData?.find(p => p.id === id);
+      return product?.name || id;
+    }).join(', ');
   };
 
   const columns = [
     {
-      key: 'shop_name',
-      header: 'Lead',
+      key: 'id',
+      header: 'Lead ID',
+      render: (item: Lead) => (
+        <button 
+          onClick={() => setShowViewModal(item)}
+          className="text-primary hover:underline font-medium"
+        >
+          {item.id.slice(0, 8).toUpperCase()}
+        </button>
+      ),
+    },
+    {
+      key: 'name',
+      header: 'Contact Name',
       render: (item: Lead) => (
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-            item.lead_type === 'retailer' ? 'bg-secondary/10' : 'bg-primary/10'
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            item.lead_type === 'retailer' ? 'bg-secondary/10' : 
+            item.lead_type === 'distributor' ? 'bg-primary/10' : 'bg-info/10'
           }`}>
-            {item.lead_type === 'retailer' ? <Store size={20} className="text-secondary" /> : <Building2 size={20} className="text-primary" />}
+            {item.lead_type === 'retailer' ? <Store size={16} className="text-secondary" /> : 
+             item.lead_type === 'distributor' ? <Building2 size={16} className="text-primary" /> :
+             <User size={16} className="text-info" />}
           </div>
-          <div>
-            <p className="font-medium text-foreground">{item.shop_name || 'N/A'}</p>
-            <p className="text-xs text-muted-foreground">{item.name}</p>
-          </div>
+          <span className="font-medium text-foreground">{item.name}</span>
         </div>
       ),
     },
     {
+      key: 'shop_name',
+      header: 'Business/Firm Name',
+      render: (item: Lead) => <span className="text-sm">{item.shop_name || 'N/A'}</span>,
+    },
+    {
       key: 'phone',
-      header: 'Contact',
+      header: 'Phone Number',
       render: (item: Lead) => (
         <div className="flex items-center gap-2">
           <Phone size={14} className="text-muted-foreground" />
@@ -101,60 +238,94 @@ export default function LeadsPage() {
       ),
     },
     {
-      key: 'city',
-      header: 'Location',
-      render: (item: Lead) => (
-        <div className="flex items-center gap-2">
-          <MapPin size={14} className="text-muted-foreground" />
-          <span className="text-sm">{item.city || 'N/A'}</span>
-        </div>
-      ),
-    },
-    {
       key: 'lead_type',
-      header: 'Type',
+      header: 'Lead Type',
       render: (item: Lead) => (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-          item.lead_type === 'retailer' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${
+          item.lead_type === 'retailer' ? 'bg-secondary/10 text-secondary' : 
+          item.lead_type === 'distributor' ? 'bg-primary/10 text-primary' :
+          'bg-info/10 text-info'
         }`}>
           {item.lead_type}
         </span>
       ),
     },
     {
-      key: 'assigned_to',
-      header: 'Assigned To',
+      key: 'interested_products',
+      header: 'Interested Products',
       render: (item: Lead) => (
-        <span className="text-sm">{item.assigned_to ? 'Assigned' : 'Unassigned'}</span>
+        <span className="text-sm max-w-[150px] truncate block">
+          {getProductNames(item.interested_products)}
+        </span>
       ),
     },
     {
+      key: 'source',
+      header: 'Lead Source',
+      render: (item: Lead) => (
+        <span className={`px-2 py-0.5 rounded text-xs font-medium capitalize ${
+          item.source === 'online' ? 'bg-info/10 text-info' : 'bg-warning/10 text-warning'
+        }`}>
+          {item.source || 'N/A'}
+        </span>
+      ),
+    },
+    {
+      key: 'created_by',
+      header: 'Created By',
+      render: (item: Lead) => (
+        <span className="text-sm">{getCreatedByName(item.created_by)}</span>
+      ),
+    },
+    {
+      key: 'approval_status',
+      header: 'Approval Status',
+      render: (item: Lead) => <StatusBadge status={item.approval_status as StatusType} />,
+    },
+    {
       key: 'status',
-      header: 'Status',
-      render: (item: Lead) => <StatusBadge status={item.status as StatusType} />,
+      header: 'Lead Status',
+      render: (item: Lead) => (
+        <div>
+          <StatusBadge status={item.status as StatusType} />
+          {item.status === 'converted' && item.converted_to && (
+            <p className="text-xs text-success mt-1">
+              → {item.converted_to}
+            </p>
+          )}
+        </div>
+      ),
     },
     {
       key: 'actions',
       header: 'Actions',
       render: (item: Lead) => (
         <div className="flex items-center gap-1">
+          {item.approval_status === 'pending' && (
+            <button
+              onClick={() => handleApprove(item.id)}
+              className="p-2 hover:bg-success/10 rounded-lg transition-colors"
+              title="Approve"
+            >
+              <ShieldCheck size={16} className="text-success" />
+            </button>
+          )}
+          {item.status !== 'converted' && item.approval_status === 'approved' && (
+            <button
+              onClick={() => handleConvert(item)}
+              className="p-2 hover:bg-primary/10 rounded-lg transition-colors"
+              title="Convert"
+            >
+              <CheckCircle size={16} className="text-primary" />
+            </button>
+          )}
           <button 
             onClick={() => setShowViewModal(item)}
             className="p-2 hover:bg-muted rounded-lg transition-colors"
+            title="View"
           >
             <Eye size={16} className="text-muted-foreground" />
           </button>
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-            <Edit size={16} className="text-muted-foreground" />
-          </button>
-          {item.status !== 'converted' && item.status !== 'lost' && (
-            <button
-              onClick={() => handleConvert(item.id)}
-              className="p-2 hover:bg-success/10 rounded-lg transition-colors"
-            >
-              <CheckCircle size={16} className="text-success" />
-            </button>
-          )}
         </div>
       ),
     },
@@ -163,7 +334,6 @@ export default function LeadsPage() {
   const stats = {
     total: leads.length,
     new: leads.filter(l => l.status === 'new').length,
-    interested: leads.filter(l => l.status === 'interested').length,
     converted: leads.filter(l => l.status === 'converted').length,
     conversionRate: leads.length > 0 ? ((leads.filter(l => l.status === 'converted').length / leads.length) * 100).toFixed(0) : '0',
   };
@@ -181,7 +351,7 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="module-header">
         <div>
-          <h1 className="module-title">Leads Management</h1>
+          <h1 className="module-title">Lead Management</h1>
           <p className="text-muted-foreground">Track and convert potential retailers & distributors</p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
@@ -251,19 +421,20 @@ export default function LeadsPage() {
 
       {/* Add Lead Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl my-8"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">Add New Lead</h2>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-muted rounded-lg">
+              <button onClick={() => { setShowAddModal(false); resetForm(); }} className="p-2 hover:bg-muted rounded-lg">
                 <X size={18} />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              {/* Basic Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Contact Name *</label>
@@ -276,47 +447,111 @@ export default function LeadsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Phone</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Phone Number *</label>
                   <input 
                     type="tel" 
                     placeholder="+91 98765 43210" 
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9+\s]/g, '') })}
                     className="input-field" 
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Shop/Firm Name *</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter shop name" 
-                  value={formData.shop_name}
-                  onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
-                  className="input-field" 
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Business/Firm Name *</label>
+                  <input 
+                    type="text" 
+                    placeholder="Enter firm name" 
+                    value={formData.shop_name}
+                    onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
+                    className="input-field" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Lead Type</label>
+                  <select 
+                    value={formData.lead_type}
+                    onChange={(e) => setFormData({ ...formData, lead_type: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="retailer">Retailer</option>
+                    <option value="distributor">Distributor</option>
+                    <option value="individual">Individual</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Lead Type</label>
-                <select 
-                  value={formData.lead_type}
-                  onChange={(e) => setFormData({ ...formData, lead_type: e.target.value })}
-                  className="input-field"
-                >
-                  <option value="retailer">Retailer</option>
-                  <option value="distributor">Distributor</option>
-                </select>
+
+              {/* Location */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Country</label>
+                  <select 
+                    value={formData.country}
+                    onChange={(e) => setFormData({ ...formData, country: e.target.value, state: '', city: '' })}
+                    className="input-field"
+                  >
+                    <option value="">Select Country</option>
+                    {countriesData?.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">State</label>
+                  <select 
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value, city: '' })}
+                    className="input-field"
+                  >
+                    <option value="">Select State</option>
+                    {statesData?.map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">City</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter city" 
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="input-field" 
-                />
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">City</label>
+                  <select 
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="">Select City</option>
+                    {citiesData?.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Zone (Optional)</label>
+                  <select 
+                    value={formData.zone}
+                    onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="">Select Zone</option>
+                    {zonesData?.map(z => (
+                      <option key={z.id} value={z.name}>{z.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Pincode</label>
+                  <input 
+                    type="text" 
+                    placeholder="Enter pincode" 
+                    value={formData.pincode}
+                    onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                    className="input-field" 
+                  />
+                </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Address</label>
                 <textarea 
@@ -327,19 +562,56 @@ export default function LeadsPage() {
                   className="input-field resize-none" 
                 />
               </div>
+
+              {/* Products & Source */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Notes</label>
-                <textarea 
-                  placeholder="Any additional notes..." 
-                  rows={2} 
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="input-field resize-none" 
-                />
+                <label className="block text-sm font-medium text-foreground mb-2">Interested Products (Multi-select)</label>
+                <div className="flex flex-wrap gap-2 p-3 border border-border rounded-lg bg-muted/30">
+                  {productsData?.slice(0, 12).map(product => (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => toggleProduct(product.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        formData.interested_products.includes(product.id)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      {product.name}
+                    </button>
+                  ))}
+                  {(!productsData || productsData.length === 0) && (
+                    <span className="text-sm text-muted-foreground">No products available</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Expected Conversion Date</label>
+                  <input 
+                    type="date" 
+                    value={formData.expected_conversion_date}
+                    onChange={(e) => setFormData({ ...formData, expected_conversion_date: e.target.value })}
+                    className="input-field" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Lead Source</label>
+                  <select 
+                    value={formData.source}
+                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="online">Online</option>
+                    <option value="reference">Reference</option>
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowAddModal(false)} className="btn-outline">Cancel</button>
+            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
+              <button onClick={() => { setShowAddModal(false); resetForm(); }} className="btn-outline">Cancel</button>
               <button 
                 onClick={handleCreate} 
                 disabled={createLead.isPending}
@@ -354,11 +626,11 @@ export default function LeadsPage() {
 
       {/* View Lead Modal */}
       {showViewModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl my-8"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">Lead Details</h2>
@@ -366,50 +638,136 @@ export default function LeadsPage() {
                 <X size={18} />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+              {/* Lead Header */}
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                  showViewModal.lead_type === 'retailer' ? 'bg-secondary/10' : 'bg-primary/10'
+                  showViewModal.lead_type === 'retailer' ? 'bg-secondary/10' : 
+                  showViewModal.lead_type === 'distributor' ? 'bg-primary/10' : 'bg-info/10'
                 }`}>
-                  {showViewModal.lead_type === 'retailer' ? <Store size={24} className="text-secondary" /> : <Building2 size={24} className="text-primary" />}
+                  {showViewModal.lead_type === 'retailer' ? <Store size={24} className="text-secondary" /> : 
+                   showViewModal.lead_type === 'distributor' ? <Building2 size={24} className="text-primary" /> :
+                   <User size={24} className="text-info" />}
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-semibold text-foreground">{showViewModal.shop_name}</p>
                   <p className="text-sm text-muted-foreground">{showViewModal.name}</p>
                 </div>
+                {showViewModal.status === 'converted' && (
+                  <div className="px-3 py-1.5 bg-success/10 text-success rounded-lg text-sm font-medium">
+                    Converted To: {showViewModal.converted_to || showViewModal.lead_type}
+                  </div>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+
+              {/* Basic Info */}
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Lead ID</p>
+                  <p className="font-medium">{showViewModal.id.slice(0, 8).toUpperCase()}</p>
+                </div>
                 <div>
                   <p className="text-muted-foreground">Phone</p>
                   <p className="font-medium">{showViewModal.phone || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">City</p>
-                  <p className="font-medium">{showViewModal.city || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Type</p>
                   <p className="font-medium capitalize">{showViewModal.lead_type}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Status</p>
+                  <p className="text-muted-foreground">Approval Status</p>
+                  <StatusBadge status={showViewModal.approval_status as StatusType} />
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Lead Status</p>
                   <StatusBadge status={showViewModal.status as StatusType} />
                 </div>
+                <div>
+                  <p className="text-muted-foreground">Source</p>
+                  <p className="font-medium capitalize">{showViewModal.source || 'N/A'}</p>
+                </div>
               </div>
-              {showViewModal.address && (
-                <div>
-                  <p className="text-muted-foreground text-sm">Address</p>
-                  <p className="font-medium">{showViewModal.address}</p>
+
+              {/* Location */}
+              <div>
+                <h3 className="font-medium text-foreground mb-2">Location</h3>
+                <div className="grid grid-cols-3 gap-4 text-sm bg-muted/30 p-3 rounded-lg">
+                  <div>
+                    <p className="text-muted-foreground">Country</p>
+                    <p className="font-medium">{showViewModal.country || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">State</p>
+                    <p className="font-medium">{showViewModal.state || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">City</p>
+                    <p className="font-medium">{showViewModal.city || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Zone</p>
+                    <p className="font-medium">{showViewModal.zone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Pincode</p>
+                    <p className="font-medium">{showViewModal.pincode || 'N/A'}</p>
+                  </div>
                 </div>
-              )}
-              {showViewModal.notes && (
+                {showViewModal.address && (
+                  <p className="text-sm mt-2"><span className="text-muted-foreground">Address:</span> {showViewModal.address}</p>
+                )}
+              </div>
+
+              {/* Products & Conversion */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-muted-foreground text-sm">Notes</p>
-                  <p className="font-medium">{showViewModal.notes}</p>
+                  <h3 className="font-medium text-foreground mb-2">Interested Products</h3>
+                  <div className="flex flex-wrap gap-1">
+                    {showViewModal.interested_products && showViewModal.interested_products.length > 0 ? (
+                      showViewModal.interested_products.map(productId => {
+                        const product = productsData?.find(p => p.id === productId);
+                        return (
+                          <span key={productId} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">
+                            {product?.name || productId}
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <span className="text-sm text-muted-foreground">No products selected</span>
+                    )}
+                  </div>
                 </div>
-              )}
+                <div>
+                  <h3 className="font-medium text-foreground mb-2">Expected Conversion</h3>
+                  <p className="text-sm">{showViewModal.expected_conversion_date || 'Not set'}</p>
+                </div>
+              </div>
+
+              {/* Competitors Section */}
+              <div>
+                <h3 className="font-medium text-foreground mb-2">Competitor Analysis</h3>
+                {showViewModal.competitors && showViewModal.competitors.length > 0 ? (
+                  <div className="space-y-2">
+                    {showViewModal.competitors.map((comp, idx) => (
+                      <div key={idx} className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg text-sm">
+                        <div className="flex-1">
+                          <p className="font-medium">{comp.name}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Price:</span> {comp.price || 'N/A'}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Strategy:</span> {comp.strategy || 'N/A'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No competitor data</p>
+                )}
+              </div>
             </div>
-            <div className="flex items-center justify-end mt-6">
+            <div className="flex items-center justify-end mt-6 pt-4 border-t border-border">
               <button onClick={() => setShowViewModal(null)} className="btn-outline">Close</button>
             </div>
           </motion.div>

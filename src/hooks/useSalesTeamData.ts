@@ -311,17 +311,22 @@ export function useCreateLead() {
       address?: string;
       city?: string;
       state?: string;
+      country?: string;
       zone?: string;
       area?: string;
+      pincode?: string;
       lead_type?: string;
       source?: string;
       notes?: string;
       potential_value?: number;
       follow_up_date?: string;
+      interested_products?: string[];
+      expected_conversion_date?: string;
+      competitors?: any;
     }) => {
       const { data: result, error } = await supabase
         .from('leads')
-        .insert({ ...data, created_by: user?.id, assigned_to: user?.id })
+        .insert({ ...data, created_by: user?.id, assigned_to: user?.id } as any)
         .select()
         .single();
       if (error) throw error;
@@ -394,10 +399,18 @@ export function useCreateLeave() {
       end_date: string;
       days: number;
       reason: string;
+      duration_type?: string;
+      user_id?: string;
+      applied_by?: string;
     }) => {
+      const insertData = {
+        ...data,
+        user_id: data.user_id || user?.id,
+        applied_by: data.applied_by || user?.id,
+      };
       const { data: result, error } = await supabase
         .from('leaves')
-        .insert({ ...data, user_id: user?.id })
+        .insert(insertData as any)
         .select()
         .single();
       if (error) throw error;
