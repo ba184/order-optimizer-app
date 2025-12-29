@@ -12,7 +12,7 @@ import {
   Edit,
   AlertTriangle,
   Check,
-  Camera,
+  X,
   Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -23,25 +23,32 @@ import {
   useCreateSample,
   useUpdateSample,
   useIssueSample,
+  useApproveSampleIssue,
+  useRejectSampleIssue,
+  useEmployeesForSamples,
   Sample,
   SampleIssue,
 } from '@/hooks/useSamplesData';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useProducts } from '@/hooks/useProductsData';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SampleGiftManagementPage() {
+  const { userRole } = useAuth();
+  const isAdmin = userRole === 'admin' || (userRole as any)?.code === 'admin';
+  
   const [activeTab, setActiveTab] = useState<'samples' | 'issues'>('samples');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [viewingIssue, setViewingIssue] = useState<SampleIssue | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
 
   const [issueData, setIssueData] = useState({
-    sampleId: '',
-    quantity: 1,
-    issuedToName: '',
-    issuedToType: 'retailer',
-    notes: '',
+    employee_id: '',
+    item_type: 'sample',
+    items: [] as { sample_id: string; quantity: number }[],
+    remarks: '',
   });
 
   const [sampleData, setSampleData] = useState({
@@ -52,64 +59,99 @@ export default function SampleGiftManagementPage() {
     stock: 0,
     description: '',
     product_id: '',
+    status: 'active',
   });
 
   const { data: samples = [], isLoading: loadingSamples } = useSamples();
-  const { data: issues = [], isLoading: loadingIssues } = useSampleIssues();
+  const { data: issues = [], isLoading: loadingIssues } = useSampleIssues(statusFilter);
   const { data: budget } = useCurrentBudget();
   const { data: products = [] } = useProducts();
+  const { data: employees = [] } = useEmployeesForSamples();
+  
   const createSampleMutation = useCreateSample();
   const issueMutation = useIssueSample();
+  const approveMutation = useApproveSampleIssue();
+  const rejectMutation = useRejectSampleIssue();
 
-  // Fetch retailers and distributors for issue modal
-  const { data: retailers = [] } = useQuery({
-    queryKey: ['retailers-for-samples'],
-    queryFn: async () => {
-      const { data } = await supabase.from('retailers').select('id, shop_name').eq('status', 'active');
-      return data || [];
-    },
-  });
-
-  const { data: distributors = [] } = useQuery({
-    queryKey: ['distributors-for-samples'],
-    queryFn: async () => {
-      const { data } = await supabase.from('distributors').select('id, firm_name').eq('status', 'active');
-      return data || [];
-    },
+  const filteredSamples = samples.filter(s => {
+    if (issueData.item_type === 'sample') return s.type === 'sample';
+    if (issueData.item_type === 'gift') return s.type === 'gift';
+    return true;
   });
 
   const handleIssue = () => {
-    if (!issueData.sampleId || !issueData.issuedToName) return;
+    if (!issueData.employee_id || issueData.items.length === 0) return;
     issueMutation.mutate(
       {
-        sample_id: issueData.sampleId,
-        quantity: issueData.quantity,
-        issued_to_name: issueData.issuedToName,
-        issued_to_type: issueData.issuedToType,
-        notes: issueData.notes || undefined,
+        employee_id: issueData.employee_id,
+        items: issueData.items,
+        remarks: issueData.remarks || undefined,
+        isAdmin,
       },
       {
         onSuccess: () => {
           setShowIssueModal(false);
-          setIssueData({ sampleId: '', quantity: 1, issuedToName: '', issuedToType: 'retailer', notes: '' });
+          setIssueData({ employee_id: '', item_type: 'sample', items: [], remarks: '' });
         },
       }
     );
   };
 
   const handleCreateSample = () => {
-    createSampleMutation.mutate(sampleData, {
+    createSampleMutation.mutate({
+      sku: sampleData.sku,
+      name: sampleData.name,
+      type: sampleData.type,
+      cost_price: sampleData.cost_price,
+      stock: sampleData.stock,
+      description: sampleData.description || undefined,
+      product_id: sampleData.product_id || undefined,
+    }, {
       onSuccess: () => {
         setShowCreateModal(false);
-        setSampleData({ sku: '', name: '', type: 'sample', cost_price: 0, stock: 0, description: '', product_id: '' });
+        setSampleData({ sku: '', name: '', type: 'sample', cost_price: 0, stock: 0, description: '', product_id: '', status: 'active' });
       },
+    });
+  };
+
+  const handleReject = (id: string) => {
+    if (!rejectReason.trim()) {
+      alert('Rejection reason is required');
+      return;
+    }
+    rejectMutation.mutate({ id, reason: rejectReason });
+    setShowRejectModal(null);
+    setRejectReason('');
+  };
+
+  const addItemToIssue = (sampleId: string) => {
+    if (issueData.items.find(i => i.sample_id === sampleId)) return;
+    setIssueData({
+      ...issueData,
+      items: [...issueData.items, { sample_id: sampleId, quantity: 1 }],
+    });
+  };
+
+  const updateItemQuantity = (sampleId: string, quantity: number) => {
+    setIssueData({
+      ...issueData,
+      items: issueData.items.map(i => 
+        i.sample_id === sampleId ? { ...i, quantity: Math.max(1, quantity) } : i
+      ),
+    });
+  };
+
+  const removeItemFromIssue = (sampleId: string) => {
+    setIssueData({
+      ...issueData,
+      items: issueData.items.filter(i => i.sample_id !== sampleId),
     });
   };
 
   const sampleColumns = [
     {
       key: 'name',
-      header: 'Sample/Gift',
+      header: 'Item Name',
       render: (item: Sample) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
@@ -127,36 +169,32 @@ export default function SampleGiftManagementPage() {
       ),
     },
     {
-      key: 'cost_price',
-      header: 'Cost',
-      render: (item: Sample) => <span>₹{Number(item.cost_price).toLocaleString()}</span>,
+      key: 'type',
+      header: 'Item Type',
+      render: (item: Sample) => (
+        <span className={`px-2 py-1 rounded text-xs font-medium ${
+          item.type === 'gift' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'
+        }`}>
+          {item.type === 'gift' ? 'Gift' : 'Sample'}
+        </span>
+      ),
     },
     {
       key: 'stock',
-      header: 'Available Stock',
+      header: 'Qty Available',
       render: (item: Sample) => (
         <span className={item.stock < 100 ? 'text-destructive font-medium' : ''}>{item.stock}</span>
       ),
     },
     {
-      key: 'issued_this_month',
-      header: 'Issued (MTD)',
-      render: (item: Sample) => <span>{item.issued_this_month || 0}</span>,
+      key: 'cost_price',
+      header: 'Cost Price',
+      render: (item: Sample) => <span>₹{Number(item.cost_price).toLocaleString()}</span>,
     },
     {
-      key: 'conversions',
-      header: 'Conversions',
-      render: (item: Sample) => {
-        const issued = item.issued_this_month || 0;
-        const conversions = item.conversions || 0;
-        const rate = issued > 0 ? ((conversions / issued) * 100).toFixed(0) : 0;
-        return (
-          <div className="flex items-center gap-2">
-            <span>{conversions}</span>
-            {conversions > 0 && <span className="text-xs text-success">({rate}%)</span>}
-          </div>
-        );
-      },
+      key: 'status',
+      header: 'Status',
+      render: (item: Sample) => <StatusBadge status={item.status as any} />,
     },
     {
       key: 'actions',
@@ -176,77 +214,84 @@ export default function SampleGiftManagementPage() {
 
   const issueColumns = [
     {
-      key: 'sample_name',
-      header: 'Sample/Gift',
+      key: 'id',
+      header: 'Issue ID',
       render: (item: SampleIssue) => (
-        <div>
-          <p className="font-medium text-foreground">{item.sample_name}</p>
-          <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
-        </div>
+        <span className="font-medium text-foreground">{item.id.slice(0, 8).toUpperCase()}</span>
       ),
     },
     {
       key: 'issued_to_name',
-      header: 'Issued To',
+      header: 'Employee Name',
+      render: (item: SampleIssue) => <span>{item.issued_to_name}</span>,
+    },
+    {
+      key: 'sample_type',
+      header: 'Item Type',
       render: (item: SampleIssue) => (
-        <div>
-          <p className="text-sm">{item.issued_to_name}</p>
-          <span
-            className={`text-xs px-2 py-0.5 rounded-full ${
-              item.issued_to_type === 'retailer' ? 'bg-info/10 text-info' : 'bg-primary/10 text-primary'
-            }`}
-          >
-            {item.issued_to_type}
-          </span>
-        </div>
+        <span className={`px-2 py-1 rounded text-xs font-medium ${
+          (item as any).sample_type === 'gift' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'
+        }`}>
+          {(item as any).sample_type === 'gift' ? 'Gift' : 'Sample'}
+        </span>
       ),
+    },
+    {
+      key: 'sample_name',
+      header: 'Item Name',
+      render: (item: SampleIssue) => <span>{item.sample_name}</span>,
+    },
+    {
+      key: 'quantity',
+      header: 'Quantity',
+      render: (item: SampleIssue) => <span>{item.quantity}</span>,
     },
     {
       key: 'issued_by_name',
-      header: 'Issued By',
+      header: 'Requested By',
       render: (item: SampleIssue) => (
         <div>
           <p className="text-sm">{item.issued_by_name}</p>
-          <p className="text-xs text-muted-foreground">{format(new Date(item.created_at), 'MMM d, yyyy h:mm a')}</p>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${
+            item.created_by_role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-info/10 text-info'
+          }`}>
+            {item.created_by_role === 'admin' ? 'Admin' : 'FSE'}
+          </span>
         </div>
       ),
     },
     {
-      key: 'acknowledged',
-      header: 'Acknowledgement',
-      render: (item: SampleIssue) =>
-        item.acknowledged ? (
-          <span className="flex items-center gap-1 text-success text-sm">
-            <Check size={14} />
-            Received
-          </span>
-        ) : (
-          <span className="text-warning text-sm">Pending</span>
-        ),
-    },
-    {
-      key: 'converted_to_order',
-      header: 'Conversion',
-      render: (item: SampleIssue) =>
-        item.converted_to_order ? (
-          <div className="text-success">
-            <p className="text-sm font-medium flex items-center gap-1">
-              <TrendingUp size={14} />
-              Converted
-            </p>
-            {item.order_value && <p className="text-xs">₹{Number(item.order_value).toLocaleString()}</p>}
-          </div>
-        ) : (
-          <span className="text-muted-foreground text-sm">--</span>
-        ),
+      key: 'status',
+      header: 'Status',
+      render: (item: SampleIssue) => <StatusBadge status={item.status as any} />,
     },
     {
       key: 'actions',
       header: 'Actions',
       render: (item: SampleIssue) => (
-        <button onClick={() => setViewingIssue(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
-          <Eye size={16} className="text-muted-foreground" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setViewingIssue(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+            <Eye size={16} className="text-muted-foreground" />
+          </button>
+          {item.status === 'pending' && isAdmin && (
+            <>
+              <button
+                onClick={() => approveMutation.mutate(item.id)}
+                className="p-2 hover:bg-success/10 rounded-lg transition-colors"
+                title="Approve"
+              >
+                <Check size={16} className="text-success" />
+              </button>
+              <button
+                onClick={() => setShowRejectModal(item.id)}
+                className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                title="Reject"
+              >
+                <X size={16} className="text-destructive" />
+              </button>
+            </>
+          )}
+        </div>
       ),
     },
   ];
@@ -282,16 +327,16 @@ export default function SampleGiftManagementPage() {
       <div className="module-header">
         <div>
           <h1 className="module-title">Sample & Gift Management</h1>
-          <p className="text-muted-foreground">Track samples, gifts, and conversion metrics</p>
+          <p className="text-muted-foreground">Manage stock, issue samples/gifts, and track conversions</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowCreateModal(true)} className="btn-outline flex items-center gap-2">
             <Plus size={18} />
-            Add Sample/Gift
+            Add Stock
           </button>
           <button onClick={() => setShowIssueModal(true)} className="btn-primary flex items-center gap-2">
             <Plus size={18} />
-            Issue Sample/Gift
+            Issue to FSE
           </button>
         </div>
       </div>
@@ -310,12 +355,7 @@ export default function SampleGiftManagementPage() {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="stat-card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-secondary/10">
               <Gift size={24} className="text-secondary" />
@@ -327,12 +367,7 @@ export default function SampleGiftManagementPage() {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="stat-card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-info/10">
               <Users size={24} className="text-info" />
@@ -344,12 +379,7 @@ export default function SampleGiftManagementPage() {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="stat-card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-success/10">
               <TrendingUp size={24} className="text-success" />
@@ -363,11 +393,7 @@ export default function SampleGiftManagementPage() {
       </div>
 
       {/* Budget Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-card rounded-xl border border-border p-6 shadow-sm"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl border border-border p-6 shadow-sm">
         <h3 className="font-semibold text-foreground mb-4">Monthly Budget</h3>
         <div className="flex items-center gap-6">
           <div className="flex-1">
@@ -387,7 +413,7 @@ export default function SampleGiftManagementPage() {
                     : 'bg-primary'
                 }`}
                 style={{
-                  width: `${(Number(executiveBudget.used_amount) / Number(executiveBudget.monthly_budget)) * 100}%`,
+                  width: `${Math.min((Number(executiveBudget.used_amount) / Number(executiveBudget.monthly_budget)) * 100, 100)}%`,
                 }}
               />
             </div>
@@ -415,7 +441,7 @@ export default function SampleGiftManagementPage() {
             activeTab === 'samples' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
           }`}
         >
-          Sample/Gift Master
+          Stock Master
         </button>
         <button
           onClick={() => setActiveTab('issues')}
@@ -426,6 +452,25 @@ export default function SampleGiftManagementPage() {
           Issue History
         </button>
       </div>
+
+      {/* Status Filter for Issues */}
+      {activeTab === 'issues' && (
+        <div className="flex gap-2">
+          {['all', 'pending', 'approved', 'rejected'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                statusFilter === status
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       {activeTab === 'samples' ? (
@@ -440,10 +485,22 @@ export default function SampleGiftManagementPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-4">Add Sample/Gift</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Add Stock Item</h2>
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Item Type *</label>
+                <select
+                  value={sampleData.type}
+                  onChange={(e) => setSampleData({ ...sampleData, type: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="sample">Sample</option>
+                  <option value="gift">Gift</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Link to Product (Optional)</label>
                 <select
@@ -456,7 +513,7 @@ export default function SampleGiftManagementPage() {
                         product_id: e.target.value,
                         sku: `SMP-${selectedProduct.sku}`,
                         name: `${selectedProduct.name} (Sample)`,
-                        cost_price: Math.round(selectedProduct.ptr * 0.5),
+                        cost_price: Math.round(Number(selectedProduct.ptr) * 0.5),
                       });
                     } else {
                       setSampleData({ ...sampleData, product_id: '' });
@@ -472,18 +529,9 @@ export default function SampleGiftManagementPage() {
                   ))}
                 </select>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">SKU Code</label>
-                <input
-                  type="text"
-                  value={sampleData.sku}
-                  onChange={(e) => setSampleData({ ...sampleData, sku: e.target.value })}
-                  className="input-field"
-                  placeholder="e.g., SMP-001"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Name</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Item Name *</label>
                 <input
                   type="text"
                   value={sampleData.name}
@@ -492,55 +540,60 @@ export default function SampleGiftManagementPage() {
                   placeholder="Sample/Gift name"
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Type</label>
-                <select
-                  value={sampleData.type}
-                  onChange={(e) => setSampleData({ ...sampleData, type: e.target.value })}
+                <label className="block text-sm font-medium text-foreground mb-2">SKU Code *</label>
+                <input
+                  type="text"
+                  value={sampleData.sku}
+                  onChange={(e) => setSampleData({ ...sampleData, sku: e.target.value })}
                   className="input-field"
-                >
-                  <option value="sample">Sample</option>
-                  <option value="gift">Gift</option>
-                </select>
+                  placeholder="e.g., SMP-001"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Cost Price (₹)</label>
-                  <input
-                    type="number"
-                    value={sampleData.cost_price}
-                    onChange={(e) => setSampleData({ ...sampleData, cost_price: Number(e.target.value) })}
-                    className="input-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Initial Stock</label>
-                  <input
-                    type="number"
-                    value={sampleData.stock}
-                    onChange={(e) => setSampleData({ ...sampleData, stock: Number(e.target.value) })}
-                    className="input-field"
-                  />
-                </div>
-              </div>
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Description (Optional)</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Quantity Available *</label>
+                <input
+                  type="number"
+                  value={sampleData.stock || ''}
+                  onChange={(e) => setSampleData({ ...sampleData, stock: parseInt(e.target.value) || 0 })}
+                  className="input-field"
+                  placeholder="Enter quantity"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Cost Price (₹) *</label>
+                <input
+                  type="number"
+                  value={sampleData.cost_price || ''}
+                  onChange={(e) => setSampleData({ ...sampleData, cost_price: parseFloat(e.target.value) || 0 })}
+                  className="input-field"
+                  placeholder="Enter cost price"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Description</label>
                 <textarea
                   value={sampleData.description}
                   onChange={(e) => setSampleData({ ...sampleData, description: e.target.value })}
-                  className="input-field resize-none"
                   rows={2}
+                  className="input-field resize-none"
+                  placeholder="Optional description"
                 />
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowCreateModal(false)} className="btn-outline">
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowCreateModal(false)} className="flex-1 btn-outline">
                 Cancel
               </button>
               <button
                 onClick={handleCreateSample}
-                disabled={createSampleMutation.isPending || !sampleData.sku || !sampleData.name}
-                className="btn-primary"
+                disabled={createSampleMutation.isPending || !sampleData.name || !sampleData.sku}
+                className="flex-1 btn-primary disabled:opacity-50"
               >
                 {createSampleMutation.isPending ? 'Creating...' : 'Create'}
               </button>
@@ -549,97 +602,115 @@ export default function SampleGiftManagementPage() {
         </div>
       )}
 
-      {/* Issue Modal */}
+      {/* Issue Sample Modal */}
       {showIssueModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-4">Issue Sample/Gift</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Issue Sample/Gift to FSE</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Select Item</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Employee *</label>
                 <select
-                  value={issueData.sampleId}
-                  onChange={(e) => setIssueData({ ...issueData, sampleId: e.target.value })}
+                  value={issueData.employee_id}
+                  onChange={(e) => setIssueData({ ...issueData, employee_id: e.target.value })}
                   className="input-field"
                 >
-                  <option value="">Select a sample/gift</option>
-                  {samples.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} (Stock: {s.stock})
-                    </option>
+                  <option value="">Select Employee</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>{emp.name}</option>
                   ))}
                 </select>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Quantity</label>
-                <input
-                  type="number"
-                  value={issueData.quantity}
-                  onChange={(e) => setIssueData({ ...issueData, quantity: Number(e.target.value) })}
-                  min={1}
-                  className="input-field"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Issue To Type</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Item Type</label>
                 <select
-                  value={issueData.issuedToType}
-                  onChange={(e) => setIssueData({ ...issueData, issuedToType: e.target.value, issuedToName: '' })}
+                  value={issueData.item_type}
+                  onChange={(e) => setIssueData({ ...issueData, item_type: e.target.value, items: [] })}
                   className="input-field"
                 >
-                  <option value="retailer">Retailer</option>
-                  <option value="distributor">Distributor</option>
+                  <option value="sample">Sample</option>
+                  <option value="gift">Gift</option>
+                  <option value="both">Both</option>
                 </select>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Select Recipient</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Select Items *</label>
                 <select
-                  value={issueData.issuedToName}
-                  onChange={(e) => setIssueData({ ...issueData, issuedToName: e.target.value })}
+                  onChange={(e) => {
+                    if (e.target.value) addItemToIssue(e.target.value);
+                    e.target.value = '';
+                  }}
                   className="input-field"
                 >
-                  <option value="">Select {issueData.issuedToType}</option>
-                  {issueData.issuedToType === 'retailer'
-                    ? retailers.map((r) => (
-                        <option key={r.id} value={r.shop_name}>
-                          {r.shop_name}
-                        </option>
-                      ))
-                    : distributors.map((d) => (
-                        <option key={d.id} value={d.firm_name}>
-                          {d.firm_name}
-                        </option>
-                      ))}
+                  <option value="">Add item...</option>
+                  {filteredSamples
+                    .filter(s => s.status === 'active' && !issueData.items.find(i => i.sample_id === s.id))
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} (Stock: {s.stock})
+                      </option>
+                    ))}
                 </select>
               </div>
+
+              {issueData.items.length > 0 && (
+                <div className="space-y-2">
+                  {issueData.items.map((item) => {
+                    const sample = samples.find(s => s.id === item.sample_id);
+                    return (
+                      <div key={item.sample_id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{sample?.name}</p>
+                          <p className="text-xs text-muted-foreground">Available: {sample?.stock}</p>
+                        </div>
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => updateItemQuantity(item.sample_id, parseInt(e.target.value) || 1)}
+                          min={1}
+                          max={sample?.stock}
+                          className="w-20 input-field text-center"
+                        />
+                        <button
+                          onClick={() => removeItemFromIssue(item.sample_id)}
+                          className="p-1 hover:bg-destructive/10 rounded"
+                        >
+                          <X size={16} className="text-destructive" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Notes (Optional)</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Remarks</label>
                 <textarea
-                  value={issueData.notes}
-                  onChange={(e) => setIssueData({ ...issueData, notes: e.target.value })}
-                  className="input-field resize-none"
+                  value={issueData.remarks}
+                  onChange={(e) => setIssueData({ ...issueData, remarks: e.target.value })}
                   rows={2}
+                  className="input-field resize-none"
+                  placeholder="Optional remarks"
                 />
-              </div>
-              <div className="p-4 border-2 border-dashed border-border rounded-lg text-center">
-                <Camera size={24} className="mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-foreground">Capture Acknowledgement Photo</p>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowIssueModal(false)} className="btn-outline">
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowIssueModal(false)} className="flex-1 btn-outline">
                 Cancel
               </button>
               <button
                 onClick={handleIssue}
-                disabled={issueMutation.isPending || !issueData.sampleId || !issueData.issuedToName}
-                className="btn-primary"
+                disabled={issueMutation.isPending || !issueData.employee_id || issueData.items.length === 0}
+                className="flex-1 btn-primary disabled:opacity-50"
               >
-                {issueMutation.isPending ? 'Issuing...' : 'Issue'}
+                {issueMutation.isPending ? 'Issuing...' : isAdmin ? 'Issue & Approve' : 'Submit for Approval'}
               </button>
             </div>
           </motion.div>
@@ -654,10 +725,24 @@ export default function SampleGiftManagementPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-4">Issue Details</h2>
-            <div className="space-y-3">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">Issue Details</h2>
+              <button onClick={() => setViewingIssue(null)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Sample/Gift</span>
+                <span className="text-muted-foreground">Issue ID</span>
+                <span className="font-medium">{viewingIssue.id.slice(0, 8).toUpperCase()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Employee</span>
+                <span className="font-medium">{viewingIssue.issued_to_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Item</span>
                 <span className="font-medium">{viewingIssue.sample_name}</span>
               </div>
               <div className="flex justify-between">
@@ -665,43 +750,86 @@ export default function SampleGiftManagementPage() {
                 <span className="font-medium">{viewingIssue.quantity}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Issued To</span>
-                <span className="font-medium">{viewingIssue.issued_to_name}</span>
+                <span className="text-muted-foreground">Requested By</span>
+                <span className="font-medium">{viewingIssue.issued_by_name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Type</span>
-                <span className="capitalize">{viewingIssue.issued_to_type}</span>
+                <span className="text-muted-foreground">Request Date</span>
+                <span className="font-medium">{format(new Date(viewingIssue.request_date), 'MMM d, yyyy')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Issued By</span>
-                <span>{viewingIssue.issued_by_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Date</span>
-                <span>{format(new Date(viewingIssue.created_at), 'MMM d, yyyy h:mm a')}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Acknowledged</span>
-                <span>{viewingIssue.acknowledged ? 'Yes' : 'Pending'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Converted</span>
-                <span>
-                  {viewingIssue.converted_to_order
-                    ? `Yes (₹${Number(viewingIssue.order_value).toLocaleString()})`
-                    : 'No'}
-                </span>
+                <span className="text-muted-foreground">Status</span>
+                <StatusBadge status={viewingIssue.status as any} />
               </div>
               {viewingIssue.notes && (
-                <div className="border-t border-border pt-3">
-                  <p className="text-sm text-muted-foreground">Notes:</p>
-                  <p className="text-sm">{viewingIssue.notes}</p>
+                <div>
+                  <span className="text-muted-foreground block mb-1">Remarks</span>
+                  <p className="text-sm bg-muted/30 p-3 rounded-lg">{viewingIssue.notes}</p>
+                </div>
+              )}
+              {viewingIssue.rejection_reason && (
+                <div>
+                  <span className="text-muted-foreground block mb-1">Rejection Reason</span>
+                  <p className="text-sm bg-destructive/10 text-destructive p-3 rounded-lg">{viewingIssue.rejection_reason}</p>
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-end mt-6">
-              <button onClick={() => setViewingIssue(null)} className="btn-outline">
-                Close
+
+            {viewingIssue.status === 'pending' && isAdmin && (
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    approveMutation.mutate(viewingIssue.id);
+                    setViewingIssue(null);
+                  }}
+                  className="flex-1 btn-primary"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRejectModal(viewingIssue.id);
+                    setViewingIssue(null);
+                  }}
+                  className="flex-1 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg font-medium"
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+          >
+            <h2 className="text-lg font-semibold text-foreground mb-4">Reject Issue Request</h2>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Rejection Reason *</label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+                className="input-field resize-none"
+                placeholder="Enter reason for rejection..."
+              />
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowRejectModal(null)} className="flex-1 btn-outline">
+                Cancel
+              </button>
+              <button
+                onClick={() => handleReject(showRejectModal)}
+                disabled={!rejectReason.trim()}
+                className="flex-1 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+              >
+                Reject
               </button>
             </div>
           </motion.div>

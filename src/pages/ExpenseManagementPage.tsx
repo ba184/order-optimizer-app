@@ -5,15 +5,13 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   Plus,
   IndianRupee,
-  Fuel,
-  Hotel,
-  Upload,
   Eye,
   CheckCircle,
   Clock,
-  Download,
-  MapPin,
+  Upload,
   Loader2,
+  X,
+  Check,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -21,113 +19,128 @@ import {
   useCreateExpenseClaim,
   useApproveExpenseClaim,
   useRejectExpenseClaim,
+  useEmployees,
   ExpenseClaim,
 } from '@/hooks/useExpensesData';
+import { useAuth } from '@/contexts/AuthContext';
 
-const cityCategories = {
-  A: { cities: ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata'], da: 800 },
-  B: { cities: ['Pune', 'Hyderabad', 'Ahmedabad', 'Jaipur', 'Lucknow'], da: 600 },
-  C: { cities: ['Other cities'], da: 400 },
-};
+const expenseTypes = [
+  { value: 'da', label: 'Daily Allowance (DA)' },
+  { value: 'ta', label: 'Travel Allowance (TA)' },
+  { value: 'hotel', label: 'Hotel' },
+  { value: 'food', label: 'Food' },
+  { value: 'fuel', label: 'Fuel' },
+  { value: 'misc', label: 'Miscellaneous' },
+];
+
+const billRequiredTypes = ['hotel', 'food', 'fuel'];
 
 export default function ExpenseManagementPage() {
+  const { userRole } = useAuth();
+  const isAdmin = userRole === 'admin' || (userRole as any)?.code === 'admin';
+  
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [viewingClaim, setViewingClaim] = useState<ExpenseClaim | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
+  
   const [claimData, setClaimData] = useState({
-    startDate: '',
-    endDate: '',
-    cityCategory: 'B',
-    workingDays: 0,
-    distanceTravelled: 0,
-    hotelNights: 0,
-    hotelAmount: 0,
-    otherExpenses: 0,
-    otherDescription: '',
+    employee_id: '',
+    expense_type: 'misc',
+    expense_date: '',
+    amount: 0,
+    bill_photo: '',
+    description: '',
   });
 
   const { data: expenses = [], isLoading } = useExpenseClaims(statusFilter);
+  const { data: employees = [] } = useEmployees();
   const createMutation = useCreateExpenseClaim();
   const approveMutation = useApproveExpenseClaim();
   const rejectMutation = useRejectExpenseClaim();
 
-  const calculateDA = () =>
-    claimData.workingDays * cityCategories[claimData.cityCategory as keyof typeof cityCategories].da;
-  const calculateFuel = () => claimData.distanceTravelled * 5;
-  const calculateTotal = () => calculateDA() + calculateFuel() + claimData.hotelAmount + claimData.otherExpenses;
-
   const handleSubmitClaim = () => {
+    const requiresBill = billRequiredTypes.includes(claimData.expense_type);
+    if (requiresBill && !claimData.bill_photo) {
+      alert('Bill photo is required for this expense type');
+      return;
+    }
+
     createMutation.mutate({
-      start_date: claimData.startDate,
-      end_date: claimData.endDate,
-      city_category: claimData.cityCategory,
-      working_days: claimData.workingDays,
-      da_amount: calculateDA(),
-      distance_travelled: claimData.distanceTravelled,
-      fuel_amount: calculateFuel(),
-      hotel_nights: claimData.hotelNights,
-      hotel_amount: claimData.hotelAmount,
-      other_amount: claimData.otherExpenses,
-      other_description: claimData.otherDescription || undefined,
-      total_amount: calculateTotal(),
+      user_id: claimData.employee_id || undefined,
+      expense_type: claimData.expense_type,
+      expense_date: claimData.expense_date,
+      total_amount: claimData.amount,
+      bill_photo: claimData.bill_photo || undefined,
+      description: claimData.description || undefined,
+      isAdmin,
     });
     setShowClaimModal(false);
     setClaimData({
-      startDate: '',
-      endDate: '',
-      cityCategory: 'B',
-      workingDays: 0,
-      distanceTravelled: 0,
-      hotelNights: 0,
-      hotelAmount: 0,
-      otherExpenses: 0,
-      otherDescription: '',
+      employee_id: '',
+      expense_type: 'misc',
+      expense_date: '',
+      amount: 0,
+      bill_photo: '',
+      description: '',
     });
   };
 
-  const formatPeriod = (startDate: string, endDate: string) => {
-    try {
-      return `${format(new Date(startDate), 'MMM d')} - ${format(new Date(endDate), 'd, yyyy')}`;
-    } catch {
-      return `${startDate} - ${endDate}`;
+  const handleReject = (id: string) => {
+    if (!rejectReason.trim()) {
+      alert('Rejection reason is required');
+      return;
     }
+    rejectMutation.mutate({ id, reason: rejectReason });
+    setShowRejectModal(null);
+    setRejectReason('');
   };
 
   const columns = [
     {
       key: 'claim_number',
-      header: 'Claim #',
+      header: 'Expense ID',
       render: (item: ExpenseClaim) => (
-        <div>
-          <p className="font-medium text-foreground">{item.claim_number}</p>
-          <p className="text-xs text-muted-foreground">{formatPeriod(item.start_date, item.end_date)}</p>
-        </div>
+        <p className="font-medium text-foreground">{item.claim_number}</p>
       ),
     },
     {
       key: 'user_name',
-      header: 'Employee',
+      header: 'Employee Name',
     },
     {
-      key: 'da_amount',
-      header: 'DA',
-      render: (item: ExpenseClaim) => <span>₹{Number(item.da_amount).toLocaleString()}</span>,
+      key: 'expense_type',
+      header: 'Expense Type',
+      render: (item: ExpenseClaim) => (
+        <span className="px-2 py-1 bg-muted rounded text-sm capitalize">
+          {expenseTypes.find(t => t.value === item.expense_type)?.label || item.expense_type}
+        </span>
+      ),
     },
     {
-      key: 'fuel_amount',
-      header: 'Fuel',
-      render: (item: ExpenseClaim) => <span>₹{Number(item.fuel_amount).toLocaleString()}</span>,
-    },
-    {
-      key: 'hotel_amount',
-      header: 'Hotel',
-      render: (item: ExpenseClaim) => <span>₹{Number(item.hotel_amount).toLocaleString()}</span>,
+      key: 'expense_date',
+      header: 'Expense Date',
+      render: (item: ExpenseClaim) => (
+        <span>{item.expense_date ? format(new Date(item.expense_date), 'MMM d, yyyy') : '-'}</span>
+      ),
     },
     {
       key: 'total_amount',
-      header: 'Total',
+      header: 'Amount',
       render: (item: ExpenseClaim) => (
         <span className="font-semibold text-primary">₹{Number(item.total_amount).toLocaleString()}</span>
+      ),
+    },
+    {
+      key: 'created_by_role',
+      header: 'Created By',
+      render: (item: ExpenseClaim) => (
+        <span className={`px-2 py-1 rounded text-xs font-medium ${
+          item.created_by_role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-info/10 text-info'
+        }`}>
+          {item.created_by_role === 'admin' ? 'Admin' : 'FSE'}
+        </span>
       ),
     },
     {
@@ -143,12 +156,28 @@ export default function ExpenseManagementPage() {
           <button
             onClick={() => setViewingClaim(item)}
             className="p-2 hover:bg-muted rounded-lg transition-colors"
+            title="View"
           >
             <Eye size={16} className="text-muted-foreground" />
           </button>
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-            <Download size={16} className="text-muted-foreground" />
-          </button>
+          {item.status === 'pending' && isAdmin && (
+            <>
+              <button
+                onClick={() => approveMutation.mutate(item.id)}
+                className="p-2 hover:bg-success/10 rounded-lg transition-colors"
+                title="Approve"
+              >
+                <Check size={16} className="text-success" />
+              </button>
+              <button
+                onClick={() => setShowRejectModal(item.id)}
+                className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                title="Reject"
+              >
+                <X size={16} className="text-destructive" />
+              </button>
+            </>
+          )}
         </div>
       ),
     },
@@ -175,11 +204,11 @@ export default function ExpenseManagementPage() {
       <div className="module-header">
         <div>
           <h1 className="module-title">Expense & Allowance Management</h1>
-          <p className="text-muted-foreground">TA/DA claims, fuel reimbursement, and expense tracking</p>
+          <p className="text-muted-foreground">Manage expenses, approvals, and reimbursements</p>
         </div>
         <button onClick={() => setShowClaimModal(true)} className="btn-primary flex items-center gap-2">
           <Plus size={18} />
-          New Claim
+          New Expense
         </button>
       </div>
 
@@ -192,7 +221,7 @@ export default function ExpenseManagementPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.pending}</p>
-              <p className="text-sm text-muted-foreground">Pending Claims</p>
+              <p className="text-sm text-muted-foreground">Pending</p>
             </div>
           </div>
         </motion.div>
@@ -234,28 +263,6 @@ export default function ExpenseManagementPage() {
         </motion.div>
       </div>
 
-      {/* DA Rate Card */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl border border-border p-6 shadow-sm">
-        <h3 className="font-semibold text-foreground mb-4">Daily Allowance Rates</h3>
-        <div className="grid md:grid-cols-3 gap-4">
-          {Object.entries(cityCategories).map(([category, data]) => (
-            <div key={category} className="p-4 bg-muted/30 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="px-2 py-1 bg-primary/10 text-primary rounded text-sm font-semibold">
-                  Category {category}
-                </span>
-                <span className="text-lg font-bold text-foreground">₹{data.da}/day</span>
-              </div>
-              <p className="text-xs text-muted-foreground">{data.cities.join(', ')}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-sm text-muted-foreground mt-4 flex items-center gap-2">
-          <Fuel size={16} />
-          Fuel Reimbursement: ₹5/km (auto-calculated from GPS tracking)
-        </p>
-      </motion.div>
-
       {/* Filter Tabs */}
       <div className="flex gap-2">
         {['all', 'pending', 'approved', 'rejected'].map((status) => (
@@ -274,157 +281,89 @@ export default function ExpenseManagementPage() {
       </div>
 
       {/* Claims Table */}
-      <DataTable data={expenses} columns={columns} searchPlaceholder="Search claims..." />
+      <DataTable data={expenses} columns={columns} searchPlaceholder="Search expenses..." />
 
-      {/* New Claim Modal */}
+      {/* New Expense Modal */}
       {showClaimModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-6">New Expense Claim</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-6">New Expense</h2>
 
-            <div className="space-y-6">
-              {/* Period */}
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
+              {isAdmin && (
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Start Date</label>
-                  <input
-                    type="date"
-                    value={claimData.startDate}
-                    onChange={(e) => setClaimData({ ...claimData, startDate: e.target.value })}
+                  <label className="block text-sm font-medium text-foreground mb-2">Employee *</label>
+                  <select
+                    value={claimData.employee_id}
+                    onChange={(e) => setClaimData({ ...claimData, employee_id: e.target.value })}
                     className="input-field"
-                  />
+                  >
+                    <option value="">Select Employee</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>{emp.name}</option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">End Date</label>
-                  <input
-                    type="date"
-                    value={claimData.endDate}
-                    onChange={(e) => setClaimData({ ...claimData, endDate: e.target.value })}
-                    className="input-field"
-                  />
-                </div>
-              </div>
+              )}
 
-              {/* DA Calculation */}
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
-                  <MapPin size={16} className="text-primary" />
-                  Daily Allowance
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-muted-foreground mb-2">City Category</label>
-                    <select
-                      value={claimData.cityCategory}
-                      onChange={(e) => setClaimData({ ...claimData, cityCategory: e.target.value })}
-                      className="input-field"
-                    >
-                      <option value="A">Category A (₹800/day)</option>
-                      <option value="B">Category B (₹600/day)</option>
-                      <option value="C">Category C (₹400/day)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-muted-foreground mb-2">Working Days</label>
-                    <input
-                      type="number"
-                      value={claimData.workingDays}
-                      onChange={(e) => setClaimData({ ...claimData, workingDays: parseInt(e.target.value) || 0 })}
-                      className="input-field"
-                    />
-                  </div>
-                </div>
-                <p className="text-sm text-foreground mt-2">
-                  DA Amount: <span className="font-semibold">₹{calculateDA().toLocaleString()}</span>
-                </p>
-              </div>
-
-              {/* Fuel */}
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
-                  <Fuel size={16} className="text-primary" />
-                  Fuel Reimbursement
-                </h4>
-                <div>
-                  <label className="block text-sm text-muted-foreground mb-2">Distance Travelled (km)</label>
-                  <input
-                    type="number"
-                    value={claimData.distanceTravelled}
-                    onChange={(e) =>
-                      setClaimData({ ...claimData, distanceTravelled: parseInt(e.target.value) || 0 })
-                    }
-                    className="input-field"
-                    placeholder="Auto-filled from GPS tracking"
-                  />
-                </div>
-                <p className="text-sm text-foreground mt-2">
-                  Fuel Amount: <span className="font-semibold">₹{calculateFuel().toLocaleString()}</span>
-                </p>
-              </div>
-
-              {/* Hotel */}
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
-                  <Hotel size={16} className="text-primary" />
-                  Hotel / Stay
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-muted-foreground mb-2">Number of Nights</label>
-                    <input
-                      type="number"
-                      value={claimData.hotelNights}
-                      onChange={(e) => setClaimData({ ...claimData, hotelNights: parseInt(e.target.value) || 0 })}
-                      className="input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-muted-foreground mb-2">Total Hotel Amount (₹)</label>
-                    <input
-                      type="number"
-                      value={claimData.hotelAmount}
-                      onChange={(e) => setClaimData({ ...claimData, hotelAmount: parseInt(e.target.value) || 0 })}
-                      className="input-field"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Other Expenses */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Other Expenses (₹)</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Expense Type *</label>
+                <select
+                  value={claimData.expense_type}
+                  onChange={(e) => setClaimData({ ...claimData, expense_type: e.target.value })}
+                  className="input-field"
+                >
+                  {expenseTypes.map((type) => (
+                    <option key={type.value} value={type.value}>{type.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Expense Date *</label>
                 <input
-                  type="number"
-                  value={claimData.otherExpenses}
-                  onChange={(e) => setClaimData({ ...claimData, otherExpenses: parseInt(e.target.value) || 0 })}
+                  type="date"
+                  value={claimData.expense_date}
+                  onChange={(e) => setClaimData({ ...claimData, expense_date: e.target.value })}
                   className="input-field"
                 />
-                <textarea
-                  value={claimData.otherDescription}
-                  onChange={(e) => setClaimData({ ...claimData, otherDescription: e.target.value })}
-                  placeholder="Description of other expenses..."
-                  rows={2}
-                  className="input-field mt-2 resize-none"
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Amount (₹) *</label>
+                <input
+                  type="number"
+                  value={claimData.amount || ''}
+                  onChange={(e) => setClaimData({ ...claimData, amount: parseFloat(e.target.value) || 0 })}
+                  className="input-field"
+                  placeholder="Enter amount"
                 />
               </div>
 
-              {/* Bill Upload */}
-              <div className="p-4 border-2 border-dashed border-border rounded-lg text-center">
-                <Upload size={24} className="mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-foreground">Upload Bills & Receipts</p>
-                <p className="text-xs text-muted-foreground">PDF, JPG, PNG (Max 5MB each)</p>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Bill Photo {billRequiredTypes.includes(claimData.expense_type) && '*'}
+                </label>
+                <div className="p-4 border-2 border-dashed border-border rounded-lg text-center cursor-pointer hover:border-primary/50 transition-colors">
+                  <Upload size={24} className="mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">Click to upload bill</p>
+                  <p className="text-xs text-muted-foreground">JPG, PNG (Max 5MB)</p>
+                </div>
               </div>
 
-              {/* Total */}
-              <div className="p-4 bg-primary/10 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-medium text-foreground">Total Claim Amount</span>
-                  <span className="text-2xl font-bold text-primary">₹{calculateTotal().toLocaleString()}</span>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Description</label>
+                <textarea
+                  value={claimData.description}
+                  onChange={(e) => setClaimData({ ...claimData, description: e.target.value })}
+                  rows={3}
+                  className="input-field resize-none"
+                  placeholder="Enter expense details..."
+                />
               </div>
             </div>
 
@@ -434,29 +373,34 @@ export default function ExpenseManagementPage() {
               </button>
               <button
                 onClick={handleSubmitClaim}
-                disabled={createMutation.isPending || !claimData.startDate || !claimData.endDate}
+                disabled={createMutation.isPending || !claimData.expense_date || !claimData.amount}
                 className="btn-primary"
               >
-                {createMutation.isPending ? 'Submitting...' : 'Submit Claim'}
+                {createMutation.isPending ? 'Submitting...' : isAdmin ? 'Create & Approve' : 'Submit for Approval'}
               </button>
             </div>
           </motion.div>
         </div>
       )}
 
-      {/* View Claim Modal */}
+      {/* View Expense Modal */}
       {viewingClaim && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg"
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-4">Expense Claim Details</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">Expense Details</h2>
+              <button onClick={() => setViewingClaim(null)} className="p-2 hover:bg-muted rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
 
             <div className="space-y-4">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Claim Number</span>
+                <span className="text-muted-foreground">Expense ID</span>
                 <span className="font-medium">{viewingClaim.claim_number}</span>
               </div>
               <div className="flex justify-between">
@@ -464,70 +408,94 @@ export default function ExpenseManagementPage() {
                 <span className="font-medium">{viewingClaim.user_name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Period</span>
-                <span className="font-medium">{formatPeriod(viewingClaim.start_date, viewingClaim.end_date)}</span>
+                <span className="text-muted-foreground">Type</span>
+                <span className="font-medium capitalize">
+                  {expenseTypes.find(t => t.value === viewingClaim.expense_type)?.label || viewingClaim.expense_type}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Date</span>
+                <span className="font-medium">
+                  {viewingClaim.expense_date ? format(new Date(viewingClaim.expense_date), 'MMM d, yyyy') : '-'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Amount</span>
+                <span className="font-bold text-primary">₹{Number(viewingClaim.total_amount).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
                 <StatusBadge status={viewingClaim.status as any} />
               </div>
-
-              <div className="border-t border-border pt-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Daily Allowance</span>
-                  <span>₹{Number(viewingClaim.da_amount).toLocaleString()}</span>
+              {viewingClaim.description && (
+                <div>
+                  <span className="text-muted-foreground block mb-1">Description</span>
+                  <p className="text-sm bg-muted/30 p-3 rounded-lg">{viewingClaim.description}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Fuel ({viewingClaim.distance_travelled} km)</span>
-                  <span>₹{Number(viewingClaim.fuel_amount).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Hotel ({viewingClaim.hotel_nights} nights)</span>
-                  <span>₹{Number(viewingClaim.hotel_amount).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Other Expenses</span>
-                  <span>₹{Number(viewingClaim.other_amount).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-semibold text-lg border-t border-border pt-2">
-                  <span>Total</span>
-                  <span className="text-primary">₹{Number(viewingClaim.total_amount).toLocaleString()}</span>
-                </div>
-              </div>
-
-              {viewingClaim.other_description && (
-                <div className="border-t border-border pt-4">
-                  <p className="text-sm text-muted-foreground">Other Expenses Description:</p>
-                  <p className="text-sm">{viewingClaim.other_description}</p>
+              )}
+              {viewingClaim.rejection_reason && (
+                <div>
+                  <span className="text-muted-foreground block mb-1">Rejection Reason</span>
+                  <p className="text-sm bg-destructive/10 text-destructive p-3 rounded-lg">{viewingClaim.rejection_reason}</p>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-3 mt-6">
-              {viewingClaim.status === 'pending' && (
-                <>
-                  <button
-                    onClick={() => {
-                      rejectMutation.mutate({ id: viewingClaim.id, reason: 'Rejected by manager' });
-                      setViewingClaim(null);
-                    }}
-                    className="btn-outline text-destructive"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => {
-                      approveMutation.mutate(viewingClaim.id);
-                      setViewingClaim(null);
-                    }}
-                    className="btn-primary"
-                  >
-                    Approve
-                  </button>
-                </>
-              )}
-              <button onClick={() => setViewingClaim(null)} className="btn-outline">
-                Close
+            {viewingClaim.status === 'pending' && isAdmin && (
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    approveMutation.mutate(viewingClaim.id);
+                    setViewingClaim(null);
+                  }}
+                  className="flex-1 btn-primary"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRejectModal(viewingClaim.id);
+                    setViewingClaim(null);
+                  }}
+                  className="flex-1 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg font-medium"
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+          >
+            <h2 className="text-lg font-semibold text-foreground mb-4">Reject Expense</h2>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Rejection Reason *</label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+                className="input-field resize-none"
+                placeholder="Enter reason for rejection..."
+              />
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowRejectModal(null)} className="flex-1 btn-outline">
+                Cancel
+              </button>
+              <button
+                onClick={() => handleReject(showRejectModal)}
+                disabled={!rejectReason.trim()}
+                className="flex-1 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+              >
+                Reject
               </button>
             </div>
           </motion.div>

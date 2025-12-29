@@ -867,12 +867,17 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          bill_photo: string | null
           city_category: string
           claim_number: string
           created_at: string
+          created_by_role: string | null
           da_amount: number
+          description: string | null
           distance_travelled: number
           end_date: string
+          expense_date: string | null
+          expense_type: string
           fuel_amount: number
           hotel_amount: number
           hotel_nights: number
@@ -891,12 +896,17 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          bill_photo?: string | null
           city_category?: string
           claim_number: string
           created_at?: string
+          created_by_role?: string | null
           da_amount?: number
+          description?: string | null
           distance_travelled?: number
           end_date: string
+          expense_date?: string | null
+          expense_type?: string
           fuel_amount?: number
           hotel_amount?: number
           hotel_nights?: number
@@ -915,12 +925,17 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          bill_photo?: string | null
           city_category?: string
           claim_number?: string
           created_at?: string
+          created_by_role?: string | null
           da_amount?: number
+          description?: string | null
           distance_travelled?: number
           end_date?: string
+          expense_date?: string | null
+          expense_type?: string
           fuel_amount?: number
           hotel_amount?: number
           hotel_nights?: number
@@ -2302,8 +2317,11 @@ export type Database = {
           acknowledged: boolean
           acknowledged_at: string | null
           acknowledgement_photo: string | null
+          approved_at: string | null
+          approved_by: string | null
           converted_to_order: boolean
           created_at: string
+          created_by_role: string | null
           id: string
           issued_by: string
           issued_to_id: string | null
@@ -2313,15 +2331,21 @@ export type Database = {
           order_id: string | null
           order_value: number | null
           quantity: number
+          rejection_reason: string | null
+          request_date: string | null
           sample_id: string
+          status: string
           updated_at: string
         }
         Insert: {
           acknowledged?: boolean
           acknowledged_at?: string | null
           acknowledgement_photo?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           converted_to_order?: boolean
           created_at?: string
+          created_by_role?: string | null
           id?: string
           issued_by: string
           issued_to_id?: string | null
@@ -2331,15 +2355,21 @@ export type Database = {
           order_id?: string | null
           order_value?: number | null
           quantity?: number
+          rejection_reason?: string | null
+          request_date?: string | null
           sample_id: string
+          status?: string
           updated_at?: string
         }
         Update: {
           acknowledged?: boolean
           acknowledged_at?: string | null
           acknowledgement_photo?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           converted_to_order?: boolean
           created_at?: string
+          created_by_role?: string | null
           id?: string
           issued_by?: string
           issued_to_id?: string | null
@@ -2349,7 +2379,10 @@ export type Database = {
           order_id?: string | null
           order_value?: number | null
           quantity?: number
+          rejection_reason?: string | null
+          request_date?: string | null
           sample_id?: string
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -2369,6 +2402,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          product_id: string | null
           sku: string
           status: string
           stock: number
@@ -2381,6 +2415,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          product_id?: string | null
           sku: string
           status?: string
           stock?: number
@@ -2393,13 +2428,22 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          product_id?: string | null
           sku?: string
           status?: string
           stock?: number
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "samples_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scheme_claims: {
         Row: {
