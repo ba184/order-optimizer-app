@@ -38,8 +38,27 @@ export interface DistributorSecondaryCounter {
   id: string;
   distributor_id: string;
   name: string;
+  contact_person: string | null;
   address: string | null;
   phone: string | null;
+}
+
+export interface DistributorWarehouse {
+  id: string;
+  distributor_id: string;
+  name: string;
+  address: string | null;
+  contact_person: string | null;
+  phone: string | null;
+}
+
+export interface DistributorPreorder {
+  id: string;
+  distributor_id: string;
+  product_id: string | null;
+  quantity: number;
+  expected_delivery: string | null;
+  preorder_value: number;
 }
 
 // Hooks
@@ -134,6 +153,42 @@ export function useDistributorSecondaryCounters(distributorId: string | undefine
   });
 }
 
+export function useDistributorWarehouses(distributorId: string | undefined) {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['distributor-warehouses', distributorId],
+    queryFn: async () => {
+      if (!distributorId) return [];
+      const { data, error } = await supabase
+        .from('distributor_warehouses')
+        .select('*')
+        .eq('distributor_id', distributorId);
+      if (error) throw error;
+      return data as DistributorWarehouse[];
+    },
+    enabled: !!user && !!distributorId,
+  });
+}
+
+export function useDistributorPreorders(distributorId: string | undefined) {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['distributor-preorders', distributorId],
+    queryFn: async () => {
+      if (!distributorId) return [];
+      const { data, error } = await supabase
+        .from('distributor_preorders')
+        .select('*')
+        .eq('distributor_id', distributorId);
+      if (error) throw error;
+      return data as DistributorPreorder[];
+    },
+    enabled: !!user && !!distributorId,
+  });
+}
+
 // Save all distributor extended data
 export function useSaveDistributorExtendedData() {
   const queryClient = useQueryClient();
@@ -146,22 +201,30 @@ export function useSaveDistributorExtendedData() {
       schemes,
       kycDocuments,
       secondaryCounters,
+      warehouses,
+      preorders,
     }: {
       distributorId: string;
       products: { product_id: string; margin_percent: number }[];
       pricingTiers: { min_qty: number; max_qty: number; margin_percent: number }[];
       schemes: string[];
       kycDocuments: { document_type: string; document_number: string; file_url?: string }[];
-      secondaryCounters: { name: string; address?: string; phone?: string }[];
+      secondaryCounters: { name: string; contact_person?: string; address?: string; phone?: string }[];
+      warehouses?: { name: string; address?: string; contact_person?: string; phone?: string }[];
+      preorders?: { product_id: string; quantity: number; expected_delivery?: string; preorder_value?: number }[];
     }) => {
-      // Delete existing data and insert new data in parallel
-      await Promise.all([
+      // Delete existing data in parallel
+      const deletePromises = [
         supabase.from('distributor_products').delete().eq('distributor_id', distributorId),
         supabase.from('distributor_pricing_tiers').delete().eq('distributor_id', distributorId),
         supabase.from('distributor_schemes').delete().eq('distributor_id', distributorId),
         supabase.from('distributor_kyc_documents').delete().eq('distributor_id', distributorId),
         supabase.from('distributor_secondary_counters').delete().eq('distributor_id', distributorId),
-      ]);
+        supabase.from('distributor_warehouses').delete().eq('distributor_id', distributorId),
+        supabase.from('distributor_preorders').delete().eq('distributor_id', distributorId),
+      ];
+      
+      await Promise.all(deletePromises);
 
       // Insert new data
       const insertPromises = [];
@@ -206,6 +269,22 @@ export function useSaveDistributorExtendedData() {
         );
       }
 
+      if (warehouses && warehouses.length > 0) {
+        insertPromises.push(
+          supabase.from('distributor_warehouses').insert(
+            warehouses.map(w => ({ distributor_id: distributorId, ...w }))
+          )
+        );
+      }
+
+      if (preorders && preorders.length > 0) {
+        insertPromises.push(
+          supabase.from('distributor_preorders').insert(
+            preorders.map(p => ({ distributor_id: distributorId, ...p }))
+          )
+        );
+      }
+
       await Promise.all(insertPromises);
     },
     onSuccess: (_, variables) => {
@@ -214,6 +293,8 @@ export function useSaveDistributorExtendedData() {
       queryClient.invalidateQueries({ queryKey: ['distributor-schemes', variables.distributorId] });
       queryClient.invalidateQueries({ queryKey: ['distributor-kyc-documents', variables.distributorId] });
       queryClient.invalidateQueries({ queryKey: ['distributor-secondary-counters', variables.distributorId] });
+      queryClient.invalidateQueries({ queryKey: ['distributor-warehouses', variables.distributorId] });
+      queryClient.invalidateQueries({ queryKey: ['distributor-preorders', variables.distributorId] });
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to save extended data');

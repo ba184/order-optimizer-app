@@ -438,6 +438,51 @@ export type Database = {
           },
         ]
       }
+      distributor_preorders: {
+        Row: {
+          created_at: string | null
+          distributor_id: string
+          expected_delivery: string | null
+          id: string
+          preorder_value: number | null
+          product_id: string | null
+          quantity: number
+        }
+        Insert: {
+          created_at?: string | null
+          distributor_id: string
+          expected_delivery?: string | null
+          id?: string
+          preorder_value?: number | null
+          product_id?: string | null
+          quantity?: number
+        }
+        Update: {
+          created_at?: string | null
+          distributor_id?: string
+          expected_delivery?: string | null
+          id?: string
+          preorder_value?: number | null
+          product_id?: string | null
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_preorders_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "distributor_preorders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       distributor_pricing_tiers: {
         Row: {
           created_at: string | null
@@ -551,6 +596,7 @@ export type Database = {
       distributor_secondary_counters: {
         Row: {
           address: string | null
+          contact_person: string | null
           created_at: string | null
           distributor_id: string
           id: string
@@ -559,6 +605,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          contact_person?: string | null
           created_at?: string | null
           distributor_id: string
           id?: string
@@ -567,6 +614,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          contact_person?: string | null
           created_at?: string | null
           distributor_id?: string
           id?: string
@@ -583,81 +631,188 @@ export type Database = {
           },
         ]
       }
+      distributor_warehouses: {
+        Row: {
+          address: string | null
+          contact_person: string | null
+          created_at: string | null
+          distributor_id: string
+          id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          distributor_id: string
+          id?: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          distributor_id?: string
+          id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_warehouses_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       distributors: {
         Row: {
+          account_number: string | null
           address: string | null
           agreement_end_date: string | null
           agreement_file_url: string | null
+          agreement_signed: boolean | null
           agreement_start_date: string | null
+          alt_phone: string | null
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
+          bank_name: string | null
+          category: string | null
           city: string | null
           code: string
+          contact_name: string | null
+          country: string | null
           created_at: string | null
+          created_by: string | null
           credit_limit: number | null
           email: string | null
           firm_name: string
           gstin: string | null
           id: string
+          ifsc_code: string | null
+          interested_products: string[] | null
+          kyc_status: string | null
           last_order_date: string | null
           minimum_order_value: number | null
+          msme_number: string | null
+          msme_registered: boolean | null
+          msme_type: string | null
           outstanding_amount: number | null
           owner_name: string
+          pan_number: string | null
           payment_terms: string | null
           phone: string | null
+          pincode: string | null
+          registered_address: string | null
+          rejection_reason: string | null
           return_policy: string | null
           state: string | null
           status: string | null
+          tan_number: string | null
           territory_exclusive: boolean | null
           updated_at: string | null
+          zone: string | null
         }
         Insert: {
+          account_number?: string | null
           address?: string | null
           agreement_end_date?: string | null
           agreement_file_url?: string | null
+          agreement_signed?: boolean | null
           agreement_start_date?: string | null
+          alt_phone?: string | null
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_name?: string | null
+          category?: string | null
           city?: string | null
           code: string
+          contact_name?: string | null
+          country?: string | null
           created_at?: string | null
+          created_by?: string | null
           credit_limit?: number | null
           email?: string | null
           firm_name: string
           gstin?: string | null
           id?: string
+          ifsc_code?: string | null
+          interested_products?: string[] | null
+          kyc_status?: string | null
           last_order_date?: string | null
           minimum_order_value?: number | null
+          msme_number?: string | null
+          msme_registered?: boolean | null
+          msme_type?: string | null
           outstanding_amount?: number | null
           owner_name: string
+          pan_number?: string | null
           payment_terms?: string | null
           phone?: string | null
+          pincode?: string | null
+          registered_address?: string | null
+          rejection_reason?: string | null
           return_policy?: string | null
           state?: string | null
           status?: string | null
+          tan_number?: string | null
           territory_exclusive?: boolean | null
           updated_at?: string | null
+          zone?: string | null
         }
         Update: {
+          account_number?: string | null
           address?: string | null
           agreement_end_date?: string | null
           agreement_file_url?: string | null
+          agreement_signed?: boolean | null
           agreement_start_date?: string | null
+          alt_phone?: string | null
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_name?: string | null
+          category?: string | null
           city?: string | null
           code?: string
+          contact_name?: string | null
+          country?: string | null
           created_at?: string | null
+          created_by?: string | null
           credit_limit?: number | null
           email?: string | null
           firm_name?: string
           gstin?: string | null
           id?: string
+          ifsc_code?: string | null
+          interested_products?: string[] | null
+          kyc_status?: string | null
           last_order_date?: string | null
           minimum_order_value?: number | null
+          msme_number?: string | null
+          msme_registered?: boolean | null
+          msme_type?: string | null
           outstanding_amount?: number | null
           owner_name?: string
+          pan_number?: string | null
           payment_terms?: string | null
           phone?: string | null
+          pincode?: string | null
+          registered_address?: string | null
+          rejection_reason?: string | null
           return_policy?: string | null
           state?: string | null
           status?: string | null
+          tan_number?: string | null
           territory_exclusive?: boolean | null
           updated_at?: string | null
+          zone?: string | null
         }
         Relationships: []
       }
