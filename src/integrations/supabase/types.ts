@@ -1886,6 +1886,51 @@ export type Database = {
           },
         ]
       }
+      retailer_preorders: {
+        Row: {
+          created_at: string | null
+          expected_delivery: string | null
+          id: string
+          preorder_value: number | null
+          product_id: string | null
+          quantity: number
+          retailer_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expected_delivery?: string | null
+          id?: string
+          preorder_value?: number | null
+          product_id?: string | null
+          quantity?: number
+          retailer_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expected_delivery?: string | null
+          id?: string
+          preorder_value?: number | null
+          product_id?: string | null
+          quantity?: number
+          retailer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retailer_preorders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retailer_preorders_retailer_id_fkey"
+            columns: ["retailer_id"]
+            isOneToOne: false
+            referencedRelation: "retailers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       retailer_schemes: {
         Row: {
           created_at: string | null
@@ -1926,14 +1971,21 @@ export type Database = {
         Row: {
           address: string | null
           alt_phone: string | null
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           category: string | null
           city: string | null
           code: string
           competitor_strength: string | null
+          country: string | null
           created_at: string | null
+          created_by: string | null
           distributor_id: string | null
           email: string | null
           employee_count: number | null
+          firm_type: string | null
+          gps_location: Json | null
           gst_number: string | null
           id: string
           landmark: string | null
@@ -1945,6 +1997,7 @@ export type Database = {
           pan_number: string | null
           phone: string | null
           pincode: string | null
+          rejection_reason: string | null
           shop_area: string | null
           shop_name: string
           shop_type: string | null
@@ -1953,18 +2006,26 @@ export type Database = {
           updated_at: string | null
           weekly_off: string | null
           years_in_business: number | null
+          zone: string | null
         }
         Insert: {
           address?: string | null
           alt_phone?: string | null
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           category?: string | null
           city?: string | null
           code: string
           competitor_strength?: string | null
+          country?: string | null
           created_at?: string | null
+          created_by?: string | null
           distributor_id?: string | null
           email?: string | null
           employee_count?: number | null
+          firm_type?: string | null
+          gps_location?: Json | null
           gst_number?: string | null
           id?: string
           landmark?: string | null
@@ -1976,6 +2037,7 @@ export type Database = {
           pan_number?: string | null
           phone?: string | null
           pincode?: string | null
+          rejection_reason?: string | null
           shop_area?: string | null
           shop_name: string
           shop_type?: string | null
@@ -1984,18 +2046,26 @@ export type Database = {
           updated_at?: string | null
           weekly_off?: string | null
           years_in_business?: number | null
+          zone?: string | null
         }
         Update: {
           address?: string | null
           alt_phone?: string | null
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           category?: string | null
           city?: string | null
           code?: string
           competitor_strength?: string | null
+          country?: string | null
           created_at?: string | null
+          created_by?: string | null
           distributor_id?: string | null
           email?: string | null
           employee_count?: number | null
+          firm_type?: string | null
+          gps_location?: Json | null
           gst_number?: string | null
           id?: string
           landmark?: string | null
@@ -2007,6 +2077,7 @@ export type Database = {
           pan_number?: string | null
           phone?: string | null
           pincode?: string | null
+          rejection_reason?: string | null
           shop_area?: string | null
           shop_name?: string
           shop_type?: string | null
@@ -2015,6 +2086,7 @@ export type Database = {
           updated_at?: string | null
           weekly_off?: string | null
           years_in_business?: number | null
+          zone?: string | null
         }
         Relationships: [
           {

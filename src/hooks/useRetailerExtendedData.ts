@@ -27,6 +27,15 @@ export interface RetailerImage {
   image_url: string;
 }
 
+export interface RetailerPreorder {
+  id: string;
+  retailer_id: string;
+  product_id: string | null;
+  quantity: number;
+  expected_delivery: string | null;
+  preorder_value: number | null;
+}
+
 // Hooks
 export function useRetailerCompetitorAnalysis(retailerId: string | undefined) {
   const { user } = useAuth();
@@ -82,6 +91,24 @@ export function useRetailerImages(retailerId: string | undefined) {
   });
 }
 
+export function useRetailerPreorders(retailerId: string | undefined) {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['retailer-preorders', retailerId],
+    queryFn: async () => {
+      if (!retailerId) return [];
+      const { data, error } = await supabase
+        .from('retailer_preorders')
+        .select('*')
+        .eq('retailer_id', retailerId);
+      if (error) throw error;
+      return data as RetailerPreorder[];
+    },
+    enabled: !!user && !!retailerId,
+  });
+}
+
 // Save all retailer extended data
 export function useSaveRetailerExtendedData() {
   const queryClient = useQueryClient();
@@ -92,52 +119,53 @@ export function useSaveRetailerExtendedData() {
       competitorAnalysis,
       schemes,
       images,
+      preorders,
     }: {
       retailerId: string;
-      competitorAnalysis: { competitor_name: string; products?: string; pricing?: string; display_quality?: string; remarks?: string }[];
+      competitorAnalysis?: { competitor_name: string; products?: string; pricing?: string; display_quality?: string; remarks?: string }[];
       schemes: string[];
       images: { image_type: string; image_url: string }[];
+      preorders?: { product_id: string; quantity: number; expected_delivery?: string; preorder_value?: number }[];
     }) => {
       // Delete existing data
-      await Promise.all([
-        supabase.from('retailer_competitor_analysis').delete().eq('retailer_id', retailerId),
-        supabase.from('retailer_schemes').delete().eq('retailer_id', retailerId),
-        supabase.from('retailer_images').delete().eq('retailer_id', retailerId),
-      ]);
+      await supabase.from('retailer_schemes').delete().eq('retailer_id', retailerId);
+      await supabase.from('retailer_images').delete().eq('retailer_id', retailerId);
+      await supabase.from('retailer_preorders').delete().eq('retailer_id', retailerId);
+
+      if (competitorAnalysis !== undefined) {
+        await supabase.from('retailer_competitor_analysis').delete().eq('retailer_id', retailerId);
+      }
 
       // Insert new data
-      const insertPromises = [];
-
-      if (competitorAnalysis.length > 0) {
-        insertPromises.push(
-          supabase.from('retailer_competitor_analysis').insert(
-            competitorAnalysis.map(c => ({ retailer_id: retailerId, ...c }))
-          )
+      if (competitorAnalysis && competitorAnalysis.length > 0) {
+        await supabase.from('retailer_competitor_analysis').insert(
+          competitorAnalysis.map(c => ({ retailer_id: retailerId, ...c }))
         );
       }
 
       if (schemes.length > 0) {
-        insertPromises.push(
-          supabase.from('retailer_schemes').insert(
-            schemes.map(s => ({ retailer_id: retailerId, scheme_id: s }))
-          )
+        await supabase.from('retailer_schemes').insert(
+          schemes.map(s => ({ retailer_id: retailerId, scheme_id: s }))
         );
       }
 
       if (images.length > 0) {
-        insertPromises.push(
-          supabase.from('retailer_images').insert(
-            images.map(i => ({ retailer_id: retailerId, ...i }))
-          )
+        await supabase.from('retailer_images').insert(
+          images.map(i => ({ retailer_id: retailerId, ...i }))
         );
       }
 
-      await Promise.all(insertPromises);
+      if (preorders && preorders.length > 0) {
+        await supabase.from('retailer_preorders').insert(
+          preorders.map(p => ({ retailer_id: retailerId, ...p })) as any
+        );
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['retailer-competitor-analysis', variables.retailerId] });
       queryClient.invalidateQueries({ queryKey: ['retailer-schemes', variables.retailerId] });
       queryClient.invalidateQueries({ queryKey: ['retailer-images', variables.retailerId] });
+      queryClient.invalidateQueries({ queryKey: ['retailer-preorders', variables.retailerId] });
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to save extended data');
