@@ -46,7 +46,7 @@ export function useCreateDistributor() {
     mutationFn: async (data: Record<string, any>) => {
       const { data: result, error } = await supabase
         .from('distributors')
-        .insert(data)
+        .insert(data as any)
         .select()
         .single();
       if (error) throw error;
