@@ -949,15 +949,21 @@ export type Database = {
           area: string | null
           assigned_to: string | null
           city: string | null
+          competitors: Json | null
+          converted_to: string | null
+          country: string | null
           created_at: string | null
           created_by: string
           email: string | null
+          expected_conversion_date: string | null
           follow_up_date: string | null
           id: string
+          interested_products: string[] | null
           lead_type: string | null
           name: string
           notes: string | null
           phone: string | null
+          pincode: string | null
           potential_value: number | null
           shop_name: string | null
           source: string | null
@@ -973,15 +979,21 @@ export type Database = {
           area?: string | null
           assigned_to?: string | null
           city?: string | null
+          competitors?: Json | null
+          converted_to?: string | null
+          country?: string | null
           created_at?: string | null
           created_by: string
           email?: string | null
+          expected_conversion_date?: string | null
           follow_up_date?: string | null
           id?: string
+          interested_products?: string[] | null
           lead_type?: string | null
           name: string
           notes?: string | null
           phone?: string | null
+          pincode?: string | null
           potential_value?: number | null
           shop_name?: string | null
           source?: string | null
@@ -997,15 +1009,21 @@ export type Database = {
           area?: string | null
           assigned_to?: string | null
           city?: string | null
+          competitors?: Json | null
+          converted_to?: string | null
+          country?: string | null
           created_at?: string | null
           created_by?: string
           email?: string | null
+          expected_conversion_date?: string | null
           follow_up_date?: string | null
           id?: string
+          interested_products?: string[] | null
           lead_type?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
+          pincode?: string | null
           potential_value?: number | null
           shop_name?: string | null
           source?: string | null
@@ -1031,12 +1049,47 @@ export type Database = {
           },
         ]
       }
+      leave_balances: {
+        Row: {
+          created_at: string
+          id: string
+          leave_type: string
+          total_balance: number
+          updated_at: string
+          used_balance: number
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          leave_type: string
+          total_balance?: number
+          updated_at?: string
+          used_balance?: number
+          user_id: string
+          year?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          leave_type?: string
+          total_balance?: number
+          updated_at?: string
+          used_balance?: number
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       leaves: {
         Row: {
+          applied_by: string | null
           approved_at: string | null
           approved_by: string | null
           created_at: string | null
           days: number
+          duration_type: string | null
           end_date: string
           id: string
           leave_type: string
@@ -1048,10 +1101,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          applied_by?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string | null
           days: number
+          duration_type?: string | null
           end_date: string
           id?: string
           leave_type: string
@@ -1063,10 +1118,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          applied_by?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string | null
           days?: number
+          duration_type?: string | null
           end_date?: string
           id?: string
           leave_type?: string
