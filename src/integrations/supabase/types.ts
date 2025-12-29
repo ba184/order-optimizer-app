@@ -961,6 +961,7 @@ export type Database = {
           description: string | null
           id: string
           priority: string
+          rejection_reason: string | null
           resolved_at: string | null
           resolved_by: string | null
           response: string | null
@@ -980,6 +981,7 @@ export type Database = {
           description?: string | null
           id?: string
           priority?: string
+          rejection_reason?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           response?: string | null
@@ -999,6 +1001,7 @@ export type Database = {
           description?: string | null
           id?: string
           priority?: string
+          rejection_reason?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           response?: string | null
@@ -2115,6 +2118,7 @@ export type Database = {
       }
       return_items: {
         Row: {
+          batch_no: string | null
           created_at: string
           id: string
           product_id: string | null
@@ -2126,6 +2130,7 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          batch_no?: string | null
           created_at?: string
           id?: string
           product_id?: string | null
@@ -2137,6 +2142,7 @@ export type Database = {
           unit_price?: number
         }
         Update: {
+          batch_no?: string | null
           created_at?: string
           id?: string
           product_id?: string | null
@@ -2167,59 +2173,89 @@ export type Database = {
       returns: {
         Row: {
           approved_by: string | null
+          batch_no: string | null
+          claim_date: string | null
           created_at: string
           created_by: string | null
           id: string
           images: Json | null
+          is_locked: boolean | null
+          media_urls: Json | null
           order_id: string | null
+          party_type: string | null
           processed_at: string | null
           reason: string | null
           rejection_reason: string | null
           return_number: string
           return_type: string
+          se_name: string | null
+          settlement_type: string | null
           source: string
           source_id: string | null
           source_name: string
           status: string
           total_value: number
+          unlock_approved_at: string | null
+          unlock_approved_by: string | null
+          unlock_requested_at: string | null
           updated_at: string
         }
         Insert: {
           approved_by?: string | null
+          batch_no?: string | null
+          claim_date?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           images?: Json | null
+          is_locked?: boolean | null
+          media_urls?: Json | null
           order_id?: string | null
+          party_type?: string | null
           processed_at?: string | null
           reason?: string | null
           rejection_reason?: string | null
           return_number: string
           return_type?: string
+          se_name?: string | null
+          settlement_type?: string | null
           source?: string
           source_id?: string | null
           source_name: string
           status?: string
           total_value?: number
+          unlock_approved_at?: string | null
+          unlock_approved_by?: string | null
+          unlock_requested_at?: string | null
           updated_at?: string
         }
         Update: {
           approved_by?: string | null
+          batch_no?: string | null
+          claim_date?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           images?: Json | null
+          is_locked?: boolean | null
+          media_urls?: Json | null
           order_id?: string | null
+          party_type?: string | null
           processed_at?: string | null
           reason?: string | null
           rejection_reason?: string | null
           return_number?: string
           return_type?: string
+          se_name?: string | null
+          settlement_type?: string | null
           source?: string
           source_id?: string | null
           source_name?: string
           status?: string
           total_value?: number
+          unlock_approved_at?: string | null
+          unlock_approved_by?: string | null
+          unlock_requested_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2242,6 +2278,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "returns_unlock_approved_by_fkey"
+            columns: ["unlock_approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
