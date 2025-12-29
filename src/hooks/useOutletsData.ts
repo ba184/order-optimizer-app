@@ -43,19 +43,7 @@ export function useCreateDistributor() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: {
-      code: string;
-      firm_name: string;
-      owner_name: string;
-      gstin?: string;
-      city?: string;
-      state?: string;
-      phone?: string;
-      email?: string;
-      address?: string;
-      credit_limit?: number;
-      status?: string;
-    }) => {
+    mutationFn: async (data: Record<string, any>) => {
       const { data: result, error } = await supabase
         .from('distributors')
         .insert(data)
