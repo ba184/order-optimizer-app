@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
-export type TicketType = 'complaint' | 'feedback' | 'suggestion' | 'query';
-export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
-export type TicketSource = 'retailer' | 'distributor' | 'employee';
+export type TicketStatus = 'pending' | 'accepted' | 'rejected';
+export type TicketType = 'general' | 'product_related' | 'complaint';
+export type TicketPriority = 'low' | 'medium' | 'high';
+export type TicketSource = 'mobile_app' | 'field_visit';
 
 export interface FeedbackTicket {
   id: string;
@@ -20,6 +20,7 @@ export interface FeedbackTicket {
   status: TicketStatus;
   assigned_to: string | null;
   response: string | null;
+  rejection_reason: string | null;
   created_by: string | null;
   resolved_at: string | null;
   resolved_by: string | null;
@@ -56,14 +57,18 @@ export function useCreateTicket() {
       source: TicketSource;
       source_name: string;
       source_id?: string;
-      assigned_to?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // Generate ticket number
+      const ticket_number = `TKT-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
       
       const { data, error } = await supabase
         .from('feedback_tickets' as any)
         .insert({
           ...ticket,
+          ticket_number,
+          status: 'pending',
           created_by: user?.id,
         })
         .select()
@@ -74,10 +79,10 @@ export function useCreateTicket() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feedback-tickets'] });
-      toast.success('Ticket created successfully');
+      toast.success('Feedback submitted successfully');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create ticket: ${error.message}`);
+      toast.error(`Failed to submit feedback: ${error.message}`);
     },
   });
 }
@@ -107,7 +112,72 @@ export function useUpdateTicket() {
   });
 }
 
-// Respond to a ticket and resolve it
+// Accept a ticket
+export function useAcceptTicket() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from('feedback_tickets' as any)
+        .update({
+          status: 'accepted',
+          resolved_at: new Date().toISOString(),
+          resolved_by: user?.id,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as unknown as FeedbackTicket;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feedback-tickets'] });
+      toast.success('Feedback accepted');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to accept: ${error.message}`);
+    },
+  });
+}
+
+// Reject a ticket with reason
+export function useRejectTicket() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, rejection_reason }: { id: string; rejection_reason: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from('feedback_tickets' as any)
+        .update({
+          status: 'rejected',
+          rejection_reason,
+          resolved_at: new Date().toISOString(),
+          resolved_by: user?.id,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as unknown as FeedbackTicket;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feedback-tickets'] });
+      toast.success('Feedback rejected');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to reject: ${error.message}`);
+    },
+  });
+}
+
+// Legacy: Respond to a ticket (kept for backwards compatibility)
 export function useRespondToTicket() {
   const queryClient = useQueryClient();
 
@@ -119,7 +189,7 @@ export function useRespondToTicket() {
         .from('feedback_tickets' as any)
         .update({
           response,
-          status: 'resolved',
+          status: 'accepted',
           resolved_at: new Date().toISOString(),
           resolved_by: user?.id,
         })
@@ -140,7 +210,7 @@ export function useRespondToTicket() {
   });
 }
 
-// Change ticket status
+// Legacy: Change ticket status
 export function useChangeTicketStatus() {
   const queryClient = useQueryClient();
 
@@ -148,7 +218,7 @@ export function useChangeTicketStatus() {
     mutationFn: async ({ id, status }: { id: string; status: TicketStatus }) => {
       const updates: Record<string, any> = { status };
       
-      if (status === 'resolved' || status === 'closed') {
+      if (status === 'accepted' || status === 'rejected') {
         const { data: { user } } = await supabase.auth.getUser();
         updates.resolved_at = new Date().toISOString();
         updates.resolved_by = user?.id;
@@ -166,7 +236,7 @@ export function useChangeTicketStatus() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['feedback-tickets'] });
-      toast.success(`Status changed to ${variables.status.replace('_', ' ')}`);
+      toast.success(`Status changed to ${variables.status}`);
     },
     onError: (error: Error) => {
       toast.error(`Failed to change status: ${error.message}`);
