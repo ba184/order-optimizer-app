@@ -6,18 +6,20 @@ import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import { GeoFilter } from '@/components/ui/GeoFilter';
 import { GeoFilter as GeoFilterType } from '@/data/geoData';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
-import { useRetailers, useCreateRetailer, useUpdateRetailer, useDeleteRetailer, useDistributors } from '@/hooks/useOutletsData';
+import { useRetailers, useUpdateRetailer, useDeleteRetailer, useDistributors } from '@/hooks/useOutletsData';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import {
   Plus,
   Store,
-  MapPin,
   Star,
   Eye,
   Edit,
   Trash2,
-  ShoppingCart,
   Loader2,
+  Check,
   X,
+  User,
 } from 'lucide-react';
 
 interface Retailer {
@@ -34,14 +36,10 @@ interface Retailer {
   last_visit: string | null;
   last_order_value: number;
   status: string;
+  approval_status?: string;
+  created_by?: string;
   distributors?: { id: string; firm_name: string; code: string } | null;
 }
-
-const formatCurrency = (value: number) => {
-  if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
-  if (value >= 1000) return `₹${(value / 1000).toFixed(1)}K`;
-  return `₹${value}`;
-};
 
 const categoryColors: Record<string, string> = {
   A: 'bg-success text-success-foreground',
@@ -49,35 +47,31 @@ const categoryColors: Record<string, string> = {
   C: 'bg-muted text-muted-foreground',
 };
 
+const approvalStatusColors: Record<string, string> = {
+  pending: 'bg-warning/10 text-warning border-warning/20',
+  approved: 'bg-success/10 text-success border-success/20',
+  rejected: 'bg-destructive/10 text-destructive border-destructive/20',
+  active: 'bg-success/10 text-success border-success/20',
+  inactive: 'bg-muted text-muted-foreground border-muted',
+};
+
 export default function RetailersPage() {
   const navigate = useNavigate();
+  const { userRole } = useAuth();
+  const isAdmin = userRole === 'admin';
   const [geoFilter, setGeoFilter] = useState<GeoFilterType>({ country: 'India' });
   const [deleteModal, setDeleteModal] = useState<Retailer | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [showModal, setShowModal] = useState(false);
-  const [editItem, setEditItem] = useState<Retailer | null>(null);
-  const [formData, setFormData] = useState({
-    code: '',
-    shop_name: '',
-    owner_name: '',
-    phone: '',
-    email: '',
-    city: '',
-    address: '',
-    category: 'C',
-    distributor_id: '',
-    status: 'pending',
-  });
 
   const { data: retailersData, isLoading } = useRetailers();
   const { data: distributorsData } = useDistributors();
-  const createRetailer = useCreateRetailer();
   const updateRetailer = useUpdateRetailer();
   const deleteRetailer = useDeleteRetailer();
 
   const retailers: Retailer[] = (retailersData || []).map((r: any) => ({
     ...r,
     last_order_value: Number(r.last_order_value) || 0,
+    approval_status: r.approval_status || r.status || 'pending',
   }));
 
   const distributors = distributorsData || [];
@@ -96,28 +90,30 @@ export default function RetailersPage() {
     navigate(`/outlets/retailers/${item.id}/edit`);
   };
 
-  const handleSubmit = async () => {
-    if (!formData.code || !formData.shop_name || !formData.owner_name) return;
-
-    const data = {
-      code: formData.code,
-      shop_name: formData.shop_name,
-      owner_name: formData.owner_name,
-      phone: formData.phone || undefined,
-      email: formData.email || undefined,
-      city: formData.city || undefined,
-      address: formData.address || undefined,
-      category: formData.category,
-      distributor_id: formData.distributor_id || undefined,
-      status: formData.status,
-    };
-
-    if (editItem) {
-      await updateRetailer.mutateAsync({ id: editItem.id, ...data });
-    } else {
-      await createRetailer.mutateAsync(data);
+  const handleApprove = async (item: Retailer) => {
+    try {
+      await updateRetailer.mutateAsync({
+        id: item.id,
+        approval_status: 'approved',
+        status: 'active',
+      });
+      toast.success(`${item.shop_name} has been approved`);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to approve retailer');
     }
-    setShowModal(false);
+  };
+
+  const handleReject = async (item: Retailer) => {
+    try {
+      await updateRetailer.mutateAsync({
+        id: item.id,
+        approval_status: 'rejected',
+        status: 'rejected',
+      });
+      toast.success(`${item.shop_name} has been rejected`);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to reject retailer');
+    }
   };
 
   const handleDelete = async () => {
@@ -125,6 +121,12 @@ export default function RetailersPage() {
       await deleteRetailer.mutateAsync(deleteModal.id);
       setDeleteModal(null);
     }
+  };
+
+  const getDistributorName = (distributorId: string | null) => {
+    if (!distributorId) return 'N/A';
+    const distributor = distributors.find((d: any) => d.id === distributorId);
+    return distributor?.firm_name || 'N/A';
   };
 
   const stats = {
@@ -136,8 +138,16 @@ export default function RetailersPage() {
 
   const columns = [
     {
+      key: 'code',
+      header: 'Retailer ID',
+      render: (item: Retailer) => (
+        <span className="font-mono text-sm text-muted-foreground">{item.code}</span>
+      ),
+      sortable: true,
+    },
+    {
       key: 'shop_name',
-      header: 'Retailer',
+      header: 'Firm Name',
       render: (item: Retailer) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
@@ -145,21 +155,34 @@ export default function RetailersPage() {
           </div>
           <div>
             <p className="font-medium text-foreground">{item.shop_name}</p>
-            <p className="text-xs text-muted-foreground">{item.code}</p>
           </div>
         </div>
       ),
       sortable: true,
     },
-    { key: 'owner_name', header: 'Owner', sortable: true },
     {
-      key: 'address',
-      header: 'Location',
+      key: 'owner_name',
+      header: 'Contact Name',
       render: (item: Retailer) => (
-        <div className="flex items-center gap-2 max-w-[200px]">
-          <MapPin size={14} className="text-muted-foreground shrink-0" />
-          <span className="truncate text-sm">{item.address || 'N/A'}{item.city ? `, ${item.city}` : ''}</span>
+        <div className="flex items-center gap-2">
+          <User size={14} className="text-muted-foreground" />
+          <span>{item.owner_name}</span>
         </div>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'phone',
+      header: 'Phone Number',
+      render: (item: Retailer) => (
+        <span className="text-sm">{item.phone || 'N/A'}</span>
+      ),
+    },
+    {
+      key: 'distributor',
+      header: 'Distributor',
+      render: (item: Retailer) => (
+        <span className="text-sm">{item.distributors?.firm_name || getDistributorName(item.distributor_id)}</span>
       ),
     },
     {
@@ -172,48 +195,83 @@ export default function RetailersPage() {
       ),
       sortable: true,
     },
-    { 
-      key: 'distributor', 
-      header: 'Distributor',
+    {
+      key: 'created_by',
+      header: 'Created By',
       render: (item: Retailer) => (
-        <span className="text-sm">{item.distributors?.firm_name || 'N/A'}</span>
+        <span className="text-sm text-muted-foreground">
+          {item.created_by ? 'FSE' : 'Admin'}
+        </span>
       ),
     },
     {
-      key: 'last_order_value',
-      header: 'Last Order',
-      render: (item: Retailer) => (
-        <div>
-          <p className="font-medium">{formatCurrency(item.last_order_value)}</p>
-          <p className="text-xs text-muted-foreground">{item.last_visit || '-'}</p>
-        </div>
-      ),
-      sortable: true,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (item: Retailer) => <StatusBadge status={item.status as StatusType} />,
+      key: 'approval_status',
+      header: 'Approval Status',
+      render: (item: Retailer) => {
+        const status = item.approval_status || item.status || 'pending';
+        return (
+          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${approvalStatusColors[status] || approvalStatusColors['pending']}`}>
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </span>
+        );
+      },
     },
     {
       key: 'actions',
       header: 'Actions',
-      render: (item: Retailer) => (
-        <div className="flex items-center gap-1">
-          <button onClick={() => navigate(`/outlets/retailers/${item.id}`)} className="p-2 hover:bg-muted rounded-lg transition-colors">
-            <Eye size={16} className="text-muted-foreground" />
-          </button>
-          <button onClick={() => handleEdit(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
-            <Edit size={16} className="text-muted-foreground" />
-          </button>
-          <button onClick={() => navigate('/orders/new')} className="p-2 hover:bg-muted rounded-lg transition-colors">
-            <ShoppingCart size={16} className="text-muted-foreground" />
-          </button>
-          <button onClick={() => setDeleteModal(item)} className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
-            <Trash2 size={16} className="text-destructive" />
-          </button>
-        </div>
-      ),
+      render: (item: Retailer) => {
+        const status = item.approval_status || item.status || 'pending';
+        const canApprove = isAdmin && status === 'pending';
+        const canEdit = status === 'rejected' || isAdmin;
+
+        return (
+          <div className="flex items-center gap-1">
+            {canApprove && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleApprove(item); }}
+                  className="p-2 hover:bg-success/10 rounded-lg transition-colors"
+                  title="Approve"
+                >
+                  <Check size={16} className="text-success" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleReject(item); }}
+                  className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                  title="Reject"
+                >
+                  <X size={16} className="text-destructive" />
+                </button>
+              </>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/outlets/retailers/${item.id}`); }}
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
+              title="View"
+            >
+              <Eye size={16} className="text-muted-foreground" />
+            </button>
+            {canEdit && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+                className="p-2 hover:bg-muted rounded-lg transition-colors"
+                title="Edit"
+              >
+                <Edit size={16} className="text-muted-foreground" />
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setDeleteModal(item); }}
+                className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                title="Delete"
+              >
+                <Trash2 size={16} className="text-destructive" />
+              </button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -281,173 +339,20 @@ export default function RetailersPage() {
         </motion.div>
       </div>
 
-      <DataTable 
-        data={filteredData} 
-        columns={columns} 
-        searchPlaceholder="Search by shop name, owner, code..." 
-        onRowClick={(item) => navigate(`/outlets/retailers/${item.id}`)} 
+      <DataTable
+        data={filteredData}
+        columns={columns}
+        searchPlaceholder="Search by firm name, contact, code..."
+        onRowClick={(item) => navigate(`/outlets/retailers/${item.id}`)}
         emptyMessage="No retailers found. Add your first retailer!"
       />
 
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">
-                {editItem ? 'Edit Retailer' : 'Add Retailer'}
-              </h2>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-muted rounded-lg">
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Code *</label>
-                  <input
-                    type="text"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    placeholder="RET-DEL-001"
-                    className="input-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Shop Name *</label>
-                  <input
-                    type="text"
-                    value={formData.shop_name}
-                    onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
-                    placeholder="Enter shop name"
-                    className="input-field"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Owner Name *</label>
-                  <input
-                    type="text"
-                    value={formData.owner_name}
-                    onChange={(e) => setFormData({ ...formData, owner_name: e.target.value })}
-                    placeholder="Enter owner name"
-                    className="input-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Phone</label>
-                  <input
-                    type="text"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+91 98765 12345"
-                    className="input-field"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="Enter email"
-                    className="input-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">City</label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    placeholder="Enter city"
-                    className="input-field"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Address</label>
-                <textarea
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Enter full address"
-                  rows={2}
-                  className="input-field resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Category</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="A">Category A</option>
-                    <option value="B">Category B</option>
-                    <option value="C">Category C</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Distributor</label>
-                  <select
-                    value={formData.distributor_id}
-                    onChange={(e) => setFormData({ ...formData, distributor_id: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="">Select Distributor</option>
-                    {distributors.map((d: any) => (
-                      <option key={d.id} value={d.id}>{d.firm_name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowModal(false)} className="btn-outline">Cancel</button>
-              <button 
-                onClick={handleSubmit}
-                disabled={createRetailer.isPending || updateRetailer.isPending}
-                className="btn-primary"
-              >
-                {(createRetailer.isPending || updateRetailer.isPending) ? 'Saving...' : editItem ? 'Update' : 'Create'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      <DeleteConfirmModal 
-        isOpen={!!deleteModal} 
-        onClose={() => setDeleteModal(null)} 
-        onConfirm={handleDelete} 
-        title="Delete Retailer" 
-        message={`Are you sure you want to delete "${deleteModal?.shop_name}"? This action cannot be undone.`} 
+      <DeleteConfirmModal
+        isOpen={!!deleteModal}
+        onClose={() => setDeleteModal(null)}
+        onConfirm={handleDelete}
+        title="Delete Retailer"
+        message={`Are you sure you want to delete "${deleteModal?.shop_name}"? This action cannot be undone.`}
       />
     </div>
   );
