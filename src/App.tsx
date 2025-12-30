@@ -118,7 +118,6 @@ function AppRoutes() {
       
       {/* Orders */}
       <Route path="/orders/list" element={<ProtectedRoute><OrdersListPage /></ProtectedRoute>} />
-      <Route path="/orders/pending" element={<ProtectedRoute><OrdersListPage /></ProtectedRoute>} />
       <Route path="/orders/new" element={<ProtectedRoute><CreateOrderPage /></ProtectedRoute>} />
       <Route path="/orders/:id" element={<ProtectedRoute><OrderViewPage /></ProtectedRoute>} />
       

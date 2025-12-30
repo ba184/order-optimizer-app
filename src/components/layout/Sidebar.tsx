@@ -104,8 +104,6 @@ const navigationItems: NavItem[] = [
     roles: ['sales_executive', 'asm', 'rsm', 'admin'],
     children: [
       { label: 'All Orders', path: '/orders/list', icon: ClipboardList },
-      { label: 'Pending Approval', path: '/orders/pending', icon: FileText },
-      { label: 'Create Order', path: '/orders/new', icon: ShoppingCart },
       { label: 'Pre-Orders', path: '/pre-orders', icon: Calendar },
     ],
   },
