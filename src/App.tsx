@@ -30,7 +30,11 @@ import OrdersListPage from "./pages/orders/OrdersListPage";
 import OrderViewPage from "./pages/orders/OrderViewPage";
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
 import AdvancedSchemesPage from "./pages/AdvancedSchemesPage";
-import ReportsPage from "./pages/ReportsPage";
+import ReportsLayout from "./pages/reports/ReportsLayout";
+import ReportsDashboard from "./pages/reports/ReportsDashboard";
+import DailySalesReport from "./pages/reports/sales/DailySalesReport";
+import TargetAchievementReport from "./pages/reports/sales/TargetAchievementReport";
+import GenericReport from "./pages/reports/GenericReport";
 import ProductsPage from "./pages/master/ProductsPage";
 import PresentationsPage from "./pages/master/PresentationsPage";
 import TerritoriesPage from "./pages/master/TerritoriesPage";
@@ -140,7 +144,18 @@ function AppRoutes() {
       <Route path="/returns" element={<ProtectedRoute><ReturnsManagementPage /></ProtectedRoute>} />
       
       {/* Reports & Analytics */}
-      <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><ReportsLayout /></ProtectedRoute>}>
+        <Route index element={<ReportsDashboard />} />
+        <Route path="sales/daily" element={<DailySalesReport />} />
+        <Route path="sales/target" element={<TargetAchievementReport />} />
+        <Route path="sales/*" element={<GenericReport />} />
+        <Route path="productivity/*" element={<GenericReport />} />
+        <Route path="outlets/*" element={<GenericReport />} />
+        <Route path="products/*" element={<GenericReport />} />
+        <Route path="territory/*" element={<GenericReport />} />
+        <Route path="schemes/*" element={<GenericReport />} />
+        <Route path="forecast/*" element={<GenericReport />} />
+      </Route>
       
       {/* Master Data */}
       <Route path="/master/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
