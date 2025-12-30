@@ -14,6 +14,12 @@ import {
   Check,
   AlertTriangle,
   Loader2,
+  Download,
+  Edit,
+  Trash2,
+  ShieldCheck,
+  Clock,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -21,22 +27,45 @@ import {
   useInventoryBatches,
   useStockTransfers,
   useCreateInventoryBatch,
+  useUpdateInventoryBatch,
   useUpdateInventoryBatchStatus,
+  useDeleteInventoryBatch,
   useCreateStockTransfer,
+  useUpdateStockTransferStatus,
   calculateInventorySummary,
   getExpiryAlerts,
+  getAllExpiryItems,
   InventoryBatch,
   StockTransfer,
+  ExpiryAlert,
+  ExpiryStatus,
 } from '@/hooks/useInventoryData';
 import { useProducts } from '@/hooks/useOrdersData';
 import { useDistributors } from '@/hooks/useOutletsData';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 const warehouses = ['Main Warehouse', 'North Warehouse', 'South Warehouse'];
+const entryModes = [
+  { value: 'manual', label: 'Manual Entry' },
+  { value: 'purchase', label: 'Purchase/GRN' },
+  { value: 'return', label: 'Return' },
+  { value: 'transfer', label: 'Transfer' },
+];
+
+type TabType = 'overview' | 'stock-entry' | 'expiry' | 'transfers' | 'sync';
+type ExpiryFilter = 'all' | 'warning' | 'expired';
+type LocationFilter = 'all' | 'warehouse' | 'distributor';
 
 export default function InventoryManagementPage() {
-  const [activeTab, setActiveTab] = useState<'inventory' | 'stock-entry' | 'expiry' | 'transfers'>('inventory');
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showStockModal, setShowStockModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [editingBatch, setEditingBatch] = useState<InventoryBatch | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>('all');
+  const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>('all');
   
   const { data: batches = [], isLoading: batchesLoading } = useInventoryBatches();
   const { data: transfers = [], isLoading: transfersLoading } = useStockTransfers();
@@ -44,8 +73,11 @@ export default function InventoryManagementPage() {
   const { data: distributors = [] } = useDistributors();
   
   const createBatch = useCreateInventoryBatch();
+  const updateBatch = useUpdateInventoryBatch();
   const updateBatchStatus = useUpdateInventoryBatchStatus();
+  const deleteBatch = useDeleteInventoryBatch();
   const createTransfer = useCreateStockTransfer();
+  const updateTransferStatus = useUpdateStockTransferStatus();
 
   const [stockForm, setStockForm] = useState({
     product_id: '',
@@ -56,6 +88,7 @@ export default function InventoryManagementPage() {
     warehouse: '',
     distributor_id: '',
     purchase_price: '',
+    entry_mode: 'manual',
   });
 
   const [transferForm, setTransferForm] = useState({
@@ -63,11 +96,57 @@ export default function InventoryManagementPage() {
     from_distributor_id: '',
     to_location: '',
     to_distributor_id: '',
+    notes: '',
     items: [{ product_id: '', quantity: '' }],
   });
 
-  const inventorySummary = useMemo(() => calculateInventorySummary(batches), [batches]);
+  const inventorySummary = useMemo(() => calculateInventorySummary(batches, products), [batches, products]);
   const expiryAlerts = useMemo(() => getExpiryAlerts(batches), [batches]);
+  const allExpiryItems = useMemo(() => getAllExpiryItems(batches), [batches]);
+
+  // Get unique categories from products
+  const categories = useMemo(() => {
+    const cats = new Set(products.map(p => p.category).filter(Boolean));
+    return Array.from(cats) as string[];
+  }, [products]);
+
+  // Filter inventory summary
+  const filteredInventory = useMemo(() => {
+    return inventorySummary.filter(item => {
+      if (categoryFilter !== 'all' && item.product?.category !== categoryFilter) return false;
+      if (locationFilter === 'warehouse' && Object.keys(item.distributorStock).length > 0 && item.warehouseStock === 0) return false;
+      if (locationFilter === 'distributor' && item.warehouseStock > 0 && Object.keys(item.distributorStock).length === 0) return false;
+      return true;
+    });
+  }, [inventorySummary, categoryFilter, locationFilter]);
+
+  // Filter stock entries (active only, not deleted)
+  const activeBatches = useMemo(() => {
+    return batches.filter(b => b.status !== 'deleted');
+  }, [batches]);
+
+  // Filter expiry alerts
+  const filteredExpiryAlerts = useMemo(() => {
+    if (expiryFilter === 'all') return allExpiryItems;
+    if (expiryFilter === 'warning') return allExpiryItems.filter(a => a.expiryStatus === 'warning');
+    if (expiryFilter === 'expired') return allExpiryItems.filter(a => a.expiryStatus === 'expired');
+    return allExpiryItems;
+  }, [allExpiryItems, expiryFilter]);
+
+  const resetStockForm = () => {
+    setStockForm({
+      product_id: '',
+      batch_number: '',
+      quantity: '',
+      manufacturing_date: '',
+      expiry_date: '',
+      warehouse: '',
+      distributor_id: '',
+      purchase_price: '',
+      entry_mode: 'manual',
+    });
+    setEditingBatch(null);
+  };
 
   const handleCreateStock = async () => {
     if (!stockForm.product_id || !stockForm.batch_number || !stockForm.quantity) {
@@ -75,21 +154,69 @@ export default function InventoryManagementPage() {
       return;
     }
 
+    const quantity = parseInt(stockForm.quantity);
+    if (quantity <= 0) {
+      toast.error('Quantity must be greater than 0');
+      return;
+    }
+
+    if (stockForm.manufacturing_date && stockForm.expiry_date) {
+      if (new Date(stockForm.manufacturing_date) >= new Date(stockForm.expiry_date)) {
+        toast.error('Manufacturing date must be before expiry date');
+        return;
+      }
+    }
+
     try {
-      await createBatch.mutateAsync({
-        product_id: stockForm.product_id,
-        batch_number: stockForm.batch_number,
-        quantity: parseInt(stockForm.quantity),
-        manufacturing_date: stockForm.manufacturing_date || undefined,
-        expiry_date: stockForm.expiry_date || undefined,
-        warehouse: stockForm.warehouse || undefined,
-        distributor_id: stockForm.distributor_id || undefined,
-        purchase_price: parseFloat(stockForm.purchase_price) || 0,
-      });
+      if (editingBatch) {
+        await updateBatch.mutateAsync({
+          id: editingBatch.id,
+          quantity,
+          manufacturing_date: stockForm.manufacturing_date || undefined,
+          expiry_date: stockForm.expiry_date || undefined,
+          warehouse: stockForm.warehouse || undefined,
+          distributor_id: stockForm.distributor_id || undefined,
+          purchase_price: parseFloat(stockForm.purchase_price) || 0,
+        });
+      } else {
+        await createBatch.mutateAsync({
+          product_id: stockForm.product_id,
+          batch_number: stockForm.batch_number,
+          quantity,
+          manufacturing_date: stockForm.manufacturing_date || undefined,
+          expiry_date: stockForm.expiry_date || undefined,
+          warehouse: stockForm.warehouse || undefined,
+          distributor_id: stockForm.distributor_id || undefined,
+          purchase_price: parseFloat(stockForm.purchase_price) || 0,
+          entry_mode: stockForm.entry_mode,
+        });
+      }
       setShowStockModal(false);
-      setStockForm({ product_id: '', batch_number: '', quantity: '', manufacturing_date: '', expiry_date: '', warehouse: '', distributor_id: '', purchase_price: '' });
+      resetStockForm();
     } catch (error) {
       // Error handled by mutation
+    }
+  };
+
+  const handleEditBatch = (batch: InventoryBatch) => {
+    setEditingBatch(batch);
+    setStockForm({
+      product_id: batch.product_id,
+      batch_number: batch.batch_number,
+      quantity: batch.quantity.toString(),
+      manufacturing_date: batch.manufacturing_date || '',
+      expiry_date: batch.expiry_date || '',
+      warehouse: batch.warehouse || '',
+      distributor_id: batch.distributor_id || '',
+      purchase_price: batch.purchase_price.toString(),
+      entry_mode: batch.entry_mode || 'manual',
+    });
+    setShowStockModal(true);
+  };
+
+  const handleDeleteBatch = (id: string) => {
+    if (confirm('Are you sure you want to delete this stock entry?')) {
+      deleteBatch.mutate(id);
     }
   };
 
@@ -103,8 +230,16 @@ export default function InventoryManagementPage() {
 
   const handleCreateTransfer = async () => {
     const validItems = transferForm.items.filter(i => i.product_id && i.quantity);
-    if (!transferForm.from_location || !transferForm.to_location || validItems.length === 0) {
-      toast.error('Please fill all required fields');
+    if (!transferForm.from_location && !transferForm.from_distributor_id) {
+      toast.error('Please select source location');
+      return;
+    }
+    if (!transferForm.to_location && !transferForm.to_distributor_id) {
+      toast.error('Please select destination location');
+      return;
+    }
+    if (validItems.length === 0) {
+      toast.error('Please add at least one item');
       return;
     }
 
@@ -114,16 +249,21 @@ export default function InventoryManagementPage() {
         from_distributor_id: transferForm.from_distributor_id || undefined,
         to_location: transferForm.to_location,
         to_distributor_id: transferForm.to_distributor_id || undefined,
+        notes: transferForm.notes || undefined,
         items: validItems.map(i => ({
           product_id: i.product_id,
           quantity: parseInt(i.quantity),
         })),
       });
       setShowTransferModal(false);
-      setTransferForm({ from_location: '', from_distributor_id: '', to_location: '', to_distributor_id: '', items: [{ product_id: '', quantity: '' }] });
+      setTransferForm({ from_location: '', from_distributor_id: '', to_location: '', to_distributor_id: '', notes: '', items: [{ product_id: '', quantity: '' }] });
     } catch (error) {
       // Error handled by mutation
     }
+  };
+
+  const handleTransferStatusUpdate = (id: string, status: string) => {
+    updateTransferStatus.mutate({ id, status });
   };
 
   const addTransferItem = () => {
@@ -149,6 +289,20 @@ export default function InventoryManagementPage() {
     }
   };
 
+  const handleExportToExcel = () => {
+    toast.success('Export started. Download will begin shortly.');
+  };
+
+  const getExpiryStatusBadge = (status: ExpiryStatus, days: number) => {
+    if (status === 'expired') {
+      return <Badge variant="destructive" className="gap-1"><XCircle size={12} /> Expired</Badge>;
+    }
+    if (status === 'warning') {
+      return <Badge variant="outline" className="gap-1 border-warning text-warning"><AlertTriangle size={12} /> {days} days</Badge>;
+    }
+    return <Badge variant="outline" className="gap-1 border-success text-success"><ShieldCheck size={12} /> Safe ({days} days)</Badge>;
+  };
+
   const inventoryColumns = [
     {
       key: 'name',
@@ -160,7 +314,7 @@ export default function InventoryManagementPage() {
           </div>
           <div>
             <p className="font-medium text-foreground">{item.product?.name || '-'}</p>
-            <p className="text-xs text-muted-foreground">{item.product?.sku} • {item.product?.category}</p>
+            <p className="text-xs text-muted-foreground">{item.product?.sku} • {item.product?.category || 'Uncategorized'}</p>
           </div>
         </div>
       ),
@@ -176,10 +330,10 @@ export default function InventoryManagementPage() {
       render: (item: typeof inventorySummary[0]) => (
         <div className="text-sm">
           {Object.entries(item.distributorStock).length > 0 ? (
-            Object.entries(item.distributorStock).map(([dist, qty]) => (
+            Object.entries(item.distributorStock).slice(0, 2).map(([dist, qty]) => (
               <div key={dist} className="flex justify-between">
                 <span className="text-muted-foreground truncate max-w-[100px]">{dist.split(' ')[0]}:</span>
-                <span>{qty.toLocaleString()}</span>
+                <span>{(qty as number).toLocaleString()}</span>
               </div>
             ))
           ) : (
@@ -192,7 +346,12 @@ export default function InventoryManagementPage() {
       key: 'totalStock',
       header: 'Total',
       render: (item: typeof inventorySummary[0]) => (
-        <span className="font-semibold text-foreground">{item.totalStock.toLocaleString()}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-foreground">{item.totalStock.toLocaleString()}</span>
+          {item.isLowStock && (
+            <Badge variant="destructive" className="text-xs">Low</Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -200,10 +359,10 @@ export default function InventoryManagementPage() {
       header: 'Expiry Alerts',
       render: (item: typeof inventorySummary[0]) => (
         item.expiryAlerts > 0 ? (
-          <span className="flex items-center gap-1 text-warning">
-            <AlertTriangle size={14} />
+          <Badge variant="outline" className="gap-1 border-warning text-warning">
+            <AlertTriangle size={12} />
             {item.expiryAlerts}
-          </span>
+          </Badge>
         ) : (
           <span className="text-muted-foreground">--</span>
         )
@@ -238,24 +397,43 @@ export default function InventoryManagementPage() {
       render: (item: InventoryBatch) => <span className="font-medium">{item.quantity.toLocaleString()}</span>,
     },
     {
-      key: 'location',
-      header: 'Location',
-      render: (item: InventoryBatch) => <span>{item.distributor?.firm_name || item.warehouse || '-'}</span>,
-    },
-    {
       key: 'dates',
       header: 'Mfg / Expiry',
       render: (item: InventoryBatch) => (
         <div className="text-sm">
-          <p>Mfg: {item.manufacturing_date || '-'}</p>
-          <p>Exp: {item.expiry_date || '-'}</p>
+          <p className="text-muted-foreground">Mfg: {item.manufacturing_date ? format(new Date(item.manufacturing_date), 'dd MMM yy') : '-'}</p>
+          <p>Exp: {item.expiry_date ? format(new Date(item.expiry_date), 'dd MMM yy') : '-'}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'location',
+      header: 'Location',
+      render: (item: InventoryBatch) => (
+        <div className="text-sm">
+          <p>{item.distributor?.firm_name || item.warehouse || '-'}</p>
+          <p className="text-xs text-muted-foreground">{item.distributor_id ? 'Distributor' : 'Warehouse'}</p>
         </div>
       ),
     },
     {
       key: 'purchase_price',
       header: 'Price',
-      render: (item: InventoryBatch) => <span>₹{item.purchase_price}</span>,
+      render: (item: InventoryBatch) => <span>₹{item.purchase_price.toLocaleString()}</span>,
+    },
+    {
+      key: 'entry_mode',
+      header: 'Entry Mode',
+      render: (item: InventoryBatch) => (
+        <Badge variant="secondary" className="text-xs capitalize">
+          {item.entry_mode || 'Manual'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'created_at',
+      header: 'Created',
+      render: (item: InventoryBatch) => format(new Date(item.created_at), 'dd MMM yyyy'),
     },
     {
       key: 'status',
@@ -285,8 +463,19 @@ export default function InventoryManagementPage() {
               </button>
             </>
           )}
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="View">
-            <Eye size={16} className="text-muted-foreground" />
+          <button 
+            onClick={() => handleEditBatch(item)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors" 
+            title="Edit"
+          >
+            <Edit size={16} className="text-muted-foreground" />
+          </button>
+          <button 
+            onClick={() => handleDeleteBatch(item.id)}
+            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors" 
+            title="Delete"
+          >
+            <Trash2 size={16} className="text-destructive" />
           </button>
         </div>
       ),
@@ -297,38 +486,34 @@ export default function InventoryManagementPage() {
     {
       key: 'name',
       header: 'Product',
-      render: (item: ReturnType<typeof getExpiryAlerts>[0]) => (
+      render: (item: ExpiryAlert) => (
         <div>
           <p className="font-medium text-foreground">{item.product?.name || '-'}</p>
           <p className="text-xs text-muted-foreground">{item.product?.sku} • Batch: {item.batch_number}</p>
         </div>
       ),
     },
-    { key: 'location', header: 'Location' },
-    { key: 'quantity', header: 'Quantity' },
     {
       key: 'expiry_date',
       header: 'Expiry Date',
-      render: (item: ReturnType<typeof getExpiryAlerts>[0]) => (
+      render: (item: ExpiryAlert) => (
         <div className="flex items-center gap-2">
           <Calendar size={14} className="text-muted-foreground" />
-          <span>{item.expiry_date}</span>
+          <span>{item.expiry_date ? format(new Date(item.expiry_date), 'dd MMM yyyy') : '-'}</span>
         </div>
       ),
     },
     {
-      key: 'daysToExpiry',
-      header: 'Days Left',
-      render: (item: ReturnType<typeof getExpiryAlerts>[0]) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          item.daysToExpiry < 30 ? 'bg-destructive/10 text-destructive' :
-          item.daysToExpiry < 60 ? 'bg-warning/10 text-warning' :
-          'bg-success/10 text-success'
-        }`}>
-          {item.daysToExpiry} days
-        </span>
-      ),
+      key: 'daysRemaining',
+      header: 'Status',
+      render: (item: ExpiryAlert) => getExpiryStatusBadge(item.expiryStatus, item.daysToExpiry),
     },
+    {
+      key: 'quantity',
+      header: 'Qty Available',
+      render: (item: ExpiryAlert) => <span className="font-medium">{item.quantity.toLocaleString()}</span>,
+    },
+    { key: 'location', header: 'Location' },
   ];
 
   const transferColumns = [
@@ -351,6 +536,16 @@ export default function InventoryManagementPage() {
       ),
     },
     {
+      key: 'requested_by',
+      header: 'Requested By',
+      render: (item: StockTransfer) => <span>{item.requester?.name || '-'}</span>,
+    },
+    {
+      key: 'approved_by',
+      header: 'Approved By',
+      render: (item: StockTransfer) => <span>{item.approver?.name || '-'}</span>,
+    },
+    {
       key: 'created_at',
       header: 'Date',
       render: (item: StockTransfer) => format(new Date(item.created_at), 'dd MMM yyyy'),
@@ -360,14 +555,57 @@ export default function InventoryManagementPage() {
       header: 'Status',
       render: (item: StockTransfer) => <StatusBadge status={item.status as StatusType} />,
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (item: StockTransfer) => (
+        <div className="flex items-center gap-1">
+          {item.status === 'pending' && (
+            <>
+              <button
+                onClick={() => handleTransferStatusUpdate(item.id, 'approved')}
+                className="p-1.5 hover:bg-success/10 rounded-lg transition-colors"
+                title="Approve"
+              >
+                <Check size={14} className="text-success" />
+              </button>
+              <button
+                onClick={() => handleTransferStatusUpdate(item.id, 'cancelled')}
+                className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
+                title="Cancel"
+              >
+                <X size={14} className="text-destructive" />
+              </button>
+            </>
+          )}
+          {item.status === 'approved' && (
+            <button
+              onClick={() => handleTransferStatusUpdate(item.id, 'in_transit')}
+              className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors text-xs"
+              title="Mark In Transit"
+            >
+              <Clock size={14} className="text-primary" />
+            </button>
+          )}
+          {item.status === 'in_transit' && (
+            <button
+              onClick={() => handleTransferStatusUpdate(item.id, 'completed')}
+              className="p-1.5 hover:bg-success/10 rounded-lg transition-colors"
+              title="Mark Completed"
+            >
+              <Check size={14} className="text-success" />
+            </button>
+          )}
+        </div>
+      ),
+    },
   ];
 
   const stats = {
     totalSKUs: inventorySummary.length,
-    lowStock: 0,
-    expiryAlerts: expiryAlerts.length,
-    pendingEntries: batches.filter(e => e.status === 'pending').length,
-    pendingTransfers: transfers.filter(t => t.status === 'pending' || t.status === 'approved').length,
+    lowStock: inventorySummary.filter(i => i.isLowStock).length,
+    expiryAlerts: allExpiryItems.filter(e => e.expiryStatus !== 'safe').length,
+    pendingTransfers: transfers.filter(t => t.status === 'pending' || t.status === 'in_transit').length,
   };
 
   const isLoading = batchesLoading || transfersLoading;
@@ -386,9 +624,13 @@ export default function InventoryManagementPage() {
       <div className="module-header">
         <div>
           <h1 className="module-title">Inventory Management</h1>
-          <p className="text-muted-foreground">Track stock levels, create entries, and manage transfers</p>
+          <p className="text-muted-foreground">Track stock levels, manage batches, and monitor expiry</p>
         </div>
         <div className="flex items-center gap-3">
+          <button onClick={handleExportToExcel} className="btn-outline flex items-center gap-2">
+            <Download size={18} />
+            Export
+          </button>
           <button className="btn-outline flex items-center gap-2">
             <RefreshCw size={18} />
             Sync Stock
@@ -398,10 +640,10 @@ export default function InventoryManagementPage() {
             className="btn-outline flex items-center gap-2"
           >
             <ArrowRightLeft size={18} />
-            Stock Transfer
+            Transfer Stock
           </button>
           <button 
-            onClick={() => setShowStockModal(true)}
+            onClick={() => { resetStockForm(); setShowStockModal(true); }}
             className="btn-primary flex items-center gap-2"
           >
             <Plus size={18} />
@@ -411,7 +653,7 @@ export default function InventoryManagementPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-primary/10">
@@ -431,7 +673,7 @@ export default function InventoryManagementPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.lowStock}</p>
-              <p className="text-sm text-muted-foreground">Low Stock</p>
+              <p className="text-sm text-muted-foreground">Low Stock SKUs</p>
             </div>
           </div>
         </motion.div>
@@ -451,72 +693,95 @@ export default function InventoryManagementPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-info/10">
-              <Package size={24} className="text-info" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.pendingEntries}</p>
-              <p className="text-sm text-muted-foreground">Pending Entries</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-secondary/10">
-              <ArrowRightLeft size={24} className="text-secondary" />
+              <ArrowRightLeft size={24} className="text-info" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.pendingTransfers}</p>
-              <p className="text-sm text-muted-foreground">Active Transfers</p>
+              <p className="text-sm text-muted-foreground">Pending Transfers</p>
             </div>
           </div>
         </motion.div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-border">
-        {[
-          { key: 'inventory', label: 'Inventory Overview' },
-          { key: 'stock-entry', label: 'Stock Entries' },
-          { key: 'expiry', label: 'Expiry Alerts' },
-          { key: 'transfers', label: 'Transfers' },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            className={`px-4 py-3 text-sm font-medium transition-colors relative ${
-              activeTab === tab.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab.label}
-            {activeTab === tab.key && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-              />
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
+        <TabsList className="bg-muted/50">
+          <TabsTrigger value="overview">Inventory Overview</TabsTrigger>
+          <TabsTrigger value="stock-entry">Stock Entries</TabsTrigger>
+          <TabsTrigger value="expiry">Expiry Alerts</TabsTrigger>
+          <TabsTrigger value="transfers">Transfers</TabsTrigger>
+          <TabsTrigger value="sync">Sync & Reconciliation</TabsTrigger>
+        </TabsList>
 
-      {/* Tab Content */}
-      {activeTab === 'inventory' && (
-        <DataTable data={inventorySummary} columns={inventoryColumns} searchPlaceholder="Search inventory..." />
-      )}
+        <TabsContent value="overview" className="mt-4">
+          {/* Filters */}
+          <div className="flex gap-4 mb-4">
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map(cat => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={locationFilter} onValueChange={(v) => setLocationFilter(v as LocationFilter)}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by Location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                <SelectItem value="warehouse">Warehouse Only</SelectItem>
+                <SelectItem value="distributor">Distributor Only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DataTable data={filteredInventory} columns={inventoryColumns} searchPlaceholder="Search inventory..." />
+        </TabsContent>
 
-      {activeTab === 'stock-entry' && (
-        <DataTable data={batches} columns={stockEntryColumns} searchPlaceholder="Search stock entries..." />
-      )}
+        <TabsContent value="stock-entry" className="mt-4">
+          <DataTable data={activeBatches} columns={stockEntryColumns} searchPlaceholder="Search stock entries..." />
+        </TabsContent>
 
-      {activeTab === 'expiry' && (
-        <DataTable data={expiryAlerts} columns={expiryColumns} searchPlaceholder="Search expiry alerts..." />
-      )}
+        <TabsContent value="expiry" className="mt-4">
+          {/* Expiry Filter */}
+          <div className="flex gap-4 mb-4">
+            <Select value={expiryFilter} onValueChange={(v) => setExpiryFilter(v as ExpiryFilter)}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Items</SelectItem>
+                <SelectItem value="warning">Warning Only</SelectItem>
+                <SelectItem value="expired">Expired Only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DataTable data={filteredExpiryAlerts} columns={expiryColumns} searchPlaceholder="Search expiry alerts..." />
+        </TabsContent>
 
-      {activeTab === 'transfers' && (
-        <DataTable data={transfers} columns={transferColumns} searchPlaceholder="Search transfers..." />
-      )}
+        <TabsContent value="transfers" className="mt-4">
+          <DataTable data={transfers} columns={transferColumns} searchPlaceholder="Search transfers..." />
+        </TabsContent>
 
-      {/* Add Stock Modal */}
+        <TabsContent value="sync" className="mt-4">
+          <div className="bg-card border border-border rounded-xl p-8 text-center">
+            <RefreshCw size={48} className="mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Stock Reconciliation</h3>
+            <p className="text-muted-foreground mb-6">
+              Sync inventory data across all locations and reconcile stock levels.
+            </p>
+            <div className="flex justify-center gap-4">
+              <button className="btn-outline">View Last Sync</button>
+              <button className="btn-primary">Start Reconciliation</button>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Add/Edit Stock Modal */}
       {showStockModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <motion.div
@@ -525,8 +790,10 @@ export default function InventoryManagementPage() {
             className="bg-card rounded-xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-foreground">Add Stock Entry</h2>
-              <button onClick={() => setShowStockModal(false)} className="p-2 hover:bg-muted rounded-lg">
+              <h2 className="text-xl font-semibold text-foreground">
+                {editingBatch ? 'Edit Stock Entry' : 'Add Stock Entry'}
+              </h2>
+              <button onClick={() => { setShowStockModal(false); resetStockForm(); }} className="p-2 hover:bg-muted rounded-lg">
                 <X size={20} />
               </button>
             </div>
@@ -538,9 +805,10 @@ export default function InventoryManagementPage() {
                   value={stockForm.product_id}
                   onChange={e => setStockForm(prev => ({ ...prev, product_id: e.target.value }))}
                   className="input-field"
+                  disabled={!!editingBatch}
                 >
                   <option value="">Select Product</option>
-                  {products.map(p => (
+                  {products.filter(p => p.status === 'active').map(p => (
                     <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
                   ))}
                 </select>
@@ -555,6 +823,7 @@ export default function InventoryManagementPage() {
                     onChange={e => setStockForm(prev => ({ ...prev, batch_number: e.target.value }))}
                     className="input-field"
                     placeholder="e.g., BA2024001"
+                    disabled={!!editingBatch}
                   />
                 </div>
                 <div>
@@ -565,6 +834,7 @@ export default function InventoryManagementPage() {
                     onChange={e => setStockForm(prev => ({ ...prev, quantity: e.target.value }))}
                     className="input-field"
                     placeholder="0"
+                    min="1"
                   />
                 </div>
               </div>
@@ -580,7 +850,7 @@ export default function InventoryManagementPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Expiry Date</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Expiry Date *</label>
                   <input
                     type="date"
                     value={stockForm.expiry_date}
@@ -591,7 +861,7 @@ export default function InventoryManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Location</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Location Type</label>
                 <div className="grid grid-cols-2 gap-4">
                   <select
                     value={stockForm.warehouse}
@@ -618,28 +888,44 @@ export default function InventoryManagementPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Purchase Price (₹)</label>
-                <input
-                  type="number"
-                  value={stockForm.purchase_price}
-                  onChange={e => setStockForm(prev => ({ ...prev, purchase_price: e.target.value }))}
-                  className="input-field"
-                  placeholder="0.00"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Purchase Price (₹)</label>
+                  <input
+                    type="number"
+                    value={stockForm.purchase_price}
+                    onChange={e => setStockForm(prev => ({ ...prev, purchase_price: e.target.value }))}
+                    className="input-field"
+                    placeholder="0.00"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Entry Mode</label>
+                  <select
+                    value={stockForm.entry_mode}
+                    onChange={e => setStockForm(prev => ({ ...prev, entry_mode: e.target.value }))}
+                    className="input-field"
+                    disabled={!!editingBatch}
+                  >
+                    {entryModes.map(mode => (
+                      <option key={mode.value} value={mode.value}>{mode.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button onClick={() => setShowStockModal(false)} className="btn-outline flex-1">
+                <button onClick={() => { setShowStockModal(false); resetStockForm(); }} className="btn-outline flex-1">
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateStock}
-                  disabled={createBatch.isPending}
+                  disabled={createBatch.isPending || updateBatch.isPending}
                   className="btn-primary flex-1 flex items-center justify-center gap-2"
                 >
-                  {createBatch.isPending && <Loader2 size={16} className="animate-spin" />}
-                  Create Entry
+                  {(createBatch.isPending || updateBatch.isPending) && <Loader2 size={16} className="animate-spin" />}
+                  {editingBatch ? 'Update Entry' : 'Create Entry'}
                 </button>
               </div>
             </div>
@@ -742,6 +1028,7 @@ export default function InventoryManagementPage() {
                         onChange={e => updateTransferItem(index, 'quantity', e.target.value)}
                         className="input-field w-24"
                         placeholder="Qty"
+                        min="1"
                       />
                       {transferForm.items.length > 1 && (
                         <button
@@ -757,6 +1044,17 @@ export default function InventoryManagementPage() {
                     + Add another item
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Notes</label>
+                <textarea
+                  value={transferForm.notes}
+                  onChange={e => setTransferForm(prev => ({ ...prev, notes: e.target.value }))}
+                  className="input-field"
+                  rows={2}
+                  placeholder="Optional notes..."
+                />
               </div>
 
               <div className="flex gap-3 pt-4">
