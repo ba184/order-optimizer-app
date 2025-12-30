@@ -1039,6 +1039,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           distributor_id: string | null
+          entry_mode: string | null
           expiry_date: string | null
           id: string
           manufacturing_date: string | null
@@ -1056,6 +1057,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           distributor_id?: string | null
+          entry_mode?: string | null
           expiry_date?: string | null
           id?: string
           manufacturing_date?: string | null
@@ -1073,6 +1075,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           distributor_id?: string | null
+          entry_mode?: string | null
           expiry_date?: string | null
           id?: string
           manufacturing_date?: string | null
@@ -1748,6 +1751,7 @@ export type Database = {
           created_at: string | null
           gst: number
           id: string
+          low_stock_threshold: number | null
           mrp: number
           name: string
           ptr: number
@@ -1761,6 +1765,7 @@ export type Database = {
           created_at?: string | null
           gst?: number
           id?: string
+          low_stock_threshold?: number | null
           mrp?: number
           name: string
           ptr?: number
@@ -1774,6 +1779,7 @@ export type Database = {
           created_at?: string | null
           gst?: number
           id?: string
+          low_stock_threshold?: number | null
           mrp?: number
           name?: string
           ptr?: number
@@ -2695,6 +2701,7 @@ export type Database = {
           from_location: string
           id: string
           notes: string | null
+          requested_by: string | null
           status: string | null
           to_distributor_id: string | null
           to_location: string
@@ -2712,6 +2719,7 @@ export type Database = {
           from_location: string
           id?: string
           notes?: string | null
+          requested_by?: string | null
           status?: string | null
           to_distributor_id?: string | null
           to_location: string
@@ -2729,6 +2737,7 @@ export type Database = {
           from_location?: string
           id?: string
           notes?: string | null
+          requested_by?: string | null
           status?: string | null
           to_distributor_id?: string | null
           to_location?: string
@@ -2755,6 +2764,13 @@ export type Database = {
             columns: ["from_distributor_id"]
             isOneToOne: false
             referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
