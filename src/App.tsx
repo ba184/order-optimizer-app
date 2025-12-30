@@ -23,6 +23,9 @@ import RetailersPage from "./pages/outlets/RetailersPage";
 import RetailerDetailPage from "./pages/outlets/RetailerDetailPage";
 import DistributorFormPage from "./pages/outlets/DistributorFormPage";
 import RetailerFormPage from "./pages/outlets/RetailerFormPage";
+import VendorsPage from "./pages/outlets/VendorsPage";
+import VendorDetailPage from "./pages/outlets/VendorDetailPage";
+import VendorFormPage from "./pages/outlets/VendorFormPage";
 import OrdersListPage from "./pages/orders/OrdersListPage";
 import OrderViewPage from "./pages/orders/OrderViewPage";
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
@@ -108,6 +111,10 @@ function AppRoutes() {
       <Route path="/outlets/retailers/new" element={<ProtectedRoute><RetailerFormPage /></ProtectedRoute>} />
       <Route path="/outlets/retailers/:id" element={<ProtectedRoute><RetailerDetailPage /></ProtectedRoute>} />
       <Route path="/outlets/retailers/:id/edit" element={<ProtectedRoute><RetailerFormPage /></ProtectedRoute>} />
+      <Route path="/outlets/vendors" element={<ProtectedRoute><VendorsPage /></ProtectedRoute>} />
+      <Route path="/outlets/vendors/new" element={<ProtectedRoute><VendorFormPage /></ProtectedRoute>} />
+      <Route path="/outlets/vendors/:id" element={<ProtectedRoute><VendorDetailPage /></ProtectedRoute>} />
+      <Route path="/outlets/vendors/:id/edit" element={<ProtectedRoute><VendorFormPage /></ProtectedRoute>} />
       
       {/* Orders */}
       <Route path="/orders/list" element={<ProtectedRoute><OrdersListPage /></ProtectedRoute>} />

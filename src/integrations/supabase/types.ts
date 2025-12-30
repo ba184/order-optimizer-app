@@ -2970,6 +2970,102 @@ export type Database = {
           },
         ]
       }
+      vendors: {
+        Row: {
+          address: string
+          alternate_number: string | null
+          assigned_manager_id: string | null
+          business_type: string
+          city: string
+          contact_number: string
+          contact_person: string
+          country: string | null
+          created_at: string
+          created_by: string | null
+          credit_days: number
+          credit_limit: number
+          email: string
+          firm_name: string
+          gstin: string | null
+          id: string
+          outstanding_amount: number
+          pan: string | null
+          since_date: string | null
+          state: string
+          status: string
+          updated_at: string
+          vendor_code: string
+          zone: string | null
+        }
+        Insert: {
+          address: string
+          alternate_number?: string | null
+          assigned_manager_id?: string | null
+          business_type?: string
+          city: string
+          contact_number: string
+          contact_person: string
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_days?: number
+          credit_limit?: number
+          email: string
+          firm_name: string
+          gstin?: string | null
+          id?: string
+          outstanding_amount?: number
+          pan?: string | null
+          since_date?: string | null
+          state: string
+          status?: string
+          updated_at?: string
+          vendor_code: string
+          zone?: string | null
+        }
+        Update: {
+          address?: string
+          alternate_number?: string | null
+          assigned_manager_id?: string | null
+          business_type?: string
+          city?: string
+          contact_number?: string
+          contact_person?: string
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_days?: number
+          credit_limit?: number
+          email?: string
+          firm_name?: string
+          gstin?: string | null
+          id?: string
+          outstanding_amount?: number
+          pan?: string | null
+          since_date?: string | null
+          state?: string
+          status?: string
+          updated_at?: string
+          vendor_code?: string
+          zone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendors_assigned_manager_id_fkey"
+            columns: ["assigned_manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendors_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zone_states: {
         Row: {
           created_at: string

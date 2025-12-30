@@ -35,6 +35,7 @@ import {
   MessageSquare,
   RotateCcw,
   Shield,
+  Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -94,6 +95,7 @@ const navigationItems: NavItem[] = [
     children: [
       { label: 'Distributors', path: '/outlets/distributors', icon: Building2 },
       { label: 'Retailers', path: '/outlets/retailers', icon: Store },
+      { label: 'Vendors', path: '/outlets/vendors', icon: Truck },
     ],
   },
   {
