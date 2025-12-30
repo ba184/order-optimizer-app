@@ -2563,50 +2563,83 @@ export type Database = {
       }
       schemes: {
         Row: {
+          applicability: string | null
           applicable_products: Json | null
+          benefit_type: string | null
+          claims_approved: number | null
+          claims_generated: number | null
+          code: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
           discount_percent: number | null
+          eligible_skus: string[] | null
           end_date: string
           free_quantity: number | null
           id: string
+          max_benefit: number | null
+          min_order_value: number | null
           min_quantity: number | null
           name: string
+          outlet_claim_limit: number | null
+          slab_config: Json | null
           start_date: string
           status: string | null
+          total_payout: number | null
           type: string
           updated_at: string | null
         }
         Insert: {
+          applicability?: string | null
           applicable_products?: Json | null
+          benefit_type?: string | null
+          claims_approved?: number | null
+          claims_generated?: number | null
+          code?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           discount_percent?: number | null
+          eligible_skus?: string[] | null
           end_date: string
           free_quantity?: number | null
           id?: string
+          max_benefit?: number | null
+          min_order_value?: number | null
           min_quantity?: number | null
           name: string
+          outlet_claim_limit?: number | null
+          slab_config?: Json | null
           start_date: string
           status?: string | null
+          total_payout?: number | null
           type?: string
           updated_at?: string | null
         }
         Update: {
+          applicability?: string | null
           applicable_products?: Json | null
+          benefit_type?: string | null
+          claims_approved?: number | null
+          claims_generated?: number | null
+          code?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           discount_percent?: number | null
+          eligible_skus?: string[] | null
           end_date?: string
           free_quantity?: number | null
           id?: string
+          max_benefit?: number | null
+          min_order_value?: number | null
           min_quantity?: number | null
           name?: string
+          outlet_claim_limit?: number | null
+          slab_config?: Json | null
           start_date?: string
           status?: string | null
+          total_payout?: number | null
           type?: string
           updated_at?: string | null
         }
