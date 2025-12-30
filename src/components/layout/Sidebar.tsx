@@ -148,6 +148,8 @@ const navigationItems: NavItem[] = [
     roles: ['admin'],
     children: [
       { label: 'Products', path: '/master/products', icon: Package },
+      { label: 'Categories', path: '/master/categories', icon: Layers },
+      { label: 'Warehouses', path: '/master/warehouses', icon: Building2 },
       { label: 'Schemes', path: '/master/schemes', icon: Gift },
       { 
         label: 'Geographical', 
