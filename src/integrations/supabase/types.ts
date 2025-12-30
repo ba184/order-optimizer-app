@@ -1792,14 +1792,9 @@ export type Database = {
       }
       profiles: {
         Row: {
-          avatar_url: string | null
-          city: string | null
           created_at: string | null
-          designation_code: string | null
           email: string
-          employee_id: string | null
           id: string
-          last_login_at: string | null
           name: string
           phone: string | null
           region: string | null
@@ -1807,17 +1802,11 @@ export type Database = {
           status: string | null
           territory: string | null
           updated_at: string | null
-          zone: string | null
         }
         Insert: {
-          avatar_url?: string | null
-          city?: string | null
           created_at?: string | null
-          designation_code?: string | null
           email: string
-          employee_id?: string | null
           id: string
-          last_login_at?: string | null
           name: string
           phone?: string | null
           region?: string | null
@@ -1825,17 +1814,11 @@ export type Database = {
           status?: string | null
           territory?: string | null
           updated_at?: string | null
-          zone?: string | null
         }
         Update: {
-          avatar_url?: string | null
-          city?: string | null
           created_at?: string | null
-          designation_code?: string | null
           email?: string
-          employee_id?: string | null
           id?: string
-          last_login_at?: string | null
           name?: string
           phone?: string | null
           region?: string | null
@@ -1843,7 +1826,6 @@ export type Database = {
           status?: string | null
           territory?: string | null
           updated_at?: string | null
-          zone?: string | null
         }
         Relationships: [
           {
