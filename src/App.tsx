@@ -36,6 +36,8 @@ import DailySalesReport from "./pages/reports/sales/DailySalesReport";
 import TargetAchievementReport from "./pages/reports/sales/TargetAchievementReport";
 import GenericReport from "./pages/reports/GenericReport";
 import ProductsPage from "./pages/master/ProductsPage";
+import CategoryMasterPage from "./pages/master/CategoryMasterPage";
+import WarehouseMasterPage from "./pages/master/WarehouseMasterPage";
 import PresentationsPage from "./pages/master/PresentationsPage";
 import TerritoriesPage from "./pages/master/TerritoriesPage";
 import UsersPage from "./pages/master/UsersPage";
@@ -159,6 +161,8 @@ function AppRoutes() {
       
       {/* Master Data */}
       <Route path="/master/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
+      <Route path="/master/categories" element={<ProtectedRoute><CategoryMasterPage /></ProtectedRoute>} />
+      <Route path="/master/warehouses" element={<ProtectedRoute><WarehouseMasterPage /></ProtectedRoute>} />
       <Route path="/master/schemes" element={<ProtectedRoute><AdvancedSchemesPage /></ProtectedRoute>} />
       <Route path="/master/countries" element={<ProtectedRoute><CountryMasterPage /></ProtectedRoute>} />
       <Route path="/master/states" element={<ProtectedRoute><StateMasterPage /></ProtectedRoute>} />
