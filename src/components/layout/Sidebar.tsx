@@ -70,7 +70,6 @@ const navigationItems: NavItem[] = [
     children: [
       { label: 'Attendance', path: '/sales-team/attendance', icon: MapPin },
       { label: 'Beat Plans', path: '/sales-team/beat-plans', icon: Target },
-      { label: 'Daily Reports', path: '/sales-team/dsr', icon: FileText },
       { label: 'Leads', path: '/sales-team/leads', icon: UserPlus },
       { label: 'Leave Management', path: '/sales-team/leaves', icon: CalendarDays },
       { label: 'Live Tracking', path: '/sales-team/tracking', icon: Navigation },
