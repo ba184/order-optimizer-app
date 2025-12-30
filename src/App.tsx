@@ -29,7 +29,6 @@ import VendorFormPage from "./pages/outlets/VendorFormPage";
 import OrdersListPage from "./pages/orders/OrdersListPage";
 import OrderViewPage from "./pages/orders/OrderViewPage";
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
-import SchemesPage from "./pages/SchemesPage";
 import AdvancedSchemesPage from "./pages/AdvancedSchemesPage";
 import ReportsPage from "./pages/ReportsPage";
 import ProductsPage from "./pages/master/ProductsPage";
@@ -47,7 +46,7 @@ import ExpenseManagementPage from "./pages/ExpenseManagementPage";
 import SampleGiftManagementPage from "./pages/SampleGiftManagementPage";
 import InventoryManagementPage from "./pages/InventoryManagementPage";
 import PreOrderBookingPage from "./pages/PreOrderBookingPage";
-import ProductTrainingPage from "./pages/ProductTrainingPage";
+
 import CreditManagementPage from "./pages/CreditManagementPage";
 import FeedbackComplaintsPage from "./pages/FeedbackComplaintsPage";
 import ReturnsManagementPage from "./pages/ReturnsManagementPage";
@@ -127,18 +126,11 @@ function AppRoutes() {
       {/* Inventory */}
       <Route path="/inventory" element={<ProtectedRoute><InventoryManagementPage /></ProtectedRoute>} />
       
-      {/* Schemes */}
-      <Route path="/schemes" element={<ProtectedRoute><SchemesPage /></ProtectedRoute>} />
-      <Route path="/schemes/advanced" element={<ProtectedRoute><AdvancedSchemesPage /></ProtectedRoute>} />
-      
       {/* Expenses */}
       <Route path="/expenses" element={<ProtectedRoute><ExpenseManagementPage /></ProtectedRoute>} />
       
       {/* Sample & Gift */}
       <Route path="/samples" element={<ProtectedRoute><SampleGiftManagementPage /></ProtectedRoute>} />
-      
-      {/* Training */}
-      <Route path="/training" element={<ProtectedRoute><ProductTrainingPage /></ProtectedRoute>} />
       
       {/* Credit Management */}
       <Route path="/credit" element={<ProtectedRoute><CreditManagementPage /></ProtectedRoute>} />

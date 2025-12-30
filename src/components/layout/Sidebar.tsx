@@ -114,15 +114,6 @@ const navigationItems: NavItem[] = [
     roles: ['asm', 'rsm', 'admin'],
   },
   {
-    label: 'Schemes',
-    icon: Gift,
-    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
-    children: [
-      { label: 'Active Schemes', path: '/schemes', icon: Gift },
-      { label: 'Advanced Schemes', path: '/schemes/advanced', icon: Layers },
-    ],
-  },
-  {
     label: 'Expenses',
     icon: Wallet,
     path: '/expenses',
@@ -132,12 +123,6 @@ const navigationItems: NavItem[] = [
     label: 'Samples & Gifts',
     icon: Gift,
     path: '/samples',
-    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
-  },
-  {
-    label: 'Training',
-    icon: GraduationCap,
-    path: '/training',
     roles: ['sales_executive', 'asm', 'rsm', 'admin'],
   },
   {
