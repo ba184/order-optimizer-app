@@ -50,6 +50,7 @@ export interface DistributorWarehouse {
   address: string | null;
   contact_person: string | null;
   phone: string | null;
+  photos: string[] | null;
 }
 
 export interface DistributorPreorder {
@@ -59,6 +60,24 @@ export interface DistributorPreorder {
   quantity: number;
   expected_delivery: string | null;
   preorder_value: number;
+}
+
+export interface DistributorVehicle {
+  id: string;
+  distributor_id: string;
+  vehicle_number: string;
+  vehicle_type: string;
+  capacity: string | null;
+  photos: string[] | null;
+}
+
+export interface DistributorStaff {
+  id: string;
+  distributor_id: string;
+  name: string;
+  role: string | null;
+  phone: string | null;
+  email: string | null;
 }
 
 // Hooks
@@ -189,6 +208,60 @@ export function useDistributorPreorders(distributorId: string | undefined) {
   });
 }
 
+export function useDistributorVehicles(distributorId: string | undefined) {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['distributor-vehicles', distributorId],
+    queryFn: async () => {
+      if (!distributorId) return [];
+      const { data, error } = await supabase
+        .from('distributor_vehicles')
+        .select('*')
+        .eq('distributor_id', distributorId);
+      if (error) throw error;
+      return data as DistributorVehicle[];
+    },
+    enabled: !!user && !!distributorId,
+  });
+}
+
+export function useDistributorStaff(distributorId: string | undefined) {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['distributor-staff', distributorId],
+    queryFn: async () => {
+      if (!distributorId) return [];
+      const { data, error } = await supabase
+        .from('distributor_staff')
+        .select('*')
+        .eq('distributor_id', distributorId);
+      if (error) throw error;
+      return data as DistributorStaff[];
+    },
+    enabled: !!user && !!distributorId,
+  });
+}
+
+// File upload helper
+export async function uploadDistributorFile(file: File, distributorId: string, folder: string): Promise<string> {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${distributorId}/${folder}/${Date.now()}.${fileExt}`;
+  
+  const { error } = await supabase.storage
+    .from('distributor-files')
+    .upload(fileName, file);
+    
+  if (error) throw error;
+  
+  const { data: { publicUrl } } = supabase.storage
+    .from('distributor-files')
+    .getPublicUrl(fileName);
+    
+  return publicUrl;
+}
+
 // Save all distributor extended data
 export function useSaveDistributorExtendedData() {
   const queryClient = useQueryClient();
@@ -203,6 +276,8 @@ export function useSaveDistributorExtendedData() {
       secondaryCounters,
       warehouses,
       preorders,
+      vehicles,
+      staff,
     }: {
       distributorId: string;
       products: { product_id: string; margin_percent: number }[];
@@ -210,8 +285,10 @@ export function useSaveDistributorExtendedData() {
       schemes: string[];
       kycDocuments: { document_type: string; document_number: string; file_url?: string }[];
       secondaryCounters: { name: string; contact_person?: string; address?: string; phone?: string }[];
-      warehouses?: { name: string; address?: string; contact_person?: string; phone?: string }[];
+      warehouses?: { name: string; address?: string; contact_person?: string; phone?: string; photos?: string[] }[];
       preorders?: { product_id: string; quantity: number; expected_delivery?: string; preorder_value?: number }[];
+      vehicles?: { vehicle_number: string; vehicle_type: string; capacity?: string; photos?: string[] }[];
+      staff?: { name: string; role?: string; phone?: string; email?: string }[];
     }) => {
       // Delete existing data in parallel
       const deletePromises = [
@@ -222,6 +299,8 @@ export function useSaveDistributorExtendedData() {
         supabase.from('distributor_secondary_counters').delete().eq('distributor_id', distributorId),
         supabase.from('distributor_warehouses').delete().eq('distributor_id', distributorId),
         supabase.from('distributor_preorders').delete().eq('distributor_id', distributorId),
+        supabase.from('distributor_vehicles').delete().eq('distributor_id', distributorId),
+        supabase.from('distributor_staff').delete().eq('distributor_id', distributorId),
       ];
       
       await Promise.all(deletePromises);
@@ -285,6 +364,22 @@ export function useSaveDistributorExtendedData() {
         );
       }
 
+      if (vehicles && vehicles.length > 0) {
+        insertPromises.push(
+          supabase.from('distributor_vehicles').insert(
+            vehicles.map(v => ({ distributor_id: distributorId, ...v }))
+          )
+        );
+      }
+
+      if (staff && staff.length > 0) {
+        insertPromises.push(
+          supabase.from('distributor_staff').insert(
+            staff.map(s => ({ distributor_id: distributorId, ...s }))
+          )
+        );
+      }
+
       await Promise.all(insertPromises);
     },
     onSuccess: (_, variables) => {
@@ -295,6 +390,8 @@ export function useSaveDistributorExtendedData() {
       queryClient.invalidateQueries({ queryKey: ['distributor-secondary-counters', variables.distributorId] });
       queryClient.invalidateQueries({ queryKey: ['distributor-warehouses', variables.distributorId] });
       queryClient.invalidateQueries({ queryKey: ['distributor-preorders', variables.distributorId] });
+      queryClient.invalidateQueries({ queryKey: ['distributor-vehicles', variables.distributorId] });
+      queryClient.invalidateQueries({ queryKey: ['distributor-staff', variables.distributorId] });
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to save extended data');
