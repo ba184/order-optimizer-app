@@ -672,6 +672,82 @@ export type Database = {
           },
         ]
       }
+      distributor_staff: {
+        Row: {
+          created_at: string | null
+          distributor_id: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          role: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          distributor_id: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          role?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          distributor_id?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_staff_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      distributor_vehicles: {
+        Row: {
+          capacity: string | null
+          created_at: string | null
+          distributor_id: string
+          id: string
+          photos: string[] | null
+          vehicle_number: string
+          vehicle_type: string
+        }
+        Insert: {
+          capacity?: string | null
+          created_at?: string | null
+          distributor_id: string
+          id?: string
+          photos?: string[] | null
+          vehicle_number: string
+          vehicle_type: string
+        }
+        Update: {
+          capacity?: string | null
+          created_at?: string | null
+          distributor_id?: string
+          id?: string
+          photos?: string[] | null
+          vehicle_number?: string
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_vehicles_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       distributor_warehouses: {
         Row: {
           address: string | null
@@ -681,6 +757,7 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          photos: string[] | null
         }
         Insert: {
           address?: string | null
@@ -690,6 +767,7 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
+          photos?: string[] | null
         }
         Update: {
           address?: string | null
@@ -699,6 +777,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          photos?: string[] | null
         }
         Relationships: [
           {

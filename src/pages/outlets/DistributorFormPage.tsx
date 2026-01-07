@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,6 +13,12 @@ import {
   Plus,
   Trash2,
   Loader2,
+  Upload,
+  FileSpreadsheet,
+  Truck,
+  Users,
+  Image,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,8 +32,12 @@ import {
   useDistributorSecondaryCounters,
   useDistributorWarehouses,
   useDistributorPreorders,
+  useDistributorVehicles,
+  useDistributorStaff,
   useSaveDistributorExtendedData,
+  uploadDistributorFile,
 } from '@/hooks/useDistributorExtendedData';
+import { supabase } from '@/integrations/supabase/client';
 
 type Step = {
   id: string;
@@ -39,8 +49,8 @@ const steps: Step[] = [
   { id: 'basic', title: 'Basic Details', icon: Building2 },
   { id: 'commercial', title: 'Product & Commercial', icon: Package },
   { id: 'kyc', title: 'KYC Details', icon: FileText },
-  { id: 'counters', title: 'Secondary Counter & Warehouse', icon: Store },
-  { id: 'preorder', title: 'Pre-Order Details', icon: ShoppingCart },
+  { id: 'counters', title: 'Counters, Warehouses & Fleet', icon: Store },
+  { id: 'preorder', title: 'Pre-Order & Staff', icon: ShoppingCart },
 ];
 
 const distributorCategories = [
@@ -89,14 +99,22 @@ export default function DistributorFormPage() {
   const { data: existingCounters } = useDistributorSecondaryCounters(id);
   const { data: existingWarehouses } = useDistributorWarehouses(id);
   const { data: existingPreorders } = useDistributorPreorders(id);
+  const { data: existingVehicles } = useDistributorVehicles(id);
+  const { data: existingStaff } = useDistributorStaff(id);
 
   // Mutations
   const createDistributor = useCreateDistributor();
   const updateDistributor = useUpdateDistributor();
   const saveExtendedData = useSaveDistributorExtendedData();
 
+  // File input refs
+  const agreementInputRef = useRef<HTMLInputElement>(null);
+  const excelInputRef = useRef<HTMLInputElement>(null);
+
   const [currentStep, setCurrentStep] = useState(0);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [uploadingAgreement, setUploadingAgreement] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState<Record<string, boolean>>({});
   const [formData, setFormData] = useState({
     // Step 1 - Basic Details
     firmName: '',
@@ -130,14 +148,17 @@ export default function DistributorFormPage() {
     accountNumber: '',
     ifscCode: '',
     agreementSigned: false,
+    agreementFileUrl: '',
     kycStatus: 'pending',
     
-    // Step 4 - Secondary Counters & Warehouse
+    // Step 4 - Secondary Counters, Warehouse & Vehicles
     secondaryCounters: [] as { name: string; contactPerson: string; phone: string; address: string }[],
-    warehouses: [] as { name: string; address: string; contactPerson: string; phone: string }[],
+    warehouses: [] as { name: string; address: string; contactPerson: string; phone: string; photos: string[] }[],
+    vehicles: [] as { vehicleNumber: string; vehicleType: string; capacity: string; photos: string[] }[],
     
-    // Step 5 - Pre-Order Details
+    // Step 5 - Pre-Order & Staff Details
     preorders: [] as { productId: string; quantity: number; expectedDelivery: string }[],
+    staff: [] as { name: string; role: string; phone: string; email: string }[],
   });
 
   // Load existing data for edit mode
@@ -217,6 +238,7 @@ export default function DistributorFormPage() {
           address: w.address || '',
           contactPerson: w.contact_person || '',
           phone: w.phone || '',
+          photos: w.photos || [],
         })),
       }));
     }
@@ -234,6 +256,34 @@ export default function DistributorFormPage() {
       }));
     }
   }, [existingPreorders]);
+
+  useEffect(() => {
+    if (existingVehicles?.length) {
+      setFormData(prev => ({
+        ...prev,
+        vehicles: existingVehicles.map(v => ({
+          vehicleNumber: v.vehicle_number,
+          vehicleType: v.vehicle_type,
+          capacity: v.capacity || '',
+          photos: v.photos || [],
+        })),
+      }));
+    }
+  }, [existingVehicles]);
+
+  useEffect(() => {
+    if (existingStaff?.length) {
+      setFormData(prev => ({
+        ...prev,
+        staff: existingStaff.map(s => ({
+          name: s.name,
+          role: s.role || '',
+          phone: s.phone || '',
+          email: s.email || '',
+        })),
+      }));
+    }
+  }, [existingStaff]);
 
   const validateStep = (stepIndex: number): boolean => {
     const errors: Record<string, string> = {};
@@ -300,7 +350,7 @@ export default function DistributorFormPage() {
   const addWarehouse = () => {
     setFormData(prev => ({
       ...prev,
-      warehouses: [...prev.warehouses, { name: '', address: '', contactPerson: '', phone: '' }],
+      warehouses: [...prev.warehouses, { name: '', address: '', contactPerson: '', phone: '', photos: [] }],
     }));
   };
 
@@ -308,6 +358,34 @@ export default function DistributorFormPage() {
     setFormData(prev => ({
       ...prev,
       warehouses: prev.warehouses.filter((_, i) => i !== index),
+    }));
+  };
+
+  const addVehicle = () => {
+    setFormData(prev => ({
+      ...prev,
+      vehicles: [...prev.vehicles, { vehicleNumber: '', vehicleType: 'van', capacity: '', photos: [] }],
+    }));
+  };
+
+  const removeVehicle = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      vehicles: prev.vehicles.filter((_, i) => i !== index),
+    }));
+  };
+
+  const addStaff = () => {
+    setFormData(prev => ({
+      ...prev,
+      staff: [...prev.staff, { name: '', role: '', phone: '', email: '' }],
+    }));
+  };
+
+  const removeStaff = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      staff: prev.staff.filter((_, i) => i !== index),
     }));
   };
 
@@ -323,6 +401,131 @@ export default function DistributorFormPage() {
       ...prev,
       preorders: prev.preorders.filter((_, i) => i !== index),
     }));
+  };
+
+  // File upload handlers
+  const handleAgreementUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('Please upload a PDF file');
+      return;
+    }
+    
+    setUploadingAgreement(true);
+    try {
+      const tempId = id || `temp-${Date.now()}`;
+      const url = await uploadDistributorFile(file, tempId, 'agreements');
+      setFormData(prev => ({ ...prev, agreementFileUrl: url, agreementSigned: true }));
+      toast.success('Agreement uploaded successfully');
+    } catch (error: any) {
+      toast.error('Failed to upload agreement: ' + error.message);
+    } finally {
+      setUploadingAgreement(false);
+    }
+  };
+
+  const handleWarehousePhotoUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploadingPhotos(prev => ({ ...prev, [`warehouse-${index}`]: true }));
+    try {
+      const tempId = id || `temp-${Date.now()}`;
+      const url = await uploadDistributorFile(file, tempId, `warehouses/${index}`);
+      setFormData(prev => {
+        const warehouses = [...prev.warehouses];
+        warehouses[index] = { ...warehouses[index], photos: [...warehouses[index].photos, url] };
+        return { ...prev, warehouses };
+      });
+      toast.success('Photo uploaded successfully');
+    } catch (error: any) {
+      toast.error('Failed to upload photo: ' + error.message);
+    } finally {
+      setUploadingPhotos(prev => ({ ...prev, [`warehouse-${index}`]: false }));
+    }
+  };
+
+  const handleVehiclePhotoUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploadingPhotos(prev => ({ ...prev, [`vehicle-${index}`]: true }));
+    try {
+      const tempId = id || `temp-${Date.now()}`;
+      const url = await uploadDistributorFile(file, tempId, `vehicles/${index}`);
+      setFormData(prev => {
+        const vehicles = [...prev.vehicles];
+        vehicles[index] = { ...vehicles[index], photos: [...vehicles[index].photos, url] };
+        return { ...prev, vehicles };
+      });
+      toast.success('Photo uploaded successfully');
+    } catch (error: any) {
+      toast.error('Failed to upload photo: ' + error.message);
+    } finally {
+      setUploadingPhotos(prev => ({ ...prev, [`vehicle-${index}`]: false }));
+    }
+  };
+
+  const removeWarehousePhoto = (warehouseIndex: number, photoIndex: number) => {
+    setFormData(prev => {
+      const warehouses = [...prev.warehouses];
+      warehouses[warehouseIndex] = {
+        ...warehouses[warehouseIndex],
+        photos: warehouses[warehouseIndex].photos.filter((_, i) => i !== photoIndex),
+      };
+      return { ...prev, warehouses };
+    });
+  };
+
+  const removeVehiclePhoto = (vehicleIndex: number, photoIndex: number) => {
+    setFormData(prev => {
+      const vehicles = [...prev.vehicles];
+      vehicles[vehicleIndex] = {
+        ...vehicles[vehicleIndex],
+        photos: vehicles[vehicleIndex].photos.filter((_, i) => i !== photoIndex),
+      };
+      return { ...prev, vehicles };
+    });
+  };
+
+  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Simple CSV parsing for secondary counters
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        
+        const counters = lines.slice(1).map(line => {
+          const values = line.split(',').map(v => v.trim());
+          return {
+            name: values[headers.indexOf('name')] || values[0] || '',
+            contactPerson: values[headers.indexOf('contact')] || values[headers.indexOf('contact_person')] || values[1] || '',
+            phone: values[headers.indexOf('phone')] || values[2] || '',
+            address: values[headers.indexOf('address')] || values[3] || '',
+          };
+        }).filter(c => c.name);
+        
+        if (counters.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            secondaryCounters: [...prev.secondaryCounters, ...counters],
+          }));
+          toast.success(`Imported ${counters.length} secondary counters`);
+        } else {
+          toast.error('No valid data found in file');
+        }
+      } catch (error) {
+        toast.error('Failed to parse file. Please use CSV format with headers: name, contact, phone, address');
+      }
+    };
+    reader.readAsText(file);
   };
 
   const calculatePreorderValue = () => {
@@ -393,6 +596,7 @@ export default function DistributorFormPage() {
         account_number: formData.accountNumber || undefined,
         ifsc_code: formData.ifscCode || undefined,
         agreement_signed: formData.agreementSigned,
+        agreement_file_url: formData.agreementFileUrl || undefined,
         kyc_status: formData.kycStatus,
         approval_status: approvalStatus,
         status: approvalStatus === 'approved' ? 'active' : 'pending',
@@ -436,6 +640,7 @@ export default function DistributorFormPage() {
               address: w.address || undefined,
               contact_person: w.contactPerson || undefined,
               phone: w.phone || undefined,
+              photos: w.photos || [],
             })),
           preorders: formData.preorders
             .filter(p => p.productId && p.quantity > 0)
@@ -447,6 +652,22 @@ export default function DistributorFormPage() {
                 const product = products?.find(pr => pr.id === p.productId);
                 return product ? Number(product.ptr) * p.quantity : 0;
               })(),
+            })),
+          vehicles: formData.vehicles
+            .filter(v => v.vehicleNumber)
+            .map(v => ({
+              vehicle_number: v.vehicleNumber,
+              vehicle_type: v.vehicleType,
+              capacity: v.capacity || undefined,
+              photos: v.photos || [],
+            })),
+          staff: formData.staff
+            .filter(s => s.name)
+            .map(s => ({
+              name: s.name,
+              role: s.role || undefined,
+              phone: s.phone || undefined,
+              email: s.email || undefined,
             })),
         });
       }
@@ -887,19 +1108,61 @@ export default function DistributorFormPage() {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="agreementSigned"
-                  checked={formData.agreementSigned}
-                  onChange={e => setFormData({ ...formData, agreementSigned: e.target.checked })}
-                  className="w-5 h-5 rounded border-border"
-                />
-                <label htmlFor="agreementSigned" className="text-foreground font-medium">
-                  Agreement Signed
-                </label>
+            {/* Agreement Upload Section */}
+            <div className="p-4 border border-border rounded-xl space-y-4">
+              <h4 className="font-medium text-foreground">Agreement Document</h4>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="agreementSigned"
+                    checked={formData.agreementSigned}
+                    onChange={e => setFormData({ ...formData, agreementSigned: e.target.checked })}
+                    className="w-5 h-5 rounded border-border"
+                  />
+                  <label htmlFor="agreementSigned" className="text-foreground font-medium">
+                    Agreement Signed
+                  </label>
+                </div>
+                <div className="flex-1">
+                  <input
+                    ref={agreementInputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleAgreementUpload}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => agreementInputRef.current?.click()}
+                    disabled={uploadingAgreement}
+                    className="btn-outline flex items-center gap-2"
+                  >
+                    {uploadingAgreement ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Upload size={16} />
+                    )}
+                    Upload Agreement PDF
+                  </button>
+                </div>
               </div>
+              {formData.agreementFileUrl && (
+                <div className="flex items-center gap-2 text-sm text-success">
+                  <Check size={16} />
+                  <span>Agreement uploaded</span>
+                  <a
+                    href={formData.agreementFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline"
+                  >
+                    View PDF
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">KYC Status</label>
                 <select
@@ -926,9 +1189,24 @@ export default function DistributorFormPage() {
                   <h3 className="text-lg font-semibold text-foreground">4.1 Secondary Counter</h3>
                   <p className="text-sm text-muted-foreground">Add secondary business locations (repeatable)</p>
                 </div>
-                <button onClick={addSecondaryCounter} className="btn-outline text-sm flex items-center gap-1">
-                  <Plus size={14} /> Add Counter
-                </button>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={excelInputRef}
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={handleExcelImport}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => excelInputRef.current?.click()}
+                    className="btn-outline text-sm flex items-center gap-1"
+                  >
+                    <FileSpreadsheet size={14} /> Import Excel/CSV
+                  </button>
+                  <button onClick={addSecondaryCounter} className="btn-outline text-sm flex items-center gap-1">
+                    <Plus size={14} /> Add Counter
+                  </button>
+                </div>
               </div>
 
               {formData.secondaryCounters.length === 0 ? (
@@ -1101,6 +1379,137 @@ export default function DistributorFormPage() {
                           />
                         </div>
                       </div>
+                      {/* Warehouse Photos */}
+                      <div className="mt-4">
+                        <label className="block text-xs text-muted-foreground mb-2">Photos</label>
+                        <div className="flex flex-wrap gap-2">
+                          {warehouse.photos.map((photo, photoIdx) => (
+                            <div key={photoIdx} className="relative group">
+                              <img src={photo} alt="" className="w-20 h-20 object-cover rounded-lg" />
+                              <button
+                                onClick={() => removeWarehousePhoto(index, photoIdx)}
+                                className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                          <label className="w-20 h-20 border-2 border-dashed border-border rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
+                            {uploadingPhotos[`warehouse-${index}`] ? (
+                              <Loader2 size={20} className="animate-spin text-muted-foreground" />
+                            ) : (
+                              <Image size={20} className="text-muted-foreground" />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleWarehousePhotoUpload(index, e)}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Delivery Vehicles */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">4.3 Delivery Vehicles</h3>
+                  <p className="text-sm text-muted-foreground">Vehicle fleet details with photos</p>
+                </div>
+                <button onClick={addVehicle} className="btn-outline text-sm flex items-center gap-1">
+                  <Plus size={14} /> Add Vehicle
+                </button>
+              </div>
+
+              {formData.vehicles.length === 0 ? (
+                <div className="p-8 border-2 border-dashed border-border rounded-xl text-center">
+                  <Truck size={40} className="mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">No vehicles added</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {formData.vehicles.map((vehicle, index) => (
+                    <div key={index} className="p-4 bg-muted/30 rounded-lg space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-medium text-foreground">Vehicle {index + 1}</h5>
+                        <button onClick={() => removeVehicle(index)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Vehicle Number</label>
+                          <input
+                            type="text"
+                            value={vehicle.vehicleNumber}
+                            onChange={e => {
+                              const vehicles = [...formData.vehicles];
+                              vehicles[index].vehicleNumber = e.target.value.toUpperCase();
+                              setFormData({ ...formData, vehicles });
+                            }}
+                            placeholder="MH12AB1234"
+                            className="input-field"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Vehicle Type</label>
+                          <select
+                            value={vehicle.vehicleType}
+                            onChange={e => {
+                              const vehicles = [...formData.vehicles];
+                              vehicles[index].vehicleType = e.target.value;
+                              setFormData({ ...formData, vehicles });
+                            }}
+                            className="input-field"
+                          >
+                            <option value="bike">Bike</option>
+                            <option value="van">Van</option>
+                            <option value="tempo">Tempo</option>
+                            <option value="truck">Truck</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Capacity</label>
+                          <input
+                            type="text"
+                            value={vehicle.capacity}
+                            onChange={e => {
+                              const vehicles = [...formData.vehicles];
+                              vehicles[index].capacity = e.target.value;
+                              setFormData({ ...formData, vehicles });
+                            }}
+                            placeholder="e.g., 500 kg"
+                            className="input-field"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {vehicle.photos.map((photo, photoIdx) => (
+                          <div key={photoIdx} className="relative group">
+                            <img src={photo} alt="" className="w-20 h-20 object-cover rounded-lg" />
+                            <button
+                              onClick={() => removeVehiclePhoto(index, photoIdx)}
+                              className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        <label className="w-20 h-20 border-2 border-dashed border-border rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
+                          {uploadingPhotos[`vehicle-${index}`] ? (
+                            <Loader2 size={20} className="animate-spin text-muted-foreground" />
+                          ) : (
+                            <Image size={20} className="text-muted-foreground" />
+                          )}
+                          <input type="file" accept="image/*" onChange={(e) => handleVehiclePhotoUpload(index, e)} className="hidden" />
+                        </label>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1112,15 +1521,108 @@ export default function DistributorFormPage() {
       case 'preorder':
         return (
           <div className="space-y-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground">Pre-Order Details</h3>
-                <p className="text-sm text-muted-foreground">Add pre-order products for this distributor</p>
+            {/* Staff Details */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">5.1 Staff Details</h3>
+                  <p className="text-sm text-muted-foreground">Add distributor staff members</p>
+                </div>
+                <button onClick={addStaff} className="btn-outline text-sm flex items-center gap-1">
+                  <Plus size={14} /> Add Staff
+                </button>
               </div>
-              <button onClick={addPreorder} className="btn-outline text-sm flex items-center gap-1">
-                <Plus size={14} /> Add Pre-Order
-              </button>
+
+              {formData.staff.length === 0 ? (
+                <div className="p-8 border-2 border-dashed border-border rounded-xl text-center">
+                  <Users size={40} className="mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">No staff added</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {formData.staff.map((member, index) => (
+                    <div key={index} className="p-4 bg-muted/30 rounded-lg">
+                      <div className="flex items-center justify-between mb-4">
+                        <h5 className="font-medium text-foreground">Staff {index + 1}</h5>
+                        <button onClick={() => removeStaff(index)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <div className="grid md:grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Name</label>
+                          <input
+                            type="text"
+                            value={member.name}
+                            onChange={e => {
+                              const staff = [...formData.staff];
+                              staff[index].name = e.target.value;
+                              setFormData({ ...formData, staff });
+                            }}
+                            placeholder="Staff name"
+                            className="input-field"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Role</label>
+                          <input
+                            type="text"
+                            value={member.role}
+                            onChange={e => {
+                              const staff = [...formData.staff];
+                              staff[index].role = e.target.value;
+                              setFormData({ ...formData, staff });
+                            }}
+                            placeholder="e.g., Driver, Salesman"
+                            className="input-field"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Phone</label>
+                          <input
+                            type="tel"
+                            value={member.phone}
+                            onChange={e => {
+                              const staff = [...formData.staff];
+                              staff[index].phone = e.target.value.replace(/\D/g, '');
+                              setFormData({ ...formData, staff });
+                            }}
+                            placeholder="Phone number"
+                            className="input-field"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Email</label>
+                          <input
+                            type="email"
+                            value={member.email}
+                            onChange={e => {
+                              const staff = [...formData.staff];
+                              staff[index].email = e.target.value;
+                              setFormData({ ...formData, staff });
+                            }}
+                            placeholder="Email"
+                            className="input-field"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Pre-Orders */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">5.2 Pre-Order Details</h3>
+                  <p className="text-sm text-muted-foreground">Add pre-order products for this distributor</p>
+                </div>
+                <button onClick={addPreorder} className="btn-outline text-sm flex items-center gap-1">
+                  <Plus size={14} /> Add Pre-Order
+                </button>
+              </div>
 
             {formData.preorders.length === 0 ? (
               <div className="p-8 border-2 border-dashed border-border rounded-xl text-center">
