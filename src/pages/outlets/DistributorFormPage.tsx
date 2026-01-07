@@ -1710,6 +1710,7 @@ export default function DistributorFormPage() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         );
 
