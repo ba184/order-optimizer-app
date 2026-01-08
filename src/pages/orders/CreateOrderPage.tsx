@@ -50,9 +50,10 @@ export default function CreateOrderPage() {
     p.sku.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredRetailers = retailers.filter(r =>
-    r.distributor_id === selectedDistributor
-  );
+  // Show all retailers for secondary orders - filter by distributor only if retailer has distributor_id set
+  const filteredRetailers = selectedDistributor 
+    ? retailers.filter(r => !r.distributor_id || r.distributor_id === selectedDistributor)
+    : retailers;
 
   // Build cart items with product details for scheme calculation
   const cartItemsWithProducts: CartItemWithProduct[] = useMemo(() => {
