@@ -66,11 +66,18 @@ export interface AppliedSchemeData {
 }
 
 export interface OrderCollateral {
-  collateralId: string;
-  collateralName: string;
+  collateralId?: string;
+  collateralName?: string;
   quantity: number;
   warehouse?: string;
   instructions?: string;
+}
+
+export interface OrderCollateralItem {
+  id: string;
+  type: string;
+  quantity: number;
+  notes: string;
 }
 
 export function useProducts() {
@@ -145,8 +152,7 @@ export function useCreateOrder() {
       appliedSchemes = [],
       schemeDiscount = 0,
       schemeFreeGoods = [],
-      collaterals = [],
-      collateralNotes,
+      orderCollaterals = [],
     }: {
       orderType: 'primary' | 'secondary';
       distributorId: string;
@@ -158,8 +164,7 @@ export function useCreateOrder() {
       appliedSchemes?: AppliedSchemeData[];
       schemeDiscount?: number;
       schemeFreeGoods?: { productId: string; productName: string; quantity: number }[];
-      collaterals?: OrderCollateral[];
-      collateralNotes?: string;
+      orderCollaterals?: OrderCollateralItem[];
     }) => {
       if (!user) throw new Error('User not authenticated');
 
@@ -237,30 +242,34 @@ export function useCreateOrder() {
       if (itemsError) throw itemsError;
 
       // Create collateral issues if any collaterals were selected
-      if (collaterals.length > 0) {
-        const collateralIssues = collaterals.map((col, idx) => ({
-          collateral_id: col.collateralId,
-          issue_number: `COL-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
-          quantity: col.quantity,
-          issued_to_type: orderType === 'primary' ? 'distributor' : 'retailer',
-          issued_to_id: orderType === 'primary' ? distributorId : retailerId,
-          issued_to_name: null, // Will be resolved from join
-          issued_by: user.id,
-          instructed_by: user.id,
-          related_order_id: orderData.id,
-          in_out_type: 'out',
-          status: 'pending',
-          issue_stage: 'requested',
-          remarks: col.instructions || collateralNotes || null,
-        }));
+      if (orderCollaterals.length > 0) {
+        // Get collateral type labels for display
+        const COLLATERAL_TYPE_LABELS: Record<string, string> = {
+          led_tv: 'LED TV',
+          banner: 'Banner',
+          gift: 'Gift',
+          pos_material: 'POS Material',
+          sample: 'Sample',
+          display_stand: 'Display Stand',
+          signage: 'Signage',
+          brochure: 'Brochure',
+        };
 
-        const { error: collateralError } = await supabase
-          .from('collateral_issues' as any)
-          .insert(collateralIssues);
+        // For type-based collaterals, we need to store them differently
+        // We'll store the type info in remarks since there's no collateral_id
+        const collateralNotes = orderCollaterals.map(col => 
+          `${COLLATERAL_TYPE_LABELS[col.type] || col.type} x${col.quantity}${col.notes ? ': ' + col.notes : ''}`
+        ).join('; ');
 
-        if (collateralError) {
-          console.error('Failed to create collateral issues:', collateralError);
-          // Don't throw - order is already created, just log the error
+        // Store collateral info in order notes for now
+        // TODO: Create a proper order_collaterals table for type-based collaterals
+        if (collateralNotes) {
+          await supabase
+            .from('orders' as any)
+            .update({ 
+              notes: notes ? `${notes}\n\nCollaterals: ${collateralNotes}` : `Collaterals: ${collateralNotes}` 
+            })
+            .eq('id', orderData.id);
         }
       }
 

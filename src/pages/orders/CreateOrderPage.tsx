@@ -22,7 +22,7 @@ import { useDistributors, useRetailers } from '@/hooks/useOutletsData';
 import { useSchemeCalculation, useLogSchemeOverride, useActiveSchemes, CartItemWithProduct, AppliedScheme } from '@/hooks/useSchemeEngine';
 import { AppliedSchemesDisplay } from '@/components/orders/AppliedSchemesDisplay';
 import { ProductSchemesBadge } from '@/components/orders/ProductSchemesBadge';
-import { CollateralSelector, SelectedCollateral } from '@/components/orders/CollateralSelector';
+import { OrderCollateralSelector, OrderCollateralItem } from '@/components/orders/OrderCollateralSelector';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function CreateOrderPage() {
@@ -34,8 +34,7 @@ export default function CreateOrderPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [notes, setNotes] = useState('');
-  const [selectedCollaterals, setSelectedCollaterals] = useState<SelectedCollateral[]>([]);
-  const [collateralNotes, setCollateralNotes] = useState('');
+  const [orderCollaterals, setOrderCollaterals] = useState<OrderCollateralItem[]>([]);
 
   const { data: products = [], isLoading: productsLoading } = useProducts();
   const { data: distributors = [], isLoading: distributorsLoading } = useDistributors();
@@ -175,8 +174,7 @@ export default function CreateOrderPage() {
         products,
         status: asDraft ? 'draft' : 'pending',
         notes,
-        collaterals: selectedCollaterals,
-        collateralNotes,
+        orderCollaterals,
       });
       navigate('/orders/list');
     } catch (error) {
@@ -342,25 +340,10 @@ export default function CreateOrderPage() {
               Add marketing materials to be sent with this order
             </p>
             
-            <CollateralSelector
-              selectedItems={selectedCollaterals}
-              onChange={setSelectedCollaterals}
+            <OrderCollateralSelector
+              items={orderCollaterals}
+              onChange={setOrderCollaterals}
             />
-
-            {selectedCollaterals.length > 0 && (
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Collateral Dispatch Notes
-                </label>
-                <textarea
-                  value={collateralNotes}
-                  onChange={e => setCollateralNotes(e.target.value)}
-                  className="input-field"
-                  rows={2}
-                  placeholder="Special instructions for collateral dispatch..."
-                />
-              </div>
-            )}
           </motion.div>
 
           {/* Product Selection */}
