@@ -5,7 +5,10 @@ import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import {
   Package,
   TrendingDown,
+  TrendingUp,
   ArrowRightLeft,
+  ArrowDownToLine,
+  ArrowUpFromLine,
   Calendar,
   Eye,
   Plus,
@@ -20,6 +23,12 @@ import {
   ShieldCheck,
   Clock,
   XCircle,
+  DollarSign,
+  Gauge,
+  Zap,
+  Snail,
+  Archive,
+  Timer,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -33,6 +42,7 @@ import {
   useCreateStockTransfer,
   useUpdateStockTransferStatus,
   calculateInventorySummary,
+  calculateInventoryKPIs,
   getExpiryAlerts,
   getAllExpiryItems,
   InventoryBatch,
@@ -101,6 +111,7 @@ export default function InventoryManagementPage() {
   });
 
   const inventorySummary = useMemo(() => calculateInventorySummary(batches, products), [batches, products]);
+  const inventoryKPIs = useMemo(() => calculateInventoryKPIs(batches, products), [batches, products]);
   const expiryAlerts = useMemo(() => getExpiryAlerts(batches), [batches]);
   const allExpiryItems = useMemo(() => getAllExpiryItems(batches), [batches]);
 
@@ -608,6 +619,13 @@ export default function InventoryManagementPage() {
     pendingTransfers: transfers.filter(t => t.status === 'pending' || t.status === 'in_transit').length,
   };
 
+  const formatNumber = (num: number) => {
+    if (num >= 10000000) return `${(num / 10000000).toFixed(2)} Cr`;
+    if (num >= 100000) return `${(num / 100000).toFixed(2)} L`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toLocaleString();
+  };
+
   const isLoading = batchesLoading || transfersLoading;
 
   if (isLoading) {
@@ -652,16 +670,28 @@ export default function InventoryManagementPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Primary KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <Package size={24} className="text-primary" />
+            <div className="p-3 rounded-xl bg-muted">
+              <Package size={20} className="text-muted-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalSKUs}</p>
-              <p className="text-sm text-muted-foreground">Active SKUs</p>
+              <p className="text-xl font-bold text-foreground">{formatNumber(inventoryKPIs.openingStock)}</p>
+              <p className="text-xs text-muted-foreground">Opening Stock</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-success/10">
+              <ArrowDownToLine size={20} className="text-success" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-foreground">{formatNumber(inventoryKPIs.inwards)}</p>
+              <p className="text-xs text-muted-foreground">Inwards</p>
             </div>
           </div>
         </motion.div>
@@ -669,35 +699,110 @@ export default function InventoryManagementPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-destructive/10">
-              <TrendingDown size={24} className="text-destructive" />
+              <ArrowUpFromLine size={20} className="text-destructive" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.lowStock}</p>
-              <p className="text-sm text-muted-foreground">Low Stock SKUs</p>
+              <p className="text-xl font-bold text-foreground">{formatNumber(inventoryKPIs.outwards)}</p>
+              <p className="text-xs text-muted-foreground">Outwards</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-primary/10">
+              <Package size={20} className="text-primary" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-foreground">{formatNumber(inventoryKPIs.closingStock)}</p>
+              <p className="text-xs text-muted-foreground">Closing Stock</p>
             </div>
           </div>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-warning/10">
-              <AlertTriangle size={24} className="text-warning" />
+            <div className="p-3 rounded-xl bg-accent/10">
+              <DollarSign size={20} className="text-accent-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.expiryAlerts}</p>
-              <p className="text-sm text-muted-foreground">Expiry Alerts</p>
+              <p className="text-xl font-bold text-foreground">₹{formatNumber(inventoryKPIs.inventoryValue)}</p>
+              <p className="text-xs text-muted-foreground">Inventory Value</p>
             </div>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-info/10">
-              <ArrowRightLeft size={24} className="text-info" />
+              <Calendar size={20} className="text-info" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.pendingTransfers}</p>
-              <p className="text-sm text-muted-foreground">Pending Transfers</p>
+              <p className="text-xl font-bold text-foreground">{inventoryKPIs.daysOfInventory}</p>
+              <p className="text-xs text-muted-foreground">Days of Inventory</p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Secondary KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-primary/10">
+              <Gauge size={20} className="text-primary" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-foreground">{inventoryKPIs.stockTurnoverRatio}x</p>
+              <p className="text-xs text-muted-foreground">Turnover Ratio</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-success/10">
+              <Zap size={20} className="text-success" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-foreground">{inventoryKPIs.fastMoving}</p>
+              <p className="text-xs text-muted-foreground">Fast Moving</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-warning/10">
+              <Snail size={20} className="text-warning" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-foreground">{inventoryKPIs.slowMoving}</p>
+              <p className="text-xs text-muted-foreground">Slow Moving</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-destructive/10">
+              <Archive size={20} className="text-destructive" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-foreground">{inventoryKPIs.deadStock}</p>
+              <p className="text-xs text-muted-foreground">Dead Stock</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-warning/10">
+              <Timer size={20} className="text-warning" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-foreground">{inventoryKPIs.nearExpiry}</p>
+              <p className="text-xs text-muted-foreground">Near Expiry</p>
             </div>
           </div>
         </motion.div>
