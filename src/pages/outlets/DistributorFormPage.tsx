@@ -19,6 +19,8 @@ import {
   Users,
   Image,
   X,
+  Camera,
+  MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +36,7 @@ import {
   useDistributorPreorders,
   useDistributorVehicles,
   useDistributorStaff,
+  useDistributorImages,
   useSaveDistributorExtendedData,
   uploadDistributorFile,
 } from '@/hooks/useDistributorExtendedData';
@@ -49,6 +52,7 @@ const steps: Step[] = [
   { id: 'basic', title: 'Basic Details', icon: Building2 },
   { id: 'commercial', title: 'Product & Commercial', icon: Package },
   { id: 'kyc', title: 'KYC Details', icon: FileText },
+  { id: 'images', title: 'Images & Documents', icon: Camera },
   { id: 'counters', title: 'Counters, Warehouses & Fleet', icon: Store },
   { id: 'preorder', title: 'Pre-Order & Staff', icon: ShoppingCart },
 ];
@@ -101,6 +105,7 @@ export default function DistributorFormPage() {
   const { data: existingPreorders } = useDistributorPreorders(id);
   const { data: existingVehicles } = useDistributorVehicles(id);
   const { data: existingStaff } = useDistributorStaff(id);
+  const { data: existingImages } = useDistributorImages(id);
 
   // Mutations
   const createDistributor = useCreateDistributor();
@@ -154,11 +159,15 @@ export default function DistributorFormPage() {
     // Step 4 - Secondary Counters, Warehouse & Vehicles
     secondaryCounters: [] as { name: string; contactPerson: string; phone: string; address: string }[],
     warehouses: [] as { name: string; address: string; contactPerson: string; phone: string; photos: string[] }[],
-    vehicles: [] as { vehicleNumber: string; vehicleType: string; capacity: string; photos: string[] }[],
+    vehicles: [] as { vehicleNumber: string; vehicleType: string; capacity: string; driverName: string; driverContact: string; status: string; photos: string[] }[],
     
-    // Step 5 - Pre-Order & Staff Details
+    // Step 5 - Images & Documents
+    images: [] as { type: string; url: string; gpsLat: number | null; gpsLng: number | null }[],
+    gpsLocation: null as { lat: number; lng: number } | null,
+    
+    // Step 6 - Pre-Order & Staff Details
     preorders: [] as { productId: string; quantity: number; expectedDelivery: string }[],
-    staff: [] as { name: string; role: string; phone: string; email: string }[],
+    staff: [] as { name: string; role: string; phone: string; email: string; status: string }[],
   });
 
   // Load existing data for edit mode
@@ -265,6 +274,9 @@ export default function DistributorFormPage() {
           vehicleNumber: v.vehicle_number,
           vehicleType: v.vehicle_type,
           capacity: v.capacity || '',
+          driverName: (v as any).driver_name || '',
+          driverContact: (v as any).driver_contact || '',
+          status: (v as any).status || 'active',
           photos: v.photos || [],
         })),
       }));
@@ -280,10 +292,25 @@ export default function DistributorFormPage() {
           role: s.role || '',
           phone: s.phone || '',
           email: s.email || '',
+          status: s.status || 'active',
         })),
       }));
     }
   }, [existingStaff]);
+
+  useEffect(() => {
+    if (existingImages?.length) {
+      setFormData(prev => ({
+        ...prev,
+        images: existingImages.map(i => ({
+          type: i.image_type,
+          url: i.image_url,
+          gpsLat: i.gps_latitude,
+          gpsLng: i.gps_longitude,
+        })),
+      }));
+    }
+  }, [existingImages]);
 
   const validateStep = (stepIndex: number): boolean => {
     const errors: Record<string, string> = {};
@@ -301,18 +328,83 @@ export default function DistributorFormPage() {
         // No required fields
         break;
       case 2: // KYC Details
-        // No required fields, but validate formats if provided
-        break;
-      case 3: // Secondary Counters & Warehouse
         // No required fields
         break;
-      case 4: // Pre-Order Details
+      case 3: // Images & Documents
+        const hasFrontImage = formData.images.some(img => img.type === 'distributor_front');
+        if (!hasFrontImage) {
+          toast.error('Distributor Front Image is mandatory');
+          return false;
+        }
+        break;
+      case 4: // Secondary Counters & Warehouse
+        // No required fields
+        break;
+      case 5: // Pre-Order Details
         // No required fields
         break;
     }
     
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
+  };
+
+  const captureGPS = (): Promise<{ lat: number; lng: number } | null> => {
+    return new Promise((resolve) => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const gps = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            setFormData(prev => ({ ...prev, gpsLocation: gps }));
+            resolve(gps);
+          },
+          () => {
+            resolve(null);
+          }
+        );
+      } else {
+        resolve(null);
+      }
+    });
+  };
+
+  const handleDistributorImageUpload = async (imageType: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploadingPhotos(prev => ({ ...prev, [imageType]: true }));
+    try {
+      const tempId = id || `temp-${Date.now()}`;
+      const url = await uploadDistributorFile(file, tempId, `images/${imageType}`);
+      
+      // Auto-capture GPS on upload
+      const gps = await captureGPS();
+      
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, { 
+          type: imageType, 
+          url, 
+          gpsLat: gps?.lat || null, 
+          gpsLng: gps?.lng || null 
+        }],
+      }));
+      toast.success('Image uploaded successfully');
+    } catch (error: any) {
+      toast.error('Failed to upload image: ' + error.message);
+    } finally {
+      setUploadingPhotos(prev => ({ ...prev, [imageType]: false }));
+    }
+  };
+
+  const removeDistributorImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
   };
 
   const handleProductToggle = (productId: string) => {
@@ -364,7 +456,7 @@ export default function DistributorFormPage() {
   const addVehicle = () => {
     setFormData(prev => ({
       ...prev,
-      vehicles: [...prev.vehicles, { vehicleNumber: '', vehicleType: 'van', capacity: '', photos: [] }],
+      vehicles: [...prev.vehicles, { vehicleNumber: '', vehicleType: 'van', capacity: '', driverName: '', driverContact: '', status: 'active', photos: [] }],
     }));
   };
 
@@ -378,7 +470,7 @@ export default function DistributorFormPage() {
   const addStaff = () => {
     setFormData(prev => ({
       ...prev,
-      staff: [...prev.staff, { name: '', role: '', phone: '', email: '' }],
+      staff: [...prev.staff, { name: '', role: '', phone: '', email: '', status: 'active' }],
     }));
   };
 
@@ -659,6 +751,9 @@ export default function DistributorFormPage() {
               vehicle_number: v.vehicleNumber,
               vehicle_type: v.vehicleType,
               capacity: v.capacity || undefined,
+              driver_name: v.driverName || undefined,
+              driver_contact: v.driverContact || undefined,
+              status: v.status || 'active',
               photos: v.photos || [],
             })),
           staff: formData.staff
@@ -668,6 +763,15 @@ export default function DistributorFormPage() {
               role: s.role || undefined,
               phone: s.phone || undefined,
               email: s.email || undefined,
+              status: s.status || 'active',
+            })),
+          images: formData.images
+            .filter(i => i.url)
+            .map(i => ({
+              image_type: i.type,
+              image_url: i.url,
+              gps_latitude: i.gpsLat || undefined,
+              gps_longitude: i.gpsLng || undefined,
             })),
         });
       }
@@ -1179,6 +1283,154 @@ export default function DistributorFormPage() {
           </div>
         );
 
+      case 'images':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-4">Distributor Images & Documents</h3>
+              <p className="text-sm text-muted-foreground mb-4">Upload distributor images for verification. GPS location is auto-captured on upload.</p>
+            </div>
+
+            <div className="space-y-6">
+              {/* Distributor Front Image - Mandatory */}
+              <div className="p-4 border-2 border-dashed border-border rounded-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="font-medium text-foreground">Distributor Front Image *</h4>
+                    <p className="text-sm text-muted-foreground">Mandatory - Main office/warehouse facade</p>
+                  </div>
+                  {!formData.images.some(img => img.type === 'distributor_front') && (
+                    <label className="btn-outline text-sm flex items-center gap-1 cursor-pointer">
+                      {uploadingPhotos['distributor_front'] ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Camera size={14} />
+                      )}
+                      Upload
+                      <input type="file" accept="image/*" onChange={(e) => handleDistributorImageUpload('distributor_front', e)} className="hidden" />
+                    </label>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {formData.images.filter(img => img.type === 'distributor_front').map((img, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={img.url} alt="Distributor Front" className="w-40 h-32 object-cover rounded-lg" />
+                      <button
+                        onClick={() => removeDistributorImage(formData.images.findIndex(i => i.url === img.url))}
+                        className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full"
+                      >
+                        <X size={12} />
+                      </button>
+                      {img.gpsLat && img.gpsLng && (
+                        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded flex items-center gap-1">
+                          <MapPin size={10} /> GPS
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Distributor Inside Image - Optional */}
+              <div className="p-4 border-2 border-dashed border-border rounded-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="font-medium text-foreground">Distributor Inside Image</h4>
+                    <p className="text-sm text-muted-foreground">Optional - Interior view</p>
+                  </div>
+                  <label className="btn-outline text-sm flex items-center gap-1 cursor-pointer">
+                    {uploadingPhotos['distributor_inside'] ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Camera size={14} />
+                    )}
+                    Upload
+                    <input type="file" accept="image/*" onChange={(e) => handleDistributorImageUpload('distributor_inside', e)} className="hidden" />
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {formData.images.filter(img => img.type === 'distributor_inside').map((img, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={img.url} alt="Distributor Inside" className="w-32 h-24 object-cover rounded-lg" />
+                      <button
+                        onClick={() => removeDistributorImage(formData.images.findIndex(i => i.url === img.url))}
+                        className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full"
+                      >
+                        <X size={12} />
+                      </button>
+                      {img.gpsLat && img.gpsLng && (
+                        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded flex items-center gap-1">
+                          <MapPin size={10} /> GPS
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Additional Images */}
+              <div className="p-4 border-2 border-dashed border-border rounded-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="font-medium text-foreground">Additional Images</h4>
+                    <p className="text-sm text-muted-foreground">Optional - Other relevant images</p>
+                  </div>
+                  <label className="btn-outline text-sm flex items-center gap-1 cursor-pointer">
+                    {uploadingPhotos['additional'] ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Plus size={14} />
+                    )}
+                    Add Image
+                    <input type="file" accept="image/*" onChange={(e) => handleDistributorImageUpload('additional', e)} className="hidden" />
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {formData.images.filter(img => img.type === 'additional').map((img, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={img.url} alt="Additional" className="w-32 h-24 object-cover rounded-lg" />
+                      <button
+                        onClick={() => removeDistributorImage(formData.images.findIndex(i => i.url === img.url))}
+                        className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full"
+                      >
+                        <X size={12} />
+                      </button>
+                      {img.gpsLat && img.gpsLng && (
+                        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded flex items-center gap-1">
+                          <MapPin size={10} /> GPS
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* GPS Location Info */}
+              <div className="p-4 bg-muted/30 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-foreground">GPS Location Tag</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {formData.gpsLocation 
+                        ? `Last captured: ${formData.gpsLocation.lat.toFixed(6)}, ${formData.gpsLocation.lng.toFixed(6)}`
+                        : 'GPS is auto-captured when you upload images'}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => captureGPS().then(gps => {
+                      if (gps) toast.success('GPS location captured');
+                      else toast.error('Failed to capture GPS location');
+                    })} 
+                    className="btn-outline text-sm flex items-center gap-1"
+                  >
+                    <MapPin size={14} /> Capture GPS
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       case 'counters':
         return (
           <div className="space-y-6">
@@ -1186,7 +1438,7 @@ export default function DistributorFormPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">4.1 Secondary Counter</h3>
+                  <h3 className="text-lg font-semibold text-foreground">5.1 Secondary Counter</h3>
                   <p className="text-sm text-muted-foreground">Add secondary business locations (repeatable)</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1295,8 +1547,8 @@ export default function DistributorFormPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">4.2 Warehouse Details</h3>
-                  <p className="text-sm text-muted-foreground">Optional warehouse information</p>
+                  <h3 className="text-lg font-semibold text-foreground">5.2 Warehouse Details</h3>
+                  <p className="text-sm text-muted-foreground">Warehouse information with mandatory front image</p>
                 </div>
                 <button onClick={addWarehouse} className="btn-outline text-sm flex items-center gap-1">
                   <Plus size={14} /> Add Warehouse
@@ -1419,7 +1671,7 @@ export default function DistributorFormPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">4.3 Delivery Vehicles</h3>
+                  <h3 className="text-lg font-semibold text-foreground">5.3 Delivery Vehicles</h3>
                   <p className="text-sm text-muted-foreground">Vehicle fleet details with photos</p>
                 </div>
                 <button onClick={addVehicle} className="btn-outline text-sm flex items-center gap-1">
@@ -1438,9 +1690,23 @@ export default function DistributorFormPage() {
                     <div key={index} className="p-4 bg-muted/30 rounded-lg space-y-4">
                       <div className="flex items-center justify-between">
                         <h5 className="font-medium text-foreground">Vehicle {index + 1}</h5>
-                        <button onClick={() => removeVehicle(index)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg">
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={vehicle.status}
+                            onChange={e => {
+                              const vehicles = [...formData.vehicles];
+                              vehicles[index].status = e.target.value;
+                              setFormData({ ...formData, vehicles });
+                            }}
+                            className="text-xs px-2 py-1 rounded border border-border bg-background"
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
+                          <button onClick={() => removeVehicle(index)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
                       <div className="grid md:grid-cols-3 gap-4">
                         <div>
@@ -1472,6 +1738,7 @@ export default function DistributorFormPage() {
                             <option value="van">Van</option>
                             <option value="tempo">Tempo</option>
                             <option value="truck">Truck</option>
+                            <option value="others">Others</option>
                           </select>
                         </div>
                         <div>
@@ -1488,27 +1755,58 @@ export default function DistributorFormPage() {
                             className="input-field"
                           />
                         </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Driver Name</label>
+                          <input
+                            type="text"
+                            value={vehicle.driverName}
+                            onChange={e => {
+                              const vehicles = [...formData.vehicles];
+                              vehicles[index].driverName = e.target.value;
+                              setFormData({ ...formData, vehicles });
+                            }}
+                            placeholder="Driver name"
+                            className="input-field"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Driver Contact</label>
+                          <input
+                            type="tel"
+                            value={vehicle.driverContact}
+                            onChange={e => {
+                              const vehicles = [...formData.vehicles];
+                              vehicles[index].driverContact = e.target.value.replace(/\D/g, '');
+                              setFormData({ ...formData, vehicles });
+                            }}
+                            placeholder="Phone number"
+                            className="input-field"
+                          />
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {vehicle.photos.map((photo, photoIdx) => (
-                          <div key={photoIdx} className="relative group">
-                            <img src={photo} alt="" className="w-20 h-20 object-cover rounded-lg" />
-                            <button
-                              onClick={() => removeVehiclePhoto(index, photoIdx)}
-                              className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        ))}
-                        <label className="w-20 h-20 border-2 border-dashed border-border rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
-                          {uploadingPhotos[`vehicle-${index}`] ? (
-                            <Loader2 size={20} className="animate-spin text-muted-foreground" />
-                          ) : (
-                            <Image size={20} className="text-muted-foreground" />
-                          )}
-                          <input type="file" accept="image/*" onChange={(e) => handleVehiclePhotoUpload(index, e)} className="hidden" />
-                        </label>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-2">Photos (Front & Number Plate)</label>
+                        <div className="flex flex-wrap gap-2">
+                          {vehicle.photos.map((photo, photoIdx) => (
+                            <div key={photoIdx} className="relative group">
+                              <img src={photo} alt="" className="w-20 h-20 object-cover rounded-lg" />
+                              <button
+                                onClick={() => removeVehiclePhoto(index, photoIdx)}
+                                className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                          <label className="w-20 h-20 border-2 border-dashed border-border rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
+                            {uploadingPhotos[`vehicle-${index}`] ? (
+                              <Loader2 size={20} className="animate-spin text-muted-foreground" />
+                            ) : (
+                              <Image size={20} className="text-muted-foreground" />
+                            )}
+                            <input type="file" accept="image/*" onChange={(e) => handleVehiclePhotoUpload(index, e)} className="hidden" />
+                          </label>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1525,7 +1823,7 @@ export default function DistributorFormPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">5.1 Staff Details</h3>
+                  <h3 className="text-lg font-semibold text-foreground">6.1 Staff Details</h3>
                   <p className="text-sm text-muted-foreground">Add distributor staff members</p>
                 </div>
                 <button onClick={addStaff} className="btn-outline text-sm flex items-center gap-1">
@@ -1544,9 +1842,23 @@ export default function DistributorFormPage() {
                     <div key={index} className="p-4 bg-muted/30 rounded-lg">
                       <div className="flex items-center justify-between mb-4">
                         <h5 className="font-medium text-foreground">Staff {index + 1}</h5>
-                        <button onClick={() => removeStaff(index)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg">
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={member.status}
+                            onChange={e => {
+                              const staff = [...formData.staff];
+                              staff[index].status = e.target.value;
+                              setFormData({ ...formData, staff });
+                            }}
+                            className="text-xs px-2 py-1 rounded border border-border bg-background"
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
+                          <button onClick={() => removeStaff(index)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
                       <div className="grid md:grid-cols-4 gap-4">
                         <div>

@@ -78,6 +78,17 @@ export interface DistributorStaff {
   role: string | null;
   phone: string | null;
   email: string | null;
+  status: string | null;
+}
+
+export interface DistributorImage {
+  id: string;
+  distributor_id: string;
+  image_type: string;
+  image_url: string;
+  gps_latitude: number | null;
+  gps_longitude: number | null;
+  created_at: string | null;
 }
 
 // Hooks
@@ -244,6 +255,24 @@ export function useDistributorStaff(distributorId: string | undefined) {
   });
 }
 
+export function useDistributorImages(distributorId: string | undefined) {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['distributor-images', distributorId],
+    queryFn: async () => {
+      if (!distributorId) return [];
+      const { data, error } = await supabase
+        .from('distributor_images')
+        .select('*')
+        .eq('distributor_id', distributorId);
+      if (error) throw error;
+      return data as DistributorImage[];
+    },
+    enabled: !!user && !!distributorId,
+  });
+}
+
 // File upload helper
 export async function uploadDistributorFile(file: File, distributorId: string, folder: string): Promise<string> {
   const fileExt = file.name.split('.').pop();
@@ -278,6 +307,7 @@ export function useSaveDistributorExtendedData() {
       preorders,
       vehicles,
       staff,
+      images,
     }: {
       distributorId: string;
       products: { product_id: string; margin_percent: number }[];
@@ -287,8 +317,9 @@ export function useSaveDistributorExtendedData() {
       secondaryCounters: { name: string; contact_person?: string; address?: string; phone?: string }[];
       warehouses?: { name: string; address?: string; contact_person?: string; phone?: string; photos?: string[] }[];
       preorders?: { product_id: string; quantity: number; expected_delivery?: string; preorder_value?: number }[];
-      vehicles?: { vehicle_number: string; vehicle_type: string; capacity?: string; photos?: string[] }[];
-      staff?: { name: string; role?: string; phone?: string; email?: string }[];
+      vehicles?: { vehicle_number: string; vehicle_type: string; capacity?: string; photos?: string[]; driver_name?: string; driver_contact?: string; status?: string }[];
+      staff?: { name: string; role?: string; phone?: string; email?: string; status?: string }[];
+      images?: { image_type: string; image_url: string; gps_latitude?: number; gps_longitude?: number }[];
     }) => {
       // Delete existing data in parallel
       const deletePromises = [
@@ -301,6 +332,7 @@ export function useSaveDistributorExtendedData() {
         supabase.from('distributor_preorders').delete().eq('distributor_id', distributorId),
         supabase.from('distributor_vehicles').delete().eq('distributor_id', distributorId),
         supabase.from('distributor_staff').delete().eq('distributor_id', distributorId),
+        supabase.from('distributor_images').delete().eq('distributor_id', distributorId),
       ];
       
       await Promise.all(deletePromises);
@@ -380,6 +412,14 @@ export function useSaveDistributorExtendedData() {
         );
       }
 
+      if (images && images.length > 0) {
+        insertPromises.push(
+          supabase.from('distributor_images').insert(
+            images.map(i => ({ distributor_id: distributorId, ...i }))
+          )
+        );
+      }
+
       await Promise.all(insertPromises);
     },
     onSuccess: (_, variables) => {
@@ -392,6 +432,7 @@ export function useSaveDistributorExtendedData() {
       queryClient.invalidateQueries({ queryKey: ['distributor-preorders', variables.distributorId] });
       queryClient.invalidateQueries({ queryKey: ['distributor-vehicles', variables.distributorId] });
       queryClient.invalidateQueries({ queryKey: ['distributor-staff', variables.distributorId] });
+      queryClient.invalidateQueries({ queryKey: ['distributor-images', variables.distributorId] });
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to save extended data');
