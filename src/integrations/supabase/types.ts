@@ -1128,7 +1128,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
-          bill_photo: string | null
+          bill_photo: string[] | null
           city_category: string
           claim_number: string
           created_at: string
@@ -1157,7 +1157,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
-          bill_photo?: string | null
+          bill_photo?: string[] | null
           city_category?: string
           claim_number: string
           created_at?: string
@@ -1186,7 +1186,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
-          bill_photo?: string | null
+          bill_photo?: string[] | null
           city_category?: string
           claim_number?: string
           created_at?: string
