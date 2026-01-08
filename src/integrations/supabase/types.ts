@@ -1559,6 +1559,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          applied_schemes: Json | null
           approved_at: string | null
           approved_by: string | null
           created_at: string | null
@@ -1575,12 +1576,15 @@ export type Database = {
           order_type: string
           payment_status: string | null
           retailer_id: string | null
+          scheme_discount: number | null
+          scheme_free_goods: Json | null
           status: string | null
           subtotal: number | null
           total_amount: number | null
           updated_at: string | null
         }
         Insert: {
+          applied_schemes?: Json | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string | null
@@ -1597,12 +1601,15 @@ export type Database = {
           order_type?: string
           payment_status?: string | null
           retailer_id?: string | null
+          scheme_discount?: number | null
+          scheme_free_goods?: Json | null
           status?: string | null
           subtotal?: number | null
           total_amount?: number | null
           updated_at?: string | null
         }
         Update: {
+          applied_schemes?: Json | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string | null
@@ -1619,6 +1626,8 @@ export type Database = {
           order_type?: string
           payment_status?: string | null
           retailer_id?: string | null
+          scheme_discount?: number | null
+          scheme_free_goods?: Json | null
           status?: string | null
           subtotal?: number | null
           total_amount?: number | null
@@ -1790,6 +1799,7 @@ export type Database = {
         Row: {
           actual_delivery: string | null
           advance_collected: number | null
+          applied_schemes: Json | null
           created_at: string | null
           created_by: string
           distributor_id: string | null
@@ -1797,6 +1807,8 @@ export type Database = {
           id: string
           order_number: string
           remarks: string | null
+          scheme_discount: number | null
+          scheme_free_goods: Json | null
           scheme_id: string | null
           status: string | null
           total_value: number | null
@@ -1805,6 +1817,7 @@ export type Database = {
         Insert: {
           actual_delivery?: string | null
           advance_collected?: number | null
+          applied_schemes?: Json | null
           created_at?: string | null
           created_by: string
           distributor_id?: string | null
@@ -1812,6 +1825,8 @@ export type Database = {
           id?: string
           order_number: string
           remarks?: string | null
+          scheme_discount?: number | null
+          scheme_free_goods?: Json | null
           scheme_id?: string | null
           status?: string | null
           total_value?: number | null
@@ -1820,6 +1835,7 @@ export type Database = {
         Update: {
           actual_delivery?: string | null
           advance_collected?: number | null
+          applied_schemes?: Json | null
           created_at?: string | null
           created_by?: string
           distributor_id?: string | null
@@ -1827,6 +1843,8 @@ export type Database = {
           id?: string
           order_number?: string
           remarks?: string | null
+          scheme_discount?: number | null
+          scheme_free_goods?: Json | null
           scheme_id?: string | null
           status?: string | null
           total_value?: number | null
@@ -2748,6 +2766,71 @@ export type Database = {
             columns: ["scheme_id"]
             isOneToOne: false
             referencedRelation: "advanced_schemes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheme_overrides: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string | null
+          original_benefit: Json
+          overridden_by: string
+          override_benefit: Json
+          override_reason: string
+          pre_order_id: string | null
+          scheme_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          original_benefit: Json
+          overridden_by: string
+          override_benefit: Json
+          override_reason: string
+          pre_order_id?: string | null
+          scheme_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          original_benefit?: Json
+          overridden_by?: string
+          override_benefit?: Json
+          override_reason?: string
+          pre_order_id?: string | null
+          scheme_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheme_overrides_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheme_overrides_overridden_by_fkey"
+            columns: ["overridden_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheme_overrides_pre_order_id_fkey"
+            columns: ["pre_order_id"]
+            isOneToOne: false
+            referencedRelation: "pre_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheme_overrides_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "schemes"
             referencedColumns: ["id"]
           },
         ]

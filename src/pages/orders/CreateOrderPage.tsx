@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -14,13 +14,18 @@ import {
   Send,
   FileText,
   Loader2,
+  Tag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProducts, useCreateOrder, CartItem } from '@/hooks/useOrdersData';
 import { useDistributors, useRetailers } from '@/hooks/useOutletsData';
+import { useSchemeCalculation, useLogSchemeOverride, CartItemWithProduct, AppliedScheme } from '@/hooks/useSchemeEngine';
+import { AppliedSchemesDisplay } from '@/components/orders/AppliedSchemesDisplay';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function CreateOrderPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [orderType, setOrderType] = useState<'primary' | 'secondary'>('primary');
   const [selectedDistributor, setSelectedDistributor] = useState('');
   const [selectedRetailer, setSelectedRetailer] = useState('');
@@ -32,8 +37,10 @@ export default function CreateOrderPage() {
   const { data: distributors = [], isLoading: distributorsLoading } = useDistributors();
   const { data: retailers = [] } = useRetailers();
   const createOrder = useCreateOrder();
+  const logOverride = useLogSchemeOverride();
 
   const distributor = distributors.find(d => d.id === selectedDistributor);
+  const retailer = retailers.find(r => r.id === selectedRetailer);
   const availableCredit = distributor ? Number(distributor.credit_limit || 0) - Number(distributor.outstanding_amount || 0) : 0;
 
   const filteredProducts = products.filter(p =>
@@ -43,6 +50,34 @@ export default function CreateOrderPage() {
 
   const filteredRetailers = retailers.filter(r =>
     r.distributor_id === selectedDistributor
+  );
+
+  // Build cart items with product details for scheme calculation
+  const cartItemsWithProducts: CartItemWithProduct[] = useMemo(() => {
+    return cartItems.map(item => {
+      const product = products.find(p => p.id === item.productId);
+      return {
+        productId: item.productId,
+        productName: product?.name || '',
+        quantity: item.quantity,
+        unitPrice: product?.ptr || 0,
+        total: (product?.ptr || 0) * item.quantity,
+        sku: product?.sku || '',
+        category: product?.category,
+      };
+    });
+  }, [cartItems, products]);
+
+  // Use scheme calculation engine
+  const customerType = orderType === 'primary' ? 'distributor' : 'retailer';
+  const customerCategory = orderType === 'primary' 
+    ? distributor?.category 
+    : retailer?.category;
+
+  const schemeResult = useSchemeCalculation(
+    cartItemsWithProducts,
+    customerType,
+    customerCategory || undefined
   );
 
   const updateCart = (productId: string, quantity: number) => {
@@ -67,6 +102,27 @@ export default function CreateOrderPage() {
     return cartItems.find(item => item.productId === productId)?.quantity || 0;
   };
 
+  // Handle scheme override
+  const handleSchemeOverride = useCallback((
+    schemeId: string,
+    newDiscount: number,
+    newFreeQty: number,
+    reason: string
+  ) => {
+    const originalScheme = schemeResult.appliedSchemes.find(s => s.schemeId === schemeId);
+    if (originalScheme) {
+      schemeResult.addOverride({
+        schemeId,
+        originalBenefit: originalScheme,
+        overrideBenefit: {
+          discountAmount: newDiscount,
+          freeQuantity: newFreeQty,
+        },
+        reason,
+      });
+    }
+  }, [schemeResult]);
+
   const calculateTotals = () => {
     let subtotal = 0;
     let gstAmount = 0;
@@ -81,10 +137,11 @@ export default function CreateOrderPage() {
       }
     });
 
-    const discount = 0;
-    const total = subtotal + gstAmount - discount;
+    // Apply scheme discount
+    const schemeDiscount = schemeResult.totalDiscount;
+    const total = subtotal + gstAmount - schemeDiscount;
 
-    return { subtotal, gstAmount, discount, total };
+    return { subtotal, gstAmount, discount: schemeDiscount, total };
   };
 
   const { subtotal, gstAmount, discount, total } = calculateTotals();
@@ -391,6 +448,34 @@ export default function CreateOrderPage() {
                   })}
                 </div>
 
+                {/* Applied Schemes */}
+                {schemeResult.appliedSchemes.length > 0 && (
+                  <AppliedSchemesDisplay
+                    result={schemeResult}
+                    canOverride={true}
+                    onOverride={handleSchemeOverride}
+                    onRemoveOverride={(schemeId) => schemeResult.removeOverride(schemeId)}
+                    isOverridden={(schemeId) => schemeResult.manualOverrides.has(schemeId)}
+                  />
+                )}
+
+                {/* Free Goods from Schemes */}
+                {schemeResult.totalFreeGoods.length > 0 && (
+                  <div className="p-3 bg-success/5 rounded-lg border border-success/20">
+                    <p className="text-sm font-medium text-success flex items-center gap-2">
+                      <Tag size={14} />
+                      Free Products Included
+                    </p>
+                    <div className="mt-2 space-y-1">
+                      {schemeResult.totalFreeGoods.map((fg, idx) => (
+                        <p key={idx} className="text-xs text-muted-foreground">
+                          +{fg.quantity}x {fg.productName}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Totals */}
                 <div className="pt-4 border-t border-border space-y-2">
                   <div className="flex justify-between text-sm">
@@ -403,7 +488,7 @@ export default function CreateOrderPage() {
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-sm text-success">
-                      <span>Discount</span>
+                      <span>Scheme Discount</span>
                       <span>-₹{discount.toLocaleString()}</span>
                     </div>
                   )}
