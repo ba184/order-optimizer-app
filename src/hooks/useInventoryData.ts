@@ -391,6 +391,119 @@ export function calculateInventorySummary(batches: InventoryBatch[], products: P
   }));
 }
 
+// Helper function to calculate comprehensive inventory KPIs
+export interface InventoryKPIs {
+  openingStock: number;
+  inwards: number;
+  outwards: number;
+  closingStock: number;
+  inventoryValue: number;
+  daysOfInventory: number;
+  stockTurnoverRatio: number;
+  fastMoving: number;
+  slowMoving: number;
+  deadStock: number;
+  nearExpiry: number;
+}
+
+export function calculateInventoryKPIs(
+  batches: InventoryBatch[], 
+  products: Product[] = [],
+  periodDays: number = 30
+): InventoryKPIs {
+  const today = new Date();
+  const periodStart = new Date(today);
+  periodStart.setDate(periodStart.getDate() - periodDays);
+  
+  const approvedBatches = batches.filter(b => b.status === 'approved');
+  const allBatches = batches.filter(b => b.status !== 'deleted');
+  
+  // Opening Stock - stock at the start of period (approximation using batches created before period start)
+  const batchesBeforePeriod = approvedBatches.filter(b => new Date(b.created_at) < periodStart);
+  const openingStock = batchesBeforePeriod.reduce((sum, b) => sum + b.quantity, 0);
+  
+  // Inwards - stock added during the period
+  const batchesDuringPeriod = approvedBatches.filter(b => {
+    const createdAt = new Date(b.created_at);
+    return createdAt >= periodStart && createdAt <= today;
+  });
+  const inwards = batchesDuringPeriod.reduce((sum, b) => sum + b.quantity, 0);
+  
+  // For outwards, we'd need order data - for now approximate based on transfers and returns
+  // This is a simplified calculation
+  const outwards = 0; // Would need order items data for accurate calculation
+  
+  // Closing Stock - current total approved stock
+  const closingStock = approvedBatches.reduce((sum, b) => sum + b.quantity, 0);
+  
+  // Inventory Value - sum of (quantity * purchase_price)
+  const inventoryValue = approvedBatches.reduce((sum, b) => sum + (b.quantity * b.purchase_price), 0);
+  
+  // Average daily consumption (simplified - using inwards as proxy if no outwards data)
+  const avgDailyConsumption = inwards > 0 ? inwards / periodDays : 1;
+  
+  // Days of Inventory = Closing Stock / Average Daily Consumption
+  const daysOfInventory = avgDailyConsumption > 0 ? Math.round(closingStock / avgDailyConsumption) : 0;
+  
+  // Stock Turnover Ratio = Cost of Goods Sold / Average Inventory
+  // Simplified: using inwards as proxy for COGS
+  const avgInventory = (openingStock + closingStock) / 2 || 1;
+  const stockTurnoverRatio = avgInventory > 0 ? parseFloat((inwards / avgInventory).toFixed(2)) : 0;
+  
+  // Product movement analysis
+  const productMovement = new Map<string, { quantity: number; lastMovement: Date }>();
+  
+  approvedBatches.forEach(batch => {
+    const existing = productMovement.get(batch.product_id) || { quantity: 0, lastMovement: new Date(0) };
+    existing.quantity += batch.quantity;
+    const batchDate = new Date(batch.created_at);
+    if (batchDate > existing.lastMovement) {
+      existing.lastMovement = batchDate;
+    }
+    productMovement.set(batch.product_id, existing);
+  });
+  
+  // Fast Moving - products with movement in last 30 days and high quantity
+  const fastMoving = Array.from(productMovement.values()).filter(p => {
+    const daysSinceMovement = Math.ceil((today.getTime() - p.lastMovement.getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceMovement <= 30 && p.quantity > 100;
+  }).length;
+  
+  // Slow Moving - products with no movement in 60-180 days
+  const slowMoving = Array.from(productMovement.values()).filter(p => {
+    const daysSinceMovement = Math.ceil((today.getTime() - p.lastMovement.getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceMovement > 60 && daysSinceMovement <= 180;
+  }).length;
+  
+  // Dead Stock - products with no movement in 180+ days
+  const deadStock = Array.from(productMovement.values()).filter(p => {
+    const daysSinceMovement = Math.ceil((today.getTime() - p.lastMovement.getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceMovement > 180;
+  }).length;
+  
+  // Near Expiry - products expiring within 90 days
+  const nearExpiry = approvedBatches.filter(b => {
+    if (!b.expiry_date) return false;
+    const expiryDate = new Date(b.expiry_date);
+    const daysToExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysToExpiry > 0 && daysToExpiry <= 90;
+  }).length;
+  
+  return {
+    openingStock,
+    inwards,
+    outwards,
+    closingStock,
+    inventoryValue,
+    daysOfInventory,
+    stockTurnoverRatio,
+    fastMoving,
+    slowMoving,
+    deadStock,
+    nearExpiry,
+  };
+}
+
 // Helper function to get expiry alerts with status
 export type ExpiryStatus = 'safe' | 'warning' | 'expired';
 
