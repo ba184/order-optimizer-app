@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -13,11 +13,15 @@ import {
   Package,
   CheckCircle,
   Loader2,
+  Tag,
+  Gift,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePreOrders, usePreOrderSchemes, useCreatePreOrder, PreOrder } from '@/hooks/usePreOrdersData';
 import { useDistributors } from '@/hooks/useOutletsData';
 import { useProducts } from '@/hooks/useOrdersData';
+import { useSchemeCalculation, CartItemWithProduct } from '@/hooks/useSchemeEngine';
+import { AppliedSchemesDisplay } from '@/components/orders/AppliedSchemesDisplay';
 
 export default function PreOrderBookingPage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -33,6 +37,32 @@ export default function PreOrderBookingPage() {
   const { data: distributors = [] } = useDistributors();
   const { data: products = [] } = useProducts();
   const createPreOrder = useCreatePreOrder();
+
+  // Build cart items for scheme calculation in modal
+  const modalCartItems: CartItemWithProduct[] = useMemo(() => {
+    if (!selectedProduct || !quantity) return [];
+    const product = products.find(p => p.id === selectedProduct);
+    if (!product) return [];
+    
+    const qty = parseInt(quantity) || 1;
+    return [{
+      productId: product.id,
+      productName: product.name,
+      quantity: qty,
+      unitPrice: product.ptr,
+      total: product.ptr * qty,
+      sku: product.sku,
+      category: product.category,
+    }];
+  }, [selectedProduct, quantity, products]);
+
+  // Calculate schemes for the modal
+  const distributor = distributors.find(d => d.id === selectedDistributor);
+  const schemeResult = useSchemeCalculation(
+    modalCartItems,
+    'distributor',
+    distributor?.category || undefined
+  );
 
   const columns = [
     {
@@ -343,6 +373,48 @@ export default function PreOrderBookingPage() {
                   />
                 </div>
               </div>
+
+              {/* Applied Schemes Preview */}
+              {schemeResult.appliedSchemes.length > 0 && (
+                <div className="mt-4">
+                  <AppliedSchemesDisplay
+                    result={schemeResult}
+                    canOverride={false}
+                  />
+                </div>
+              )}
+
+              {/* Order Summary */}
+              {selectedProduct && quantity && (
+                <div className="p-4 bg-muted/30 rounded-lg mt-4">
+                  <h4 className="text-sm font-medium text-foreground mb-2">Order Summary</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>₹{schemeResult.originalTotal.toLocaleString()}</span>
+                    </div>
+                    {schemeResult.totalDiscount > 0 && (
+                      <div className="flex justify-between text-success">
+                        <span>Scheme Discount</span>
+                        <span>-₹{schemeResult.totalDiscount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {schemeResult.totalFreeGoods.length > 0 && (
+                      <div className="flex items-center gap-2 text-success">
+                        <Gift size={12} />
+                        <span className="text-xs">
+                          +{schemeResult.totalFreeGoods.map(fg => `${fg.quantity}x ${fg.productName}`).join(', ')}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold pt-2 border-t border-border">
+                      <span>Net Amount</span>
+                      <span className="text-primary">₹{schemeResult.discountedTotal.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Remarks</label>
                 <textarea 

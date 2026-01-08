@@ -57,6 +57,14 @@ export interface CartItem {
   discount: number;
 }
 
+export interface AppliedSchemeData {
+  schemeId: string;
+  schemeName: string;
+  discountAmount: number;
+  freeQuantity: number;
+  description: string;
+}
+
 export function useProducts() {
   return useQuery({
     queryKey: ['products'],
@@ -126,6 +134,9 @@ export function useCreateOrder() {
       products,
       status = 'pending',
       notes,
+      appliedSchemes = [],
+      schemeDiscount = 0,
+      schemeFreeGoods = [],
     }: {
       orderType: 'primary' | 'secondary';
       distributorId: string;
@@ -134,6 +145,9 @@ export function useCreateOrder() {
       products: Product[];
       status?: string;
       notes?: string;
+      appliedSchemes?: AppliedSchemeData[];
+      schemeDiscount?: number;
+      schemeFreeGoods?: { productId: string; productName: string; quantity: number }[];
     }) => {
       if (!user) throw new Error('User not authenticated');
 
@@ -171,7 +185,7 @@ export function useCreateOrder() {
       // Generate order number
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
-      // Create order
+      // Create order with scheme data
       const { data: order, error: orderError } = await supabase
         .from('orders' as any)
         .insert({
@@ -183,10 +197,13 @@ export function useCreateOrder() {
           items_count: cartItems.length,
           subtotal,
           gst_amount: gstAmount,
-          discount: totalDiscount,
-          total_amount: totalAmount,
+          discount: totalDiscount + schemeDiscount,
+          total_amount: totalAmount - schemeDiscount,
           status,
           notes,
+          applied_schemes: appliedSchemes,
+          scheme_discount: schemeDiscount,
+          scheme_free_goods: schemeFreeGoods,
         })
         .select()
         .single();
