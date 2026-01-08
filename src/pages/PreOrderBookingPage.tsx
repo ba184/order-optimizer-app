@@ -20,8 +20,9 @@ import { toast } from 'sonner';
 import { usePreOrders, usePreOrderSchemes, useCreatePreOrder, PreOrder } from '@/hooks/usePreOrdersData';
 import { useDistributors } from '@/hooks/useOutletsData';
 import { useProducts } from '@/hooks/useOrdersData';
-import { useSchemeCalculation, CartItemWithProduct } from '@/hooks/useSchemeEngine';
+import { useSchemeCalculation, useActiveSchemes, CartItemWithProduct } from '@/hooks/useSchemeEngine';
 import { AppliedSchemesDisplay } from '@/components/orders/AppliedSchemesDisplay';
+import { ProductSchemesBadge } from '@/components/orders/ProductSchemesBadge';
 
 export default function PreOrderBookingPage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -36,6 +37,7 @@ export default function PreOrderBookingPage() {
   const { data: schemes = [], isLoading: schemesLoading } = usePreOrderSchemes();
   const { data: distributors = [] } = useDistributors();
   const { data: products = [] } = useProducts();
+  const { data: activeSchemes = [] } = useActiveSchemes();
   const createPreOrder = useCreatePreOrder();
 
   // Build cart items for scheme calculation in modal
@@ -350,6 +352,15 @@ export default function PreOrderBookingPage() {
                     <option key={p.id} value={p.id}>{p.name} - ₹{p.ptr}</option>
                   ))}
                 </select>
+                {/* Show applicable schemes for selected product */}
+                {selectedProduct && (
+                  <div className="mt-2">
+                    <ProductSchemesBadge 
+                      schemes={activeSchemes} 
+                      productId={selectedProduct} 
+                    />
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
