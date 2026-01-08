@@ -52,6 +52,7 @@ import ExpenseManagementPage from "./pages/ExpenseManagementPage";
 import SampleGiftManagementPage from "./pages/SampleGiftManagementPage";
 import InventoryManagementPage from "./pages/InventoryManagementPage";
 import PreOrderBookingPage from "./pages/PreOrderBookingPage";
+import MarketingCollateralPage from "./pages/MarketingCollateralPage";
 
 import CreditManagementPage from "./pages/CreditManagementPage";
 import FeedbackComplaintsPage from "./pages/FeedbackComplaintsPage";
@@ -131,6 +132,7 @@ function AppRoutes() {
       
       {/* Inventory */}
       <Route path="/inventory" element={<ProtectedRoute><InventoryManagementPage /></ProtectedRoute>} />
+      <Route path="/collaterals" element={<ProtectedRoute><MarketingCollateralPage /></ProtectedRoute>} />
       
       {/* Expenses */}
       <Route path="/expenses" element={<ProtectedRoute><ExpenseManagementPage /></ProtectedRoute>} />
