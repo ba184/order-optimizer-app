@@ -498,7 +498,8 @@ export default function LiveTrackingPage() {
         position: relative;
       `;
       
-      el.innerHTML = loc.userName.split(" ").map(n => n[0]).join("");
+      // Use textContent instead of innerHTML to prevent XSS attacks
+      el.textContent = loc.userName.split(" ").map(n => n[0]).join("");
 
       // Add pulsing animation for moving employee
       if (loc.status === 'moving' && isDummy) {
