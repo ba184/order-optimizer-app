@@ -19,8 +19,9 @@ import {
 import { toast } from 'sonner';
 import { useProducts, useCreateOrder, CartItem } from '@/hooks/useOrdersData';
 import { useDistributors, useRetailers } from '@/hooks/useOutletsData';
-import { useSchemeCalculation, useLogSchemeOverride, CartItemWithProduct, AppliedScheme } from '@/hooks/useSchemeEngine';
+import { useSchemeCalculation, useLogSchemeOverride, useActiveSchemes, CartItemWithProduct, AppliedScheme } from '@/hooks/useSchemeEngine';
 import { AppliedSchemesDisplay } from '@/components/orders/AppliedSchemesDisplay';
+import { ProductSchemesBadge } from '@/components/orders/ProductSchemesBadge';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function CreateOrderPage() {
@@ -36,6 +37,7 @@ export default function CreateOrderPage() {
   const { data: products = [], isLoading: productsLoading } = useProducts();
   const { data: distributors = [], isLoading: distributorsLoading } = useDistributors();
   const { data: retailers = [] } = useRetailers();
+  const { data: activeSchemes = [] } = useActiveSchemes();
   const createOrder = useCreateOrder();
   const logOverride = useLogSchemeOverride();
 
@@ -363,7 +365,7 @@ export default function CreateOrderPage() {
                         <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
                           <Package size={24} className="text-muted-foreground" />
                         </div>
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium text-foreground">{product.name}</p>
                           <p className="text-sm text-muted-foreground">
                             SKU: {product.sku} • PTR: ₹{product.ptr} • GST: {product.gst}%
@@ -371,6 +373,11 @@ export default function CreateOrderPage() {
                           <p className="text-xs text-muted-foreground">
                             Stock: {product.stock} units
                           </p>
+                          {/* Show applicable schemes for this product */}
+                          <ProductSchemesBadge 
+                            schemes={activeSchemes} 
+                            productId={product.id} 
+                          />
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
