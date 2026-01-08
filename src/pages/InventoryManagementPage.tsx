@@ -20,9 +20,6 @@ import {
   ShieldCheck,
   Clock,
   XCircle,
-  Gift,
-  Send,
-  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -43,23 +40,8 @@ import {
   ExpiryAlert,
   ExpiryStatus,
 } from '@/hooks/useInventoryData';
-import {
-  useMarketingCollaterals,
-  useCollateralIssues,
-  useCreateCollateral,
-  useUpdateCollateral,
-  useDeleteCollateral,
-  useIssueCollateral,
-  useUpdateIssueStatus,
-  MarketingCollateral,
-  CollateralIssue,
-  getCollateralTypeLabel,
-  getIssueStageLabel,
-} from '@/hooks/useMarketingCollateralsData';
 import { useProducts } from '@/hooks/useOrdersData';
-import { useDistributors, useRetailers } from '@/hooks/useOutletsData';
-import { useUsersData } from '@/hooks/useUsersData';
-import { useAuth } from '@/contexts/AuthContext';
+import { useDistributors } from '@/hooks/useOutletsData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -72,43 +54,23 @@ const entryModes = [
   { value: 'transfer', label: 'Transfer' },
 ];
 
-const collateralTypes = [
-  { value: 'sample', label: 'Sample' },
-  { value: 'banner', label: 'Banner' },
-  { value: 'gift', label: 'Gift' },
-  { value: 'pos_material', label: 'POS Material' },
-  { value: 'led_display', label: 'LED Display' },
-  { value: 'standee', label: 'Standee' },
-  { value: 'other', label: 'Other' },
-];
-
-type TabType = 'overview' | 'stock-entry' | 'expiry' | 'transfers' | 'collaterals' | 'sync';
+type TabType = 'overview' | 'stock-entry' | 'expiry' | 'transfers' | 'sync';
 type ExpiryFilter = 'all' | 'warning' | 'expired';
 type LocationFilter = 'all' | 'warehouse' | 'distributor';
 
 export default function InventoryManagementPage() {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showStockModal, setShowStockModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [showCollateralModal, setShowCollateralModal] = useState(false);
-  const [showIssueModal, setShowIssueModal] = useState(false);
   const [editingBatch, setEditingBatch] = useState<InventoryBatch | null>(null);
-  const [editingCollateral, setEditingCollateral] = useState<MarketingCollateral | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<LocationFilter>('all');
   const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>('all');
-  const [collateralSubTab, setCollateralSubTab] = useState<'stock' | 'issues'>('stock');
-  const [issueStatusFilter, setIssueStatusFilter] = useState<string>('all');
   
   const { data: batches = [], isLoading: batchesLoading } = useInventoryBatches();
   const { data: transfers = [], isLoading: transfersLoading } = useStockTransfers();
   const { data: products = [] } = useProducts();
   const { data: distributors = [] } = useDistributors();
-  const { data: retailers = [] } = useRetailers();
-  const { users: employees = [] } = useUsersData();
-  const { data: collaterals = [], isLoading: collateralsLoading } = useMarketingCollaterals();
-  const { data: collateralIssues = [], isLoading: issuesLoading } = useCollateralIssues(issueStatusFilter);
   
   const createBatch = useCreateInventoryBatch();
   const updateBatch = useUpdateInventoryBatch();
@@ -116,11 +78,6 @@ export default function InventoryManagementPage() {
   const deleteBatch = useDeleteInventoryBatch();
   const createTransfer = useCreateStockTransfer();
   const updateTransferStatus = useUpdateStockTransferStatus();
-  const createCollateral = useCreateCollateral();
-  const updateCollateral = useUpdateCollateral();
-  const deleteCollateral = useDeleteCollateral();
-  const issueCollateral = useIssueCollateral();
-  const updateIssueStatus = useUpdateIssueStatus();
 
   const [stockForm, setStockForm] = useState({
     product_id: '',
@@ -141,29 +98,6 @@ export default function InventoryManagementPage() {
     to_distributor_id: '',
     notes: '',
     items: [{ product_id: '', quantity: '' }],
-  });
-
-  const [collateralForm, setCollateralForm] = useState({
-    name: '',
-    code: '',
-    type: 'sample' as MarketingCollateral['type'],
-    description: '',
-    unit: 'pcs',
-    current_stock: '',
-    min_stock_threshold: '10',
-    value_per_unit: '',
-    warehouse: '',
-  });
-
-  const [issueForm, setIssueForm] = useState({
-    collateral_id: '',
-    quantity: '',
-    issued_to_type: 'employee' as CollateralIssue['issued_to_type'],
-    issued_to_id: '',
-    issued_to_name: '',
-    issue_stage: 'direct' as CollateralIssue['issue_stage'],
-    in_out_type: 'out' as 'in' | 'out',
-    remarks: '',
   });
 
   const inventorySummary = useMemo(() => calculateInventorySummary(batches, products), [batches, products]);
@@ -357,129 +291,6 @@ export default function InventoryManagementPage() {
 
   const handleExportToExcel = () => {
     toast.success('Export started. Download will begin shortly.');
-  };
-
-  const resetCollateralForm = () => {
-    setCollateralForm({
-      name: '',
-      code: '',
-      type: 'sample',
-      description: '',
-      unit: 'pcs',
-      current_stock: '',
-      min_stock_threshold: '10',
-      value_per_unit: '',
-      warehouse: '',
-    });
-    setEditingCollateral(null);
-  };
-
-  const resetIssueForm = () => {
-    setIssueForm({
-      collateral_id: '',
-      quantity: '',
-      issued_to_type: 'employee',
-      issued_to_id: '',
-      issued_to_name: '',
-      issue_stage: 'direct',
-      in_out_type: 'out',
-      remarks: '',
-    });
-  };
-
-  const handleCreateCollateral = async () => {
-    if (!collateralForm.name || !collateralForm.code || !collateralForm.type) {
-      toast.error('Please fill all required fields');
-      return;
-    }
-
-    try {
-      if (editingCollateral) {
-        await updateCollateral.mutateAsync({
-          id: editingCollateral.id,
-          name: collateralForm.name,
-          code: collateralForm.code,
-          type: collateralForm.type,
-          description: collateralForm.description || undefined,
-          unit: collateralForm.unit,
-          current_stock: parseInt(collateralForm.current_stock) || 0,
-          min_stock_threshold: parseInt(collateralForm.min_stock_threshold) || 10,
-          value_per_unit: parseFloat(collateralForm.value_per_unit) || 0,
-          warehouse: collateralForm.warehouse || undefined,
-        });
-      } else {
-        await createCollateral.mutateAsync({
-          name: collateralForm.name,
-          code: collateralForm.code,
-          type: collateralForm.type,
-          description: collateralForm.description || undefined,
-          unit: collateralForm.unit,
-          current_stock: parseInt(collateralForm.current_stock) || 0,
-          min_stock_threshold: parseInt(collateralForm.min_stock_threshold) || 10,
-          value_per_unit: parseFloat(collateralForm.value_per_unit) || 0,
-          warehouse: collateralForm.warehouse || undefined,
-        });
-      }
-      setShowCollateralModal(false);
-      resetCollateralForm();
-    } catch (error) {
-      // Error handled by mutation
-    }
-  };
-
-  const handleEditCollateral = (item: MarketingCollateral) => {
-    setEditingCollateral(item);
-    setCollateralForm({
-      name: item.name,
-      code: item.code,
-      type: item.type,
-      description: item.description || '',
-      unit: item.unit,
-      current_stock: item.current_stock.toString(),
-      min_stock_threshold: item.min_stock_threshold.toString(),
-      value_per_unit: item.value_per_unit.toString(),
-      warehouse: item.warehouse || '',
-    });
-    setShowCollateralModal(true);
-  };
-
-  const handleDeleteCollateral = (id: string) => {
-    if (confirm('Are you sure you want to delete this collateral?')) {
-      deleteCollateral.mutate(id);
-    }
-  };
-
-  const handleIssueCollateral = async () => {
-    if (!issueForm.collateral_id || !issueForm.quantity) {
-      toast.error('Please select collateral and quantity');
-      return;
-    }
-
-    const selectedRecipient = 
-      issueForm.issued_to_type === 'employee' ? employees.find(e => e.id === issueForm.issued_to_id) :
-      issueForm.issued_to_type === 'distributor' ? distributors.find(d => d.id === issueForm.issued_to_id) :
-      issueForm.issued_to_type === 'retailer' ? retailers.find(r => r.id === issueForm.issued_to_id) : null;
-
-    try {
-      await issueCollateral.mutateAsync({
-        collateral_id: issueForm.collateral_id,
-        quantity: parseInt(issueForm.quantity),
-        issued_to_type: issueForm.issued_to_type,
-        issued_to_id: issueForm.issued_to_id || undefined,
-        issued_to_name: issueForm.issued_to_name || (selectedRecipient as any)?.name || (selectedRecipient as any)?.firm_name || undefined,
-        issue_stage: issueForm.issue_stage,
-        in_out_type: issueForm.in_out_type,
-        remarks: issueForm.remarks || undefined,
-      });
-      setShowIssueModal(false);
-      resetIssueForm();
-    } catch (error) {
-      // Error handled by mutation
-    }
-  };
-
-  const handleIssueStatusUpdate = (id: string, status: CollateralIssue['status']) => {
-    updateIssueStatus.mutate({ id, status });
   };
 
   const getExpiryStatusBadge = (status: ExpiryStatus, days: number) => {
@@ -790,206 +601,14 @@ export default function InventoryManagementPage() {
     },
   ];
 
-  // Collateral stock columns
-  const collateralColumns = [
-    {
-      key: 'name',
-      header: 'Collateral',
-      render: (item: MarketingCollateral) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-            <Gift size={20} className="text-accent" />
-          </div>
-          <div>
-            <p className="font-medium text-foreground">{item.name}</p>
-            <p className="text-xs text-muted-foreground">{item.code}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'type',
-      header: 'Type',
-      render: (item: MarketingCollateral) => (
-        <Badge variant="secondary" className="capitalize">
-          {getCollateralTypeLabel(item.type)}
-        </Badge>
-      ),
-    },
-    {
-      key: 'current_stock',
-      header: 'Stock',
-      render: (item: MarketingCollateral) => (
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{item.current_stock} {item.unit}</span>
-          {item.current_stock <= item.min_stock_threshold && (
-            <Badge variant="destructive" className="text-xs">Low</Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'value_per_unit',
-      header: 'Value/Unit',
-      render: (item: MarketingCollateral) => (
-        <span>₹{Number(item.value_per_unit).toLocaleString()}</span>
-      ),
-    },
-    {
-      key: 'warehouse',
-      header: 'Location',
-      render: (item: MarketingCollateral) => item.warehouse || '-',
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (item: MarketingCollateral) => <StatusBadge status={item.status as StatusType} />,
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (item: MarketingCollateral) => (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => {
-              setIssueForm(prev => ({ ...prev, collateral_id: item.id }));
-              setShowIssueModal(true);
-            }}
-            className="p-2 hover:bg-primary/10 rounded-lg transition-colors"
-            title="Issue"
-          >
-            <Send size={16} className="text-primary" />
-          </button>
-          <button
-            onClick={() => handleEditCollateral(item)}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-            title="Edit"
-          >
-            <Edit size={16} className="text-muted-foreground" />
-          </button>
-          <button
-            onClick={() => handleDeleteCollateral(item.id)}
-            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
-            title="Delete"
-          >
-            <Trash2 size={16} className="text-destructive" />
-          </button>
-        </div>
-      ),
-    },
-  ];
-
-  // Issue history columns
-  const issueColumns = [
-    {
-      key: 'issue_number',
-      header: 'Issue #',
-      render: (item: CollateralIssue) => (
-        <p className="font-medium text-foreground">{item.issue_number}</p>
-      ),
-    },
-    {
-      key: 'collateral',
-      header: 'Collateral',
-      render: (item: CollateralIssue) => (
-        <div>
-          <p className="font-medium">{item.collateral?.name || '-'}</p>
-          <p className="text-xs text-muted-foreground">{getCollateralTypeLabel(item.collateral?.type || 'other')}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'quantity',
-      header: 'Qty',
-      render: (item: CollateralIssue) => (
-        <div className="flex items-center gap-1">
-          <Badge variant={item.in_out_type === 'out' ? 'destructive' : 'default'} className="text-xs">
-            {item.in_out_type === 'out' ? '-' : '+'}{item.quantity}
-          </Badge>
-        </div>
-      ),
-    },
-    {
-      key: 'issued_to',
-      header: 'Issued To',
-      render: (item: CollateralIssue) => (
-        <div>
-          <p className="font-medium">{item.issued_to_name || '-'}</p>
-          <p className="text-xs text-muted-foreground capitalize">{item.issued_to_type}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'issue_stage',
-      header: 'Stage',
-      render: (item: CollateralIssue) => (
-        <Badge variant="outline" className="text-xs">
-          {getIssueStageLabel(item.issue_stage)}
-        </Badge>
-      ),
-    },
-    {
-      key: 'issued_by',
-      header: 'Issued By',
-      render: (item: CollateralIssue) => item.issuer?.name || '-',
-    },
-    {
-      key: 'created_at',
-      header: 'Date',
-      render: (item: CollateralIssue) => format(new Date(item.created_at), 'dd MMM yyyy'),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (item: CollateralIssue) => <StatusBadge status={item.status as StatusType} />,
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (item: CollateralIssue) => (
-        <div className="flex items-center gap-1">
-          {item.status === 'pending' && (
-            <button
-              onClick={() => handleIssueStatusUpdate(item.id, 'issued')}
-              className="p-1.5 hover:bg-success/10 rounded-lg transition-colors"
-              title="Mark Issued"
-            >
-              <Check size={14} className="text-success" />
-            </button>
-          )}
-          {item.status === 'issued' && (
-            <>
-              <button
-                onClick={() => handleIssueStatusUpdate(item.id, 'acknowledged')}
-                className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors"
-                title="Mark Acknowledged"
-              >
-                <ShieldCheck size={14} className="text-primary" />
-              </button>
-              <button
-                onClick={() => handleIssueStatusUpdate(item.id, 'returned')}
-                className="p-1.5 hover:bg-warning/10 rounded-lg transition-colors"
-                title="Mark Returned"
-              >
-                <RotateCcw size={14} className="text-warning" />
-              </button>
-            </>
-          )}
-        </div>
-      ),
-    },
-  ];
-
   const stats = {
     totalSKUs: inventorySummary.length,
     lowStock: inventorySummary.filter(i => i.isLowStock).length,
     expiryAlerts: allExpiryItems.filter(e => e.expiryStatus !== 'safe').length,
     pendingTransfers: transfers.filter(t => t.status === 'pending' || t.status === 'in_transit').length,
-    totalCollaterals: collaterals.length,
-    pendingIssues: collateralIssues.filter(i => i.status === 'pending' || i.status === 'issued').length,
   };
 
-  const isLoading = batchesLoading || transfersLoading || collateralsLoading;
+  const isLoading = batchesLoading || transfersLoading;
 
   if (isLoading) {
     return (
@@ -1091,10 +710,6 @@ export default function InventoryManagementPage() {
           <TabsTrigger value="stock-entry">Stock Entries</TabsTrigger>
           <TabsTrigger value="expiry">Expiry Alerts</TabsTrigger>
           <TabsTrigger value="transfers">Transfers</TabsTrigger>
-          <TabsTrigger value="collaterals" className="flex items-center gap-1">
-            <Gift size={14} />
-            Marketing Collaterals
-          </TabsTrigger>
           <TabsTrigger value="sync">Sync & Reconciliation</TabsTrigger>
         </TabsList>
 
@@ -1149,61 +764,6 @@ export default function InventoryManagementPage() {
 
         <TabsContent value="transfers" className="mt-4">
           <DataTable data={transfers} columns={transferColumns} searchPlaceholder="Search transfers..." />
-        </TabsContent>
-
-        <TabsContent value="collaterals" className="mt-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCollateralSubTab('stock')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${collateralSubTab === 'stock' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
-              >
-                Stock Master
-              </button>
-              <button
-                onClick={() => setCollateralSubTab('issues')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${collateralSubTab === 'issues' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
-              >
-                Issue History
-              </button>
-            </div>
-            <div className="flex gap-2">
-              {collateralSubTab === 'issues' && (
-                <Select value={issueStatusFilter} onValueChange={setIssueStatusFilter}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Filter Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="issued">Issued</SelectItem>
-                    <SelectItem value="acknowledged">Acknowledged</SelectItem>
-                    <SelectItem value="returned">Returned</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-              <button
-                onClick={() => { resetIssueForm(); setShowIssueModal(true); }}
-                className="btn-outline flex items-center gap-2"
-              >
-                <Send size={16} />
-                Issue Collateral
-              </button>
-              <button
-                onClick={() => { resetCollateralForm(); setShowCollateralModal(true); }}
-                className="btn-primary flex items-center gap-2"
-              >
-                <Plus size={16} />
-                Add Collateral
-              </button>
-            </div>
-          </div>
-          
-          {collateralSubTab === 'stock' ? (
-            <DataTable data={collaterals} columns={collateralColumns} searchPlaceholder="Search collaterals..." />
-          ) : (
-            <DataTable data={collateralIssues} columns={issueColumns} searchPlaceholder="Search issues..." />
-          )}
         </TabsContent>
 
         <TabsContent value="sync" className="mt-4">
@@ -1508,151 +1068,6 @@ export default function InventoryManagementPage() {
                 >
                   {createTransfer.isPending && <Loader2 size={16} className="animate-spin" />}
                   Create Transfer
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Add/Edit Collateral Modal */}
-      {showCollateralModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-foreground">
-                {editingCollateral ? 'Edit Collateral' : 'Add Collateral'}
-              </h2>
-              <button onClick={() => { setShowCollateralModal(false); resetCollateralForm(); }} className="p-2 hover:bg-muted rounded-lg">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Name *</label>
-                  <input type="text" value={collateralForm.name} onChange={e => setCollateralForm(p => ({ ...p, name: e.target.value }))} className="input-field" placeholder="Collateral name" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Code *</label>
-                  <input type="text" value={collateralForm.code} onChange={e => setCollateralForm(p => ({ ...p, code: e.target.value }))} className="input-field" placeholder="e.g., BAN-001" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Type *</label>
-                <select value={collateralForm.type} onChange={e => setCollateralForm(p => ({ ...p, type: e.target.value as any }))} className="input-field">
-                  {collateralTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Stock</label>
-                  <input type="number" value={collateralForm.current_stock} onChange={e => setCollateralForm(p => ({ ...p, current_stock: e.target.value }))} className="input-field" placeholder="0" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Unit</label>
-                  <input type="text" value={collateralForm.unit} onChange={e => setCollateralForm(p => ({ ...p, unit: e.target.value }))} className="input-field" placeholder="pcs" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Value/Unit (₹)</label>
-                  <input type="number" value={collateralForm.value_per_unit} onChange={e => setCollateralForm(p => ({ ...p, value_per_unit: e.target.value }))} className="input-field" placeholder="0" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Warehouse</label>
-                <select value={collateralForm.warehouse} onChange={e => setCollateralForm(p => ({ ...p, warehouse: e.target.value }))} className="input-field">
-                  <option value="">Select Warehouse</option>
-                  {warehouses.map(w => <option key={w} value={w}>{w}</option>)}
-                </select>
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button onClick={() => { setShowCollateralModal(false); resetCollateralForm(); }} className="btn-outline flex-1">Cancel</button>
-                <button onClick={handleCreateCollateral} disabled={createCollateral.isPending || updateCollateral.isPending} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                  {(createCollateral.isPending || updateCollateral.isPending) && <Loader2 size={16} className="animate-spin" />}
-                  {editingCollateral ? 'Update' : 'Create'}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Issue Collateral Modal */}
-      {showIssueModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-foreground">Issue Collateral</h2>
-              <button onClick={() => { setShowIssueModal(false); resetIssueForm(); }} className="p-2 hover:bg-muted rounded-lg">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Collateral *</label>
-                <select value={issueForm.collateral_id} onChange={e => setIssueForm(p => ({ ...p, collateral_id: e.target.value }))} className="input-field">
-                  <option value="">Select Collateral</option>
-                  {collaterals.filter(c => c.status === 'active').map(c => <option key={c.id} value={c.id}>{c.name} ({c.current_stock} {c.unit})</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Quantity *</label>
-                  <input type="number" value={issueForm.quantity} onChange={e => setIssueForm(p => ({ ...p, quantity: e.target.value }))} className="input-field" placeholder="1" min="1" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">IN/OUT</label>
-                  <select value={issueForm.in_out_type} onChange={e => setIssueForm(p => ({ ...p, in_out_type: e.target.value as any }))} className="input-field">
-                    <option value="out">OUT (Issue)</option>
-                    <option value="in">IN (Return)</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Issue To</label>
-                <select value={issueForm.issued_to_type} onChange={e => setIssueForm(p => ({ ...p, issued_to_type: e.target.value as any, issued_to_id: '' }))} className="input-field">
-                  <option value="employee">Employee</option>
-                  <option value="distributor">Distributor</option>
-                  <option value="retailer">Retailer</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Select Recipient</label>
-                <select value={issueForm.issued_to_id} onChange={e => setIssueForm(p => ({ ...p, issued_to_id: e.target.value }))} className="input-field">
-                  <option value="">Select...</option>
-                  {issueForm.issued_to_type === 'employee' && employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  {issueForm.issued_to_type === 'distributor' && distributors.map(d => <option key={d.id} value={d.id}>{d.firm_name}</option>)}
-                  {issueForm.issued_to_type === 'retailer' && retailers.map(r => <option key={r.id} value={r.id}>{r.shop_name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Issue Stage</label>
-                <select value={issueForm.issue_stage} onChange={e => setIssueForm(p => ({ ...p, issue_stage: e.target.value as any }))} className="input-field">
-                  <option value="direct">Direct Issue</option>
-                  <option value="order">With Order</option>
-                  <option value="dispatch">At Dispatch</option>
-                  <option value="delivery">At Delivery</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Remarks</label>
-                <textarea value={issueForm.remarks} onChange={e => setIssueForm(p => ({ ...p, remarks: e.target.value }))} className="input-field" rows={2} placeholder="Optional notes..." />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button onClick={() => { setShowIssueModal(false); resetIssueForm(); }} className="btn-outline flex-1">Cancel</button>
-                <button onClick={handleIssueCollateral} disabled={issueCollateral.isPending} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                  {issueCollateral.isPending && <Loader2 size={16} className="animate-spin" />}
-                  Issue Collateral
                 </button>
               </div>
             </div>
