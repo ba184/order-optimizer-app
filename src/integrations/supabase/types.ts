@@ -441,6 +441,44 @@ export type Database = {
           },
         ]
       }
+      distributor_images: {
+        Row: {
+          created_at: string | null
+          distributor_id: string
+          gps_latitude: number | null
+          gps_longitude: number | null
+          id: string
+          image_type: string
+          image_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          distributor_id: string
+          gps_latitude?: number | null
+          gps_longitude?: number | null
+          id?: string
+          image_type: string
+          image_url: string
+        }
+        Update: {
+          created_at?: string | null
+          distributor_id?: string
+          gps_latitude?: number | null
+          gps_longitude?: number | null
+          id?: string
+          image_type?: string
+          image_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_images_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       distributor_kyc_documents: {
         Row: {
           created_at: string | null
@@ -681,6 +719,7 @@ export type Database = {
           name: string
           phone: string | null
           role: string | null
+          status: string | null
         }
         Insert: {
           created_at?: string | null
@@ -690,6 +729,7 @@ export type Database = {
           name: string
           phone?: string | null
           role?: string | null
+          status?: string | null
         }
         Update: {
           created_at?: string | null
@@ -699,6 +739,7 @@ export type Database = {
           name?: string
           phone?: string | null
           role?: string | null
+          status?: string | null
         }
         Relationships: [
           {
@@ -715,8 +756,11 @@ export type Database = {
           capacity: string | null
           created_at: string | null
           distributor_id: string
+          driver_contact: string | null
+          driver_name: string | null
           id: string
           photos: string[] | null
+          status: string | null
           vehicle_number: string
           vehicle_type: string
         }
@@ -724,8 +768,11 @@ export type Database = {
           capacity?: string | null
           created_at?: string | null
           distributor_id: string
+          driver_contact?: string | null
+          driver_name?: string | null
           id?: string
           photos?: string[] | null
+          status?: string | null
           vehicle_number: string
           vehicle_type: string
         }
@@ -733,8 +780,11 @@ export type Database = {
           capacity?: string | null
           created_at?: string | null
           distributor_id?: string
+          driver_contact?: string | null
+          driver_name?: string | null
           id?: string
           photos?: string[] | null
+          status?: string | null
           vehicle_number?: string
           vehicle_type?: string
         }
@@ -812,6 +862,7 @@ export type Database = {
           credit_limit: number | null
           email: string | null
           firm_name: string
+          gps_location: Json | null
           gstin: string | null
           id: string
           ifsc_code: string | null
@@ -860,6 +911,7 @@ export type Database = {
           credit_limit?: number | null
           email?: string | null
           firm_name: string
+          gps_location?: Json | null
           gstin?: string | null
           id?: string
           ifsc_code?: string | null
@@ -908,6 +960,7 @@ export type Database = {
           credit_limit?: number | null
           email?: string | null
           firm_name?: string
+          gps_location?: Json | null
           gstin?: string | null
           id?: string
           ifsc_code?: string | null
