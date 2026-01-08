@@ -65,6 +65,14 @@ export interface AppliedSchemeData {
   description: string;
 }
 
+export interface OrderCollateral {
+  collateralId: string;
+  collateralName: string;
+  quantity: number;
+  warehouse?: string;
+  instructions?: string;
+}
+
 export function useProducts() {
   return useQuery({
     queryKey: ['products'],
@@ -137,6 +145,8 @@ export function useCreateOrder() {
       appliedSchemes = [],
       schemeDiscount = 0,
       schemeFreeGoods = [],
+      collaterals = [],
+      collateralNotes,
     }: {
       orderType: 'primary' | 'secondary';
       distributorId: string;
@@ -148,6 +158,8 @@ export function useCreateOrder() {
       appliedSchemes?: AppliedSchemeData[];
       schemeDiscount?: number;
       schemeFreeGoods?: { productId: string; productName: string; quantity: number }[];
+      collaterals?: OrderCollateral[];
+      collateralNotes?: string;
     }) => {
       if (!user) throw new Error('User not authenticated');
 
@@ -224,10 +236,39 @@ export function useCreateOrder() {
 
       if (itemsError) throw itemsError;
 
+      // Create collateral issues if any collaterals were selected
+      if (collaterals.length > 0) {
+        const collateralIssues = collaterals.map((col, idx) => ({
+          collateral_id: col.collateralId,
+          issue_number: `COL-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+          quantity: col.quantity,
+          issued_to_type: orderType === 'primary' ? 'distributor' : 'retailer',
+          issued_to_id: orderType === 'primary' ? distributorId : retailerId,
+          issued_to_name: null, // Will be resolved from join
+          issued_by: user.id,
+          instructed_by: user.id,
+          related_order_id: orderData.id,
+          in_out_type: 'out',
+          status: 'pending',
+          issue_stage: 'requested',
+          remarks: col.instructions || collateralNotes || null,
+        }));
+
+        const { error: collateralError } = await supabase
+          .from('collateral_issues' as any)
+          .insert(collateralIssues);
+
+        if (collateralError) {
+          console.error('Failed to create collateral issues:', collateralError);
+          // Don't throw - order is already created, just log the error
+        }
+      }
+
       return orderData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['collateral-issues'] });
       toast.success('Order created successfully');
     },
     onError: (error) => {
