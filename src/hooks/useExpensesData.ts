@@ -9,7 +9,7 @@ export interface ExpenseClaim {
   expense_type: string;
   expense_date: string | null;
   total_amount: number;
-  bill_photo: string | null;
+  bill_photo: string[] | null;
   description: string | null;
   status: string;
   rejection_reason: string | null;
@@ -27,7 +27,7 @@ export interface CreateExpenseData {
   expense_type: string;
   expense_date: string;
   total_amount: number;
-  bill_photo?: string;
+  bill_photo?: string[];
   description?: string;
 }
 

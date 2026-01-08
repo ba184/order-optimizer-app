@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { MultiImageUpload } from '@/components/ui/MultiImageUpload';
 import {
   Plus,
   IndianRupee,
   Eye,
   CheckCircle,
   Clock,
-  Upload,
   Loader2,
   X,
   Check,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -50,7 +51,7 @@ export default function ExpenseManagementPage() {
     expense_type: 'misc',
     expense_date: '',
     amount: 0,
-    bill_photo: '',
+    bill_photos: [] as string[],
     description: '',
   });
 
@@ -62,8 +63,8 @@ export default function ExpenseManagementPage() {
 
   const handleSubmitClaim = () => {
     const requiresBill = billRequiredTypes.includes(claimData.expense_type);
-    if (requiresBill && !claimData.bill_photo) {
-      alert('Bill photo is required for this expense type');
+    if (requiresBill && claimData.bill_photos.length === 0) {
+      alert('At least one bill photo is required for this expense type');
       return;
     }
 
@@ -72,7 +73,7 @@ export default function ExpenseManagementPage() {
       expense_type: claimData.expense_type,
       expense_date: claimData.expense_date,
       total_amount: claimData.amount,
-      bill_photo: claimData.bill_photo || undefined,
+      bill_photo: claimData.bill_photos.length > 0 ? claimData.bill_photos : undefined,
       description: claimData.description || undefined,
       isAdmin,
     });
@@ -82,7 +83,7 @@ export default function ExpenseManagementPage() {
       expense_type: 'misc',
       expense_date: '',
       amount: 0,
-      bill_photo: '',
+      bill_photos: [],
       description: '',
     });
   };
@@ -344,16 +345,16 @@ export default function ExpenseManagementPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Bill Photo {billRequiredTypes.includes(claimData.expense_type) && '*'}
-                </label>
-                <div className="p-4 border-2 border-dashed border-border rounded-lg text-center cursor-pointer hover:border-primary/50 transition-colors">
-                  <Upload size={24} className="mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Click to upload bill</p>
-                  <p className="text-xs text-muted-foreground">JPG, PNG (Max 5MB)</p>
-                </div>
-              </div>
+              <MultiImageUpload
+                bucket="expense-bills"
+                folder="bills"
+                images={claimData.bill_photos}
+                onChange={(photos) => setClaimData({ ...claimData, bill_photos: photos })}
+                maxImages={5}
+                maxSizeMB={5}
+                label="Bill Photos"
+                required={billRequiredTypes.includes(claimData.expense_type)}
+              />
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Description</label>
@@ -431,6 +432,28 @@ export default function ExpenseManagementPage() {
                 <div>
                   <span className="text-muted-foreground block mb-1">Description</span>
                   <p className="text-sm bg-muted/30 p-3 rounded-lg">{viewingClaim.description}</p>
+                </div>
+              )}
+              {viewingClaim.bill_photo && viewingClaim.bill_photo.length > 0 && (
+                <div>
+                  <span className="text-muted-foreground block mb-2">Bill Photos ({viewingClaim.bill_photo.length})</span>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingClaim.bill_photo.map((url, index) => (
+                      <a
+                        key={index}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <img
+                          src={url}
+                          alt={`Bill ${index + 1}`}
+                          className="w-20 h-20 object-cover rounded-lg border border-border hover:border-primary transition-colors"
+                        />
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
               {viewingClaim.rejection_reason && (
