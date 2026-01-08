@@ -22,6 +22,7 @@ import { useDistributors, useRetailers } from '@/hooks/useOutletsData';
 import { useSchemeCalculation, useLogSchemeOverride, useActiveSchemes, CartItemWithProduct, AppliedScheme } from '@/hooks/useSchemeEngine';
 import { AppliedSchemesDisplay } from '@/components/orders/AppliedSchemesDisplay';
 import { ProductSchemesBadge } from '@/components/orders/ProductSchemesBadge';
+import { CollateralSelector, SelectedCollateral } from '@/components/orders/CollateralSelector';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function CreateOrderPage() {
@@ -33,6 +34,8 @@ export default function CreateOrderPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [notes, setNotes] = useState('');
+  const [selectedCollaterals, setSelectedCollaterals] = useState<SelectedCollateral[]>([]);
+  const [collateralNotes, setCollateralNotes] = useState('');
 
   const { data: products = [], isLoading: productsLoading } = useProducts();
   const { data: distributors = [], isLoading: distributorsLoading } = useDistributors();
@@ -172,6 +175,8 @@ export default function CreateOrderPage() {
         products,
         status: asDraft ? 'draft' : 'pending',
         notes,
+        collaterals: selectedCollaterals,
+        collateralNotes,
       });
       navigate('/orders/list');
     } catch (error) {
@@ -323,6 +328,39 @@ export default function CreateOrderPage() {
                 placeholder="Add any notes for this order..."
               />
             </div>
+          </motion.div>
+
+          {/* Marketing Collateral Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-sm"
+          >
+            <h2 className="text-lg font-semibold text-foreground mb-4">Marketing Collateral</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Add marketing materials to be sent with this order
+            </p>
+            
+            <CollateralSelector
+              selectedItems={selectedCollaterals}
+              onChange={setSelectedCollaterals}
+            />
+
+            {selectedCollaterals.length > 0 && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Collateral Dispatch Notes
+                </label>
+                <textarea
+                  value={collateralNotes}
+                  onChange={e => setCollateralNotes(e.target.value)}
+                  className="input-field"
+                  rows={2}
+                  placeholder="Special instructions for collateral dispatch..."
+                />
+              </div>
+            )}
           </motion.div>
 
           {/* Product Selection */}
