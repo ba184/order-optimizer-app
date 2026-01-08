@@ -125,6 +125,12 @@ const navigationItems: NavItem[] = [
     roles: ['sales_executive', 'asm', 'rsm', 'admin'],
   },
   {
+    label: 'Marketing Collateral',
+    icon: Package,
+    path: '/collaterals',
+    roles: ['asm', 'rsm', 'admin'],
+  },
+  {
     label: 'Feedback',
     icon: MessageSquare,
     path: '/feedback',
