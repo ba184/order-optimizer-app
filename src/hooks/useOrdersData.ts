@@ -96,6 +96,19 @@ export function useProducts() {
   });
 }
 
+export interface OrderCollateralDB {
+  id: string;
+  order_id: string;
+  type: string;
+  name: string;
+  quantity: number;
+  notes: string | null;
+  tracking_id: string | null;
+  tracking_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export function useOrders() {
   return useQuery({
     queryKey: ['orders'],
@@ -112,6 +125,37 @@ export function useOrders() {
       
       if (error) throw error;
       return (data || []) as unknown as Order[];
+    },
+  });
+}
+
+export function useOrderCollaterals(orderId: string | undefined) {
+  return useQuery({
+    queryKey: ['order-collaterals', orderId],
+    queryFn: async () => {
+      if (!orderId) return [];
+      const { data, error } = await supabase
+        .from('order_collaterals' as any)
+        .select('*')
+        .eq('order_id', orderId);
+      
+      if (error) throw error;
+      return (data || []) as unknown as OrderCollateralDB[];
+    },
+    enabled: !!orderId,
+  });
+}
+
+export function useAllOrderCollaterals() {
+  return useQuery({
+    queryKey: ['all-order-collaterals'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('order_collaterals' as any)
+        .select('*');
+      
+      if (error) throw error;
+      return (data || []) as unknown as OrderCollateralDB[];
     },
   });
 }
@@ -241,7 +285,7 @@ export function useCreateOrder() {
 
       if (itemsError) throw itemsError;
 
-      // Create collateral issues if any collaterals were selected
+      // Create order collaterals if any collaterals were selected
       if (orderCollaterals.length > 0) {
         // Get collateral type labels for display
         const COLLATERAL_TYPE_LABELS: Record<string, string> = {
@@ -255,21 +299,23 @@ export function useCreateOrder() {
           brochure: 'Brochure',
         };
 
-        // For type-based collaterals, we need to store them differently
-        // We'll store the type info in remarks since there's no collateral_id
-        const collateralNotes = orderCollaterals.map(col => 
-          `${COLLATERAL_TYPE_LABELS[col.type] || col.type} x${col.quantity}${col.notes ? ': ' + col.notes : ''}`
-        ).join('; ');
+        // Create collateral records in the new order_collaterals table
+        const collateralRecords = orderCollaterals.map(col => ({
+          order_id: orderData.id,
+          type: col.type,
+          name: COLLATERAL_TYPE_LABELS[col.type] || col.type,
+          quantity: col.quantity,
+          notes: col.notes || null,
+          tracking_id: `COL-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+          tracking_status: 'pending',
+        }));
 
-        // Store collateral info in order notes for now
-        // TODO: Create a proper order_collaterals table for type-based collaterals
-        if (collateralNotes) {
-          await supabase
-            .from('orders' as any)
-            .update({ 
-              notes: notes ? `${notes}\n\nCollaterals: ${collateralNotes}` : `Collaterals: ${collateralNotes}` 
-            })
-            .eq('id', orderData.id);
+        const { error: collateralError } = await supabase
+          .from('order_collaterals' as any)
+          .insert(collateralRecords);
+
+        if (collateralError) {
+          console.error('Failed to create order collaterals:', collateralError);
         }
       }
 

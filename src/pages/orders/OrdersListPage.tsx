@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
-import { useOrders } from '@/hooks/useOrdersData';
-import { useCollateralIssues } from '@/hooks/useMarketingCollateralsData';
+import { useOrders, useAllOrderCollaterals } from '@/hooks/useOrdersData';
 import {
   Plus,
   ShoppingCart,
@@ -33,18 +32,16 @@ export default function OrdersListPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   
   const { data: orders = [], isLoading } = useOrders();
-  const { data: collateralIssues = [] } = useCollateralIssues();
+  const { data: orderCollaterals = [] } = useAllOrderCollaterals();
 
   // Create a map of order_id to collateral items
-  const orderCollateralsMap = collateralIssues.reduce((acc, issue) => {
-    if (issue.related_order_id) {
-      if (!acc[issue.related_order_id]) {
-        acc[issue.related_order_id] = [];
-      }
-      acc[issue.related_order_id].push(issue);
+  const orderCollateralsMap = orderCollaterals.reduce((acc, collateral) => {
+    if (!acc[collateral.order_id]) {
+      acc[collateral.order_id] = [];
     }
+    acc[collateral.order_id].push(collateral);
     return acc;
-  }, {} as Record<string, typeof collateralIssues>);
+  }, {} as Record<string, typeof orderCollaterals>);
 
   const filteredOrders = orders.filter(order => {
     if (filterType !== 'all' && order.order_type !== filterType) return false;
@@ -107,7 +104,7 @@ export default function OrdersListPage() {
             {collaterals.slice(0, 2).map((c) => (
               <div key={c.id} className="flex items-center gap-1 text-xs">
                 <Package2 size={12} className="text-primary flex-shrink-0" />
-                <span className="truncate">{c.collateral?.name}</span>
+                <span className="truncate">{c.name}</span>
                 <span className="text-muted-foreground">x{c.quantity}</span>
               </div>
             ))}
@@ -142,7 +139,7 @@ export default function OrdersListPage() {
       render: (item: typeof orders[0]) => {
         const collaterals = orderCollateralsMap[item.id] || [];
         const hasCollaterals = collaterals.length > 0;
-        const hasDifferentTracking = collaterals.some(c => c.issue_stage !== item.status);
+        const hasDifferentTracking = collaterals.some(c => c.tracking_status !== item.status);
         
         return (
           <div className="space-y-1">
@@ -154,9 +151,9 @@ export default function OrdersListPage() {
               <div className="space-y-0.5">
                 {collaterals.slice(0, 2).map((c) => (
                   <div key={c.id} className="flex items-center gap-1.5">
-                    <Package2 size={12} className={hasDifferentTracking ? 'text-warning' : 'text-info'} />
-                    <span className="text-xs font-mono text-muted-foreground">{c.issue_number}</span>
-                    {c.issue_stage !== item.status && (
+                    <Package2 size={12} className={c.tracking_status !== item.status ? 'text-warning' : 'text-info'} />
+                    <span className="text-xs font-mono text-muted-foreground">{c.tracking_id || '-'}</span>
+                    {c.tracking_status !== item.status && (
                       <span className="text-[10px] px-1 py-0.5 rounded bg-warning/10 text-warning">
                         Different
                       </span>

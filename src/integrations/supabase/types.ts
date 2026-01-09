@@ -1647,6 +1647,53 @@ export type Database = {
           },
         ]
       }
+      order_collaterals: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          order_id: string
+          quantity: number
+          tracking_id: string | null
+          tracking_status: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          order_id: string
+          quantity?: number
+          tracking_id?: string | null
+          tracking_status?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          order_id?: string
+          quantity?: number
+          tracking_id?: string | null
+          tracking_status?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_collaterals_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string | null
