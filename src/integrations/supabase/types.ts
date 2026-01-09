@@ -1855,6 +1855,48 @@ export type Database = {
           },
         ]
       }
+      policy_documents: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          is_active: boolean | null
+          policy_type: string
+          updated_at: string | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+          version: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          is_active?: boolean | null
+          policy_type: string
+          updated_at?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          is_active?: boolean | null
+          policy_type?: string
+          updated_at?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Relationships: []
+      }
       pre_order_items: {
         Row: {
           created_at: string | null

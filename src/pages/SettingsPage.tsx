@@ -16,12 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
+import PolicyDocumentUpload from '@/components/settings/PolicyDocumentUpload';
 
 export default function SettingsPage() {
   const { profile } = useAuth();
@@ -34,61 +29,8 @@ export default function SettingsPage() {
     address: 'Corporate Office, New Delhi',
   });
 
-  // Expense Policy Settings
-  const [expensePolicy, setExpensePolicy] = useState({
-    maxDailyAllowance: 1500,
-    maxHotelPerNight: 3000,
-    fuelRatePerKm: 12,
-    requireBillAbove: 500,
-    autoApproveBelow: 1000,
-    approvalRequired: true,
-    multiLevelApproval: true,
-    maxClaimDays: 30,
-  });
-
-  // Payment Policy Settings
-  const [paymentPolicy, setPaymentPolicy] = useState({
-    defaultPaymentTerms: '30',
-    maxCreditLimit: 500000,
-    creditCheckRequired: true,
-    autoBlockOverdue: true,
-    overdueGraceDays: 7,
-    interestOnOverdue: 1.5,
-    partialPaymentAllowed: true,
-    advancePaymentDiscount: 2,
-  });
-
-  // HR Policy Settings
-  const [hrPolicy, setHrPolicy] = useState({
-    casualLeavePerYear: 12,
-    sickLeavePerYear: 10,
-    earnedLeavePerYear: 15,
-    maxConsecutiveLeave: 5,
-    leaveApprovalRequired: true,
-    attendanceGracePeriod: 15,
-    halfDayHours: 4,
-    fullDayHours: 8,
-    weeklyOffDays: '0,6',
-  });
-
-  // Return Policy Settings
-  const [returnPolicy, setReturnPolicy] = useState({
-    returnWindowDays: 30,
-    approvalRequired: true,
-    maxReturnPercentage: 20,
-    restockingFee: 5,
-    qualityCheckRequired: true,
-    refundProcessDays: 7,
-    exchangeAllowed: true,
-    damagedGoodsAccepted: false,
-  });
-
   const handleSave = () => {
     toast.success('Settings saved successfully');
-  };
-
-  const handlePolicySave = (policyType: string) => {
-    toast.success(`${policyType} policy updated successfully`);
   };
 
   return (
@@ -277,111 +219,12 @@ export default function SettingsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5 text-primary" />
-                  Expense Policy Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure expense claim limits, approval workflows, and allowance rates
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="maxDailyAllowance">Max Daily Allowance (₹)</Label>
-                    <Input
-                      id="maxDailyAllowance"
-                      type="number"
-                      value={expensePolicy.maxDailyAllowance}
-                      onChange={(e) => setExpensePolicy({ ...expensePolicy, maxDailyAllowance: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="maxHotelPerNight">Max Hotel Per Night (₹)</Label>
-                    <Input
-                      id="maxHotelPerNight"
-                      type="number"
-                      value={expensePolicy.maxHotelPerNight}
-                      onChange={(e) => setExpensePolicy({ ...expensePolicy, maxHotelPerNight: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="fuelRatePerKm">Fuel Rate Per Km (₹)</Label>
-                    <Input
-                      id="fuelRatePerKm"
-                      type="number"
-                      value={expensePolicy.fuelRatePerKm}
-                      onChange={(e) => setExpensePolicy({ ...expensePolicy, fuelRatePerKm: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="requireBillAbove">Require Bill Above (₹)</Label>
-                    <Input
-                      id="requireBillAbove"
-                      type="number"
-                      value={expensePolicy.requireBillAbove}
-                      onChange={(e) => setExpensePolicy({ ...expensePolicy, requireBillAbove: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="autoApproveBelow">Auto-Approve Below (₹)</Label>
-                    <Input
-                      id="autoApproveBelow"
-                      type="number"
-                      value={expensePolicy.autoApproveBelow}
-                      onChange={(e) => setExpensePolicy({ ...expensePolicy, autoApproveBelow: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="maxClaimDays">Max Claim Days</Label>
-                    <Input
-                      id="maxClaimDays"
-                      type="number"
-                      value={expensePolicy.maxClaimDays}
-                      onChange={(e) => setExpensePolicy({ ...expensePolicy, maxClaimDays: Number(e.target.value) })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Approval Required</Label>
-                      <p className="text-sm text-muted-foreground">Require manager approval for expenses</p>
-                    </div>
-                    <Switch
-                      checked={expensePolicy.approvalRequired}
-                      onCheckedChange={(checked) => setExpensePolicy({ ...expensePolicy, approvalRequired: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Multi-Level Approval</Label>
-                      <p className="text-sm text-muted-foreground">Enable hierarchical approval workflow</p>
-                    </div>
-                    <Switch
-                      checked={expensePolicy.multiLevelApproval}
-                      onCheckedChange={(checked) => setExpensePolicy({ ...expensePolicy, multiLevelApproval: checked })}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button onClick={() => handlePolicySave('Expense')}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Expense Policy
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <PolicyDocumentUpload
+              policyType="expense"
+              title="Expense & Allowance Policy"
+              description="Upload your company's expense and allowance policy document (PDF or Word)"
+              icon={<Receipt className="h-5 w-5 text-primary" />}
+            />
           </motion.div>
         </TabsContent>
 
@@ -391,124 +234,12 @@ export default function SettingsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-primary" />
-                  Payment Policy Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure payment terms, credit limits, and overdue handling
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="defaultPaymentTerms">Default Payment Terms</Label>
-                    <Select
-                      value={paymentPolicy.defaultPaymentTerms}
-                      onValueChange={(value) => setPaymentPolicy({ ...paymentPolicy, defaultPaymentTerms: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="7">Net 7 Days</SelectItem>
-                        <SelectItem value="15">Net 15 Days</SelectItem>
-                        <SelectItem value="30">Net 30 Days</SelectItem>
-                        <SelectItem value="45">Net 45 Days</SelectItem>
-                        <SelectItem value="60">Net 60 Days</SelectItem>
-                        <SelectItem value="90">Net 90 Days</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="maxCreditLimit">Max Credit Limit (₹)</Label>
-                    <Input
-                      id="maxCreditLimit"
-                      type="number"
-                      value={paymentPolicy.maxCreditLimit}
-                      onChange={(e) => setPaymentPolicy({ ...paymentPolicy, maxCreditLimit: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="overdueGraceDays">Overdue Grace Days</Label>
-                    <Input
-                      id="overdueGraceDays"
-                      type="number"
-                      value={paymentPolicy.overdueGraceDays}
-                      onChange={(e) => setPaymentPolicy({ ...paymentPolicy, overdueGraceDays: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="interestOnOverdue">Interest on Overdue (%)</Label>
-                    <Input
-                      id="interestOnOverdue"
-                      type="number"
-                      step="0.1"
-                      value={paymentPolicy.interestOnOverdue}
-                      onChange={(e) => setPaymentPolicy({ ...paymentPolicy, interestOnOverdue: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="advancePaymentDiscount">Advance Payment Discount (%)</Label>
-                    <Input
-                      id="advancePaymentDiscount"
-                      type="number"
-                      step="0.1"
-                      value={paymentPolicy.advancePaymentDiscount}
-                      onChange={(e) => setPaymentPolicy({ ...paymentPolicy, advancePaymentDiscount: Number(e.target.value) })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Credit Check Required</Label>
-                      <p className="text-sm text-muted-foreground">Verify credit before order placement</p>
-                    </div>
-                    <Switch
-                      checked={paymentPolicy.creditCheckRequired}
-                      onCheckedChange={(checked) => setPaymentPolicy({ ...paymentPolicy, creditCheckRequired: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Auto-Block Overdue</Label>
-                      <p className="text-sm text-muted-foreground">Block orders for overdue accounts</p>
-                    </div>
-                    <Switch
-                      checked={paymentPolicy.autoBlockOverdue}
-                      onCheckedChange={(checked) => setPaymentPolicy({ ...paymentPolicy, autoBlockOverdue: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Partial Payment Allowed</Label>
-                      <p className="text-sm text-muted-foreground">Allow partial invoice payments</p>
-                    </div>
-                    <Switch
-                      checked={paymentPolicy.partialPaymentAllowed}
-                      onCheckedChange={(checked) => setPaymentPolicy({ ...paymentPolicy, partialPaymentAllowed: checked })}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button onClick={() => handlePolicySave('Payment')}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Payment Policy
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <PolicyDocumentUpload
+              policyType="payment"
+              title="Payment Policy"
+              description="Upload your company's payment terms and credit policy document (PDF or Word)"
+              icon={<CreditCard className="h-5 w-5 text-primary" />}
+            />
           </motion.div>
         </TabsContent>
 
@@ -518,135 +249,12 @@ export default function SettingsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  HR Policy Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure leave entitlements, attendance rules, and work hours
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <h4 className="font-medium text-foreground mb-4">Leave Entitlements (Per Year)</h4>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="casualLeavePerYear">Casual Leave</Label>
-                      <Input
-                        id="casualLeavePerYear"
-                        type="number"
-                        value={hrPolicy.casualLeavePerYear}
-                        onChange={(e) => setHrPolicy({ ...hrPolicy, casualLeavePerYear: Number(e.target.value) })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="sickLeavePerYear">Sick Leave</Label>
-                      <Input
-                        id="sickLeavePerYear"
-                        type="number"
-                        value={hrPolicy.sickLeavePerYear}
-                        onChange={(e) => setHrPolicy({ ...hrPolicy, sickLeavePerYear: Number(e.target.value) })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="earnedLeavePerYear">Earned Leave</Label>
-                      <Input
-                        id="earnedLeavePerYear"
-                        type="number"
-                        value={hrPolicy.earnedLeavePerYear}
-                        onChange={(e) => setHrPolicy({ ...hrPolicy, earnedLeavePerYear: Number(e.target.value) })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="maxConsecutiveLeave">Max Consecutive Days</Label>
-                      <Input
-                        id="maxConsecutiveLeave"
-                        type="number"
-                        value={hrPolicy.maxConsecutiveLeave}
-                        onChange={(e) => setHrPolicy({ ...hrPolicy, maxConsecutiveLeave: Number(e.target.value) })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-border">
-                  <h4 className="font-medium text-foreground mb-4">Attendance Settings</h4>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="attendanceGracePeriod">Grace Period (mins)</Label>
-                      <Input
-                        id="attendanceGracePeriod"
-                        type="number"
-                        value={hrPolicy.attendanceGracePeriod}
-                        onChange={(e) => setHrPolicy({ ...hrPolicy, attendanceGracePeriod: Number(e.target.value) })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="halfDayHours">Half Day Hours</Label>
-                      <Input
-                        id="halfDayHours"
-                        type="number"
-                        value={hrPolicy.halfDayHours}
-                        onChange={(e) => setHrPolicy({ ...hrPolicy, halfDayHours: Number(e.target.value) })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="fullDayHours">Full Day Hours</Label>
-                      <Input
-                        id="fullDayHours"
-                        type="number"
-                        value={hrPolicy.fullDayHours}
-                        onChange={(e) => setHrPolicy({ ...hrPolicy, fullDayHours: Number(e.target.value) })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="weeklyOffDays">Weekly Off Days</Label>
-                      <Select
-                        value={hrPolicy.weeklyOffDays}
-                        onValueChange={(value) => setHrPolicy({ ...hrPolicy, weeklyOffDays: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0">Sunday Only</SelectItem>
-                          <SelectItem value="0,6">Sat & Sun</SelectItem>
-                          <SelectItem value="5,6">Fri & Sat</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Leave Approval Required</Label>
-                      <p className="text-sm text-muted-foreground">Require manager approval for leaves</p>
-                    </div>
-                    <Switch
-                      checked={hrPolicy.leaveApprovalRequired}
-                      onCheckedChange={(checked) => setHrPolicy({ ...hrPolicy, leaveApprovalRequired: checked })}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button onClick={() => handlePolicySave('HR')}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save HR Policy
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <PolicyDocumentUpload
+              policyType="hr"
+              title="HR Policy"
+              description="Upload your company's HR policy document covering leaves, attendance, and employee guidelines (PDF or Word)"
+              icon={<Users className="h-5 w-5 text-primary" />}
+            />
           </motion.div>
         </TabsContent>
 
@@ -656,113 +264,12 @@ export default function SettingsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <RotateCcw className="h-5 w-5 text-primary" />
-                  Return Policy Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure return windows, approval requirements, and refund processing
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="returnWindowDays">Return Window (Days)</Label>
-                    <Input
-                      id="returnWindowDays"
-                      type="number"
-                      value={returnPolicy.returnWindowDays}
-                      onChange={(e) => setReturnPolicy({ ...returnPolicy, returnWindowDays: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="maxReturnPercentage">Max Return % of Order</Label>
-                    <Input
-                      id="maxReturnPercentage"
-                      type="number"
-                      value={returnPolicy.maxReturnPercentage}
-                      onChange={(e) => setReturnPolicy({ ...returnPolicy, maxReturnPercentage: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="restockingFee">Restocking Fee (%)</Label>
-                    <Input
-                      id="restockingFee"
-                      type="number"
-                      value={returnPolicy.restockingFee}
-                      onChange={(e) => setReturnPolicy({ ...returnPolicy, restockingFee: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="refundProcessDays">Refund Process Days</Label>
-                    <Input
-                      id="refundProcessDays"
-                      type="number"
-                      value={returnPolicy.refundProcessDays}
-                      onChange={(e) => setReturnPolicy({ ...returnPolicy, refundProcessDays: Number(e.target.value) })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Approval Required</Label>
-                      <p className="text-sm text-muted-foreground">Require approval for return requests</p>
-                    </div>
-                    <Switch
-                      checked={returnPolicy.approvalRequired}
-                      onCheckedChange={(checked) => setReturnPolicy({ ...returnPolicy, approvalRequired: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Quality Check Required</Label>
-                      <p className="text-sm text-muted-foreground">Inspect items before processing return</p>
-                    </div>
-                    <Switch
-                      checked={returnPolicy.qualityCheckRequired}
-                      onCheckedChange={(checked) => setReturnPolicy({ ...returnPolicy, qualityCheckRequired: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Exchange Allowed</Label>
-                      <p className="text-sm text-muted-foreground">Allow product exchange instead of refund</p>
-                    </div>
-                    <Switch
-                      checked={returnPolicy.exchangeAllowed}
-                      onCheckedChange={(checked) => setReturnPolicy({ ...returnPolicy, exchangeAllowed: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Damaged Goods Accepted</Label>
-                      <p className="text-sm text-muted-foreground">Accept returns for damaged items</p>
-                    </div>
-                    <Switch
-                      checked={returnPolicy.damagedGoodsAccepted}
-                      onCheckedChange={(checked) => setReturnPolicy({ ...returnPolicy, damagedGoodsAccepted: checked })}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button onClick={() => handlePolicySave('Return')}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Return Policy
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <PolicyDocumentUpload
+              policyType="return"
+              title="Return Policy"
+              description="Upload your company's return and refund policy document (PDF or Word)"
+              icon={<RotateCcw className="h-5 w-5 text-primary" />}
+            />
           </motion.div>
         </TabsContent>
       </Tabs>
