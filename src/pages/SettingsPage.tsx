@@ -9,6 +9,7 @@ import {
   Building,
   Save,
   Camera,
+  FileText,
   Receipt,
   CreditCard,
   Users,
@@ -44,26 +45,14 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User size={16} />
             <span className="hidden sm:inline">Profile</span>
           </TabsTrigger>
-          <TabsTrigger value="expense" className="flex items-center gap-2">
-            <Receipt size={16} />
-            <span className="hidden sm:inline">Expense</span>
-          </TabsTrigger>
-          <TabsTrigger value="payment" className="flex items-center gap-2">
-            <CreditCard size={16} />
-            <span className="hidden sm:inline">Payment</span>
-          </TabsTrigger>
-          <TabsTrigger value="hr" className="flex items-center gap-2">
-            <Users size={16} />
-            <span className="hidden sm:inline">HR</span>
-          </TabsTrigger>
-          <TabsTrigger value="return" className="flex items-center gap-2">
-            <RotateCcw size={16} />
-            <span className="hidden sm:inline">Return</span>
+          <TabsTrigger value="policy" className="flex items-center gap-2">
+            <FileText size={16} />
+            <span className="hidden sm:inline">Policy</span>
           </TabsTrigger>
         </TabsList>
 
@@ -213,11 +202,12 @@ export default function SettingsPage() {
           </motion.div>
         </TabsContent>
 
-        {/* Expense Policy Tab */}
-        <TabsContent value="expense" className="space-y-6">
+        {/* Policy Tab */}
+        <TabsContent value="policy" className="space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            className="grid gap-6"
           >
             <PolicyDocumentUpload
               policyType="expense"
@@ -225,45 +215,18 @@ export default function SettingsPage() {
               description="Upload your company's expense and allowance policy document (PDF or Word)"
               icon={<Receipt className="h-5 w-5 text-primary" />}
             />
-          </motion.div>
-        </TabsContent>
-
-        {/* Payment Policy Tab */}
-        <TabsContent value="payment" className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
             <PolicyDocumentUpload
               policyType="payment"
               title="Payment Policy"
               description="Upload your company's payment terms and credit policy document (PDF or Word)"
               icon={<CreditCard className="h-5 w-5 text-primary" />}
             />
-          </motion.div>
-        </TabsContent>
-
-        {/* HR Policy Tab */}
-        <TabsContent value="hr" className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
             <PolicyDocumentUpload
               policyType="hr"
               title="HR Policy"
               description="Upload your company's HR policy document covering leaves, attendance, and employee guidelines (PDF or Word)"
               icon={<Users className="h-5 w-5 text-primary" />}
             />
-          </motion.div>
-        </TabsContent>
-
-        {/* Return Policy Tab */}
-        <TabsContent value="return" className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
             <PolicyDocumentUpload
               policyType="return"
               title="Return Policy"
