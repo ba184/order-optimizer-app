@@ -181,7 +181,7 @@ const dummyEmployees: EmployeeLocation[] = [
 
 export default function LiveTrackingPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
-  const [mapboxToken, setMapboxToken] = useState("");
+  const [mapboxToken, setMapboxToken] = useState("pk.eyJ1IjoiYWJoaTAwMDEiLCJhIjoiY21peWlvdGtrMDdyeDNlc2R2YzNmbTgxcyJ9.CFTqYpkBUENiseB1xKMwYQ");
   const [showTokenInput, setShowTokenInput] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [movingMarkerPosition, setMovingMarkerPosition] = useState<[number, number]>([77.209, 28.6139]);
@@ -237,8 +237,10 @@ export default function LiveTrackingPage() {
 
   // Animate the moving marker
   useEffect(() => {
-    if (!mapLoaded) return;
-
+    setTimeout(() => {
+      
+      initializeMap()
+    }, 300);
     let step = 0;
     const animateMovingMarker = () => {
       step += 0.002;
@@ -805,33 +807,6 @@ export default function LiveTrackingPage() {
                         <h3 className="font-semibold text-foreground">Mapbox API Token</h3>
                         <p className="text-sm text-muted-foreground">Enter your public token to load the map</p>
                       </div>
-                    </div>
-                    <div className="space-y-4">
-                      <input
-                        type="text"
-                        value={mapboxToken}
-                        onChange={(e) => setMapboxToken(e.target.value)}
-                        placeholder="pk.eyJ1IjoieW91..."
-                        className="input-field"
-                      />
-                      <div className="flex items-start gap-2 p-3 bg-info/10 rounded-lg">
-                        <AlertCircle size={16} className="text-info mt-0.5" />
-                        <p className="text-xs text-muted-foreground">
-                          Get your free token from{" "}
-                          <a
-                            href="https://mapbox.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary underline"
-                          >
-                            mapbox.com
-                          </a>{" "}
-                          → Account → Tokens
-                        </p>
-                      </div>
-                      <button onClick={initializeMap} disabled={!mapboxToken} className="btn-primary w-full">
-                        Load Map
-                      </button>
                     </div>
                   </motion.div>
                 </div>
