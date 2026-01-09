@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import { useOrders } from '@/hooks/useOrdersData';
+import { useCollateralIssues } from '@/hooks/useMarketingCollateralsData';
 import {
   Plus,
   ShoppingCart,
@@ -14,6 +15,8 @@ import {
   Truck,
   IndianRupee,
   Loader2,
+  MapPin,
+  Package2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -29,6 +32,18 @@ export default function OrdersListPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   
   const { data: orders = [], isLoading } = useOrders();
+  const { data: collateralIssues = [] } = useCollateralIssues();
+
+  // Create a map of order_id to collateral items
+  const orderCollateralsMap = collateralIssues.reduce((acc, issue) => {
+    if (issue.related_order_id) {
+      if (!acc[issue.related_order_id]) {
+        acc[issue.related_order_id] = [];
+      }
+      acc[issue.related_order_id].push(issue);
+    }
+    return acc;
+  }, {} as Record<string, typeof collateralIssues>);
 
   const filteredOrders = orders.filter(order => {
     if (filterType !== 'all' && order.order_type !== filterType) return false;
@@ -79,6 +94,30 @@ export default function OrdersListPage() {
       sortable: true,
     },
     {
+      key: 'collaterals',
+      header: 'Marketing Collateral',
+      render: (item: typeof orders[0]) => {
+        const collaterals = orderCollateralsMap[item.id] || [];
+        if (collaterals.length === 0) {
+          return <span className="text-muted-foreground text-sm">-</span>;
+        }
+        return (
+          <div className="space-y-1 max-w-[180px]">
+            {collaterals.slice(0, 2).map((c) => (
+              <div key={c.id} className="flex items-center gap-1 text-xs">
+                <Package2 size={12} className="text-primary flex-shrink-0" />
+                <span className="truncate">{c.collateral?.name}</span>
+                <span className="text-muted-foreground">x{c.quantity}</span>
+              </div>
+            ))}
+            {collaterals.length > 2 && (
+              <span className="text-xs text-primary">+{collaterals.length - 2} more</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       key: 'total_amount',
       header: 'Amount',
       render: (item: typeof orders[0]) => (
@@ -95,6 +134,29 @@ export default function OrdersListPage() {
       key: 'payment_status',
       header: 'Payment',
       render: (item: typeof orders[0]) => <StatusBadge status={item.payment_status as StatusType} />,
+    },
+    {
+      key: 'tracking',
+      header: 'Live Tracking',
+      render: (item: typeof orders[0]) => {
+        const hasCollaterals = (orderCollateralsMap[item.id] || []).length > 0;
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/orders/${item.id}?tab=tracking`);
+            }}
+            className="btn-outline text-xs py-1 px-2 flex items-center gap-1"
+            title="Track Order"
+          >
+            <MapPin size={14} />
+            Track
+            {hasCollaterals && (
+              <span className="ml-1 w-2 h-2 bg-primary rounded-full"></span>
+            )}
+          </button>
+        );
+      },
     },
     {
       key: 'created_at',
