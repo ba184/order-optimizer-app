@@ -144,15 +144,19 @@ export default function OrderViewPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="details" className="flex items-center gap-2">
             <Package size={16} />
             Order Details
           </TabsTrigger>
+          <TabsTrigger value="collaterals" className="flex items-center gap-2">
+            <Package2 size={16} />
+            Collaterals
+            {hasCollaterals && <span className="w-2 h-2 bg-info rounded-full"></span>}
+          </TabsTrigger>
           <TabsTrigger value="tracking" className="flex items-center gap-2">
             <MapPin size={16} />
             Live Tracking
-            {hasCollaterals && <span className="w-2 h-2 bg-primary rounded-full"></span>}
           </TabsTrigger>
         </TabsList>
 
@@ -334,11 +338,104 @@ export default function OrderViewPage() {
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Order Notes */}
           {order.notes && (
             <div className="card p-5">
-              <h3 className="font-semibold text-foreground mb-2">Notes</h3>
+              <h3 className="font-semibold text-foreground mb-2">Order Notes</h3>
               <p className="text-muted-foreground">{order.notes}</p>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Marketing Collaterals Tab */}
+        <TabsContent value="collaterals" className="space-y-6 mt-6">
+          {hasCollaterals ? (
+            <>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="card"
+              >
+                <div className="p-5 border-b border-border flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-info/10">
+                    <Package2 size={20} className="text-info" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Marketing Collaterals ({collateralIssues.length})</h3>
+                    <p className="text-sm text-muted-foreground">Collateral items attached to this order</p>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">#</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Collateral Name</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Type</th>
+                        <th className="text-center p-4 text-sm font-medium text-muted-foreground">Quantity</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Issued To</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {collateralIssues.map((issue, index) => (
+                        <tr key={issue.id} className="border-b border-border">
+                          <td className="p-4">{index + 1}</td>
+                          <td className="p-4">
+                            <p className="font-medium text-foreground">{issue.collateral?.name || 'Unknown'}</p>
+                            <p className="text-xs text-muted-foreground">Issue #: {issue.issue_number}</p>
+                          </td>
+                          <td className="p-4">
+                            <span className="text-sm text-muted-foreground capitalize">{issue.collateral?.type || '-'}</span>
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className="font-medium">{issue.quantity}</span>
+                          </td>
+                          <td className="p-4">
+                            <p className="text-sm">{issue.issued_to_name || '-'}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{issue.issued_to_type}</p>
+                          </td>
+                          <td className="p-4">
+                            <StatusBadge status={issue.status as StatusType} />
+                          </td>
+                          <td className="p-4">
+                            <p className="text-sm text-muted-foreground max-w-xs">{issue.remarks || '-'}</p>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+
+              {/* Collateral Notes Summary */}
+              {collateralIssues.some(issue => issue.remarks) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="card p-5"
+                >
+                  <h3 className="font-semibold text-foreground mb-4">Collateral Notes</h3>
+                  <div className="space-y-3">
+                    {collateralIssues.filter(issue => issue.remarks).map((issue) => (
+                      <div key={issue.id} className="p-3 bg-muted/30 rounded-lg">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Package2 size={14} className="text-info" />
+                          <span className="font-medium text-sm">{issue.collateral?.name}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground pl-6">{issue.remarks}</p>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </>
+          ) : (
+            <div className="card p-12 text-center">
+              <Package2 size={48} className="mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground">No marketing collaterals attached to this order</p>
             </div>
           )}
         </TabsContent>

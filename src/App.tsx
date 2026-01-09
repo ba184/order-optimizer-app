@@ -52,6 +52,7 @@ import ExpenseManagementPage from "./pages/ExpenseManagementPage";
 import SampleGiftManagementPage from "./pages/SampleGiftManagementPage";
 import InventoryManagementPage from "./pages/InventoryManagementPage";
 import PreOrderBookingPage from "./pages/PreOrderBookingPage";
+import PreOrderViewPage from "./pages/PreOrderViewPage";
 import MarketingCollateralPage from "./pages/MarketingCollateralPage";
 
 import CreditManagementPage from "./pages/CreditManagementPage";
@@ -129,6 +130,7 @@ function AppRoutes() {
       
       {/* Pre-Orders */}
       <Route path="/pre-orders" element={<ProtectedRoute><PreOrderBookingPage /></ProtectedRoute>} />
+      <Route path="/pre-orders/:id" element={<ProtectedRoute><PreOrderViewPage /></ProtectedRoute>} />
       
       {/* Inventory */}
       <Route path="/inventory" element={<ProtectedRoute><InventoryManagementPage /></ProtectedRoute>} />

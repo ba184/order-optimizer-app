@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -13,6 +14,7 @@ import {
   Package,
   CheckCircle,
   Loader2,
+  MapPin,
   Tag,
   Gift,
 } from 'lucide-react';
@@ -25,6 +27,7 @@ import { AppliedSchemesDisplay } from '@/components/orders/AppliedSchemesDisplay
 import { ProductSchemesBadge } from '@/components/orders/ProductSchemesBadge';
 
 export default function PreOrderBookingPage() {
+  const navigate = useNavigate();
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedScheme, setSelectedScheme] = useState('');
   const [selectedDistributor, setSelectedDistributor] = useState('');
@@ -115,11 +118,27 @@ export default function PreOrderBookingPage() {
       render: (item: PreOrder) => <StatusBadge status={item.status as any || 'booked'} />,
     },
     {
+      key: 'tracking',
+      header: 'Tracking',
+      render: (item: PreOrder) => (
+        <button 
+          onClick={() => navigate(`/pre-orders/${item.id}?tab=tracking`)}
+          className="p-2 hover:bg-primary/10 rounded-lg transition-colors text-primary"
+          title="Track Order"
+        >
+          <MapPin size={16} />
+        </button>
+      ),
+    },
+    {
       key: 'actions',
       header: 'Actions',
-      render: () => (
+      render: (item: PreOrder) => (
         <div className="flex items-center gap-1">
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+          <button 
+            onClick={() => navigate(`/pre-orders/${item.id}`)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+          >
             <Eye size={16} className="text-muted-foreground" />
           </button>
           <button className="p-2 hover:bg-muted rounded-lg transition-colors">
