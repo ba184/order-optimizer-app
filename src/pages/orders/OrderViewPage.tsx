@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useOrders, useOrderItems, useUpdateOrderStatus } from '@/hooks/useOrdersData';
-import { useCollateralIssuesByOrder, useUpdateIssueStatus } from '@/hooks/useMarketingCollateralsData';
+import { useOrders, useOrderItems, useUpdateOrderStatus, useOrderCollaterals } from '@/hooks/useOrdersData';
 import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import {
   ArrowLeft,
@@ -40,8 +39,8 @@ const ORDER_STAGES = [
 
 // Collateral tracking stages
 const COLLATERAL_STAGES = [
-  { key: 'requested', label: 'Requested', icon: Package2 },
-  { key: 'acknowledged', label: 'Acknowledged', icon: CheckCircle },
+  { key: 'pending', label: 'Pending', icon: Package2 },
+  { key: 'approved', label: 'Approved', icon: CheckCircle },
   { key: 'dispatched', label: 'Dispatched', icon: Truck },
   { key: 'delivered', label: 'Delivered', icon: CheckCircle2 },
 ];
@@ -55,19 +54,14 @@ export default function OrderViewPage() {
 
   const { data: orders = [], isLoading: ordersLoading } = useOrders();
   const { data: orderItems = [], isLoading: itemsLoading } = useOrderItems(id);
-  const { data: collateralIssues = [], isLoading: collateralsLoading } = useCollateralIssuesByOrder(id);
+  const { data: orderCollaterals = [], isLoading: collateralsLoading } = useOrderCollaterals(id);
   const updateStatus = useUpdateOrderStatus();
-  const updateCollateralStatus = useUpdateIssueStatus();
 
   const order = orders.find(o => o.id === id);
 
   const handleStatusChange = async (newStatus: string) => {
     if (!id) return;
     await updateStatus.mutateAsync({ id, status: newStatus });
-  };
-
-  const handleCollateralStatusChange = async (issueId: string, status: string, stage: string) => {
-    await updateCollateralStatus.mutateAsync({ id: issueId, status, issue_stage: stage });
   };
 
   const handlePrintInvoice = () => {
@@ -81,9 +75,9 @@ export default function OrderViewPage() {
   };
 
   // Get current stage index for collateral tracking
-  const getCollateralStageIndex = (stage: string | null) => {
-    if (!stage) return 0;
-    const index = COLLATERAL_STAGES.findIndex(s => s.key === stage);
+  const getCollateralStageIndex = (trackingStatus: string | null) => {
+    if (!trackingStatus) return 0;
+    const index = COLLATERAL_STAGES.findIndex(s => s.key === trackingStatus);
     return index >= 0 ? index : 0;
   };
 
@@ -111,7 +105,7 @@ export default function OrderViewPage() {
   const discount = Number(order.discount);
   const total = Number(order.total_amount);
   const currentOrderStage = getOrderStageIndex(order.status);
-  const hasCollaterals = collateralIssues.length > 0;
+  const hasCollaterals = orderCollaterals.length > 0;
 
   return (
     <div className="space-y-6">
@@ -361,7 +355,7 @@ export default function OrderViewPage() {
                     <Package2 size={20} className="text-info" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">Marketing Collaterals ({collateralIssues.length})</h3>
+                    <h3 className="font-semibold text-foreground">Marketing Collaterals ({orderCollaterals.length})</h3>
                     <p className="text-sm text-muted-foreground">Collateral items attached to this order</p>
                   </div>
                 </div>
@@ -373,34 +367,37 @@ export default function OrderViewPage() {
                         <th className="text-left p-4 text-sm font-medium text-muted-foreground">Collateral Name</th>
                         <th className="text-left p-4 text-sm font-medium text-muted-foreground">Type</th>
                         <th className="text-center p-4 text-sm font-medium text-muted-foreground">Quantity</th>
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Issued To</th>
+                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Tracking ID</th>
                         <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
                         <th className="text-left p-4 text-sm font-medium text-muted-foreground">Notes</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {collateralIssues.map((issue, index) => (
-                        <tr key={issue.id} className="border-b border-border">
+                      {orderCollaterals.map((collateral, index) => (
+                        <tr key={collateral.id} className="border-b border-border">
                           <td className="p-4">{index + 1}</td>
                           <td className="p-4">
-                            <p className="font-medium text-foreground">{issue.collateral?.name || 'Unknown'}</p>
-                            <p className="text-xs text-muted-foreground">Issue #: {issue.issue_number}</p>
+                            <p className="font-medium text-foreground">{collateral.name}</p>
                           </td>
                           <td className="p-4">
-                            <span className="text-sm text-muted-foreground capitalize">{issue.collateral?.type || '-'}</span>
+                            <span className="text-sm text-muted-foreground capitalize">{collateral.type}</span>
                           </td>
                           <td className="p-4 text-center">
-                            <span className="font-medium">{issue.quantity}</span>
+                            <span className="font-medium">{collateral.quantity}</span>
                           </td>
                           <td className="p-4">
-                            <p className="text-sm">{issue.issued_to_name || '-'}</p>
-                            <p className="text-xs text-muted-foreground capitalize">{issue.issued_to_type}</p>
+                            <p className="text-xs font-mono text-info">{collateral.tracking_id || '-'}</p>
+                            {collateral.tracking_status !== order.status && (
+                              <span className="text-[10px] px-1 py-0.5 rounded bg-warning/10 text-warning">
+                                Different from order
+                              </span>
+                            )}
                           </td>
                           <td className="p-4">
-                            <StatusBadge status={issue.status as StatusType} />
+                            <StatusBadge status={collateral.tracking_status as StatusType} />
                           </td>
                           <td className="p-4">
-                            <p className="text-sm text-muted-foreground max-w-xs">{issue.remarks || '-'}</p>
+                            <p className="text-sm text-muted-foreground max-w-xs">{collateral.notes || '-'}</p>
                           </td>
                         </tr>
                       ))}
@@ -410,7 +407,7 @@ export default function OrderViewPage() {
               </motion.div>
 
               {/* Collateral Notes Summary */}
-              {collateralIssues.some(issue => issue.remarks) && (
+              {orderCollaterals.some(c => c.notes) && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -419,13 +416,13 @@ export default function OrderViewPage() {
                 >
                   <h3 className="font-semibold text-foreground mb-4">Collateral Notes</h3>
                   <div className="space-y-3">
-                    {collateralIssues.filter(issue => issue.remarks).map((issue) => (
-                      <div key={issue.id} className="p-3 bg-muted/30 rounded-lg">
+                    {orderCollaterals.filter(c => c.notes).map((collateral) => (
+                      <div key={collateral.id} className="p-3 bg-muted/30 rounded-lg">
                         <div className="flex items-center gap-2 mb-1">
                           <Package2 size={14} className="text-info" />
-                          <span className="font-medium text-sm">{issue.collateral?.name}</span>
+                          <span className="font-medium text-sm">{collateral.name}</span>
                         </div>
-                        <p className="text-sm text-muted-foreground pl-6">{issue.remarks}</p>
+                        <p className="text-sm text-muted-foreground pl-6">{collateral.notes}</p>
                       </div>
                     ))}
                   </div>
@@ -526,22 +523,22 @@ export default function OrderViewPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Marketing Collateral Tracking</h3>
-                  <p className="text-sm text-muted-foreground">{collateralIssues.length} collateral(s) with this order</p>
+                  <p className="text-sm text-muted-foreground">{orderCollaterals.length} collateral(s) with this order</p>
                 </div>
               </div>
 
               {/* Collateral Items */}
               <div className="space-y-4">
-                {collateralIssues.map((issue) => {
-                  const collateralStageIndex = getCollateralStageIndex(issue.issue_stage);
-                  const isSameTracking = issue.issue_stage === order.status;
+                {orderCollaterals.map((collateral) => {
+                  const collateralStageIndex = getCollateralStageIndex(collateral.tracking_status);
+                  const isSameTracking = collateral.tracking_status === order.status;
                   
                   return (
-                    <div key={issue.id} className="border border-border rounded-lg p-4">
+                    <div key={collateral.id} className="border border-border rounded-lg p-4">
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-semibold text-foreground">{issue.collateral?.name || 'Unknown'}</p>
+                            <p className="font-semibold text-foreground">{collateral.name}</p>
                             {isSameTracking && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success flex items-center gap-1">
                                 <Navigation size={10} />
@@ -550,15 +547,15 @@ export default function OrderViewPage() {
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            Qty: {issue.quantity} • Type: {issue.collateral?.type || '-'}
+                            Qty: {collateral.quantity} • Type: {collateral.type}
                           </p>
                         </div>
                         <div className="text-right">
                           <div className="flex items-center gap-2">
-                            <StatusBadge status={issue.status as StatusType} />
+                            <StatusBadge status={collateral.tracking_status as StatusType} />
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">Tracking ID</p>
-                          <p className="font-mono text-xs font-medium text-info">{issue.issue_number}</p>
+                          <p className="font-mono text-xs font-medium text-info">{collateral.tracking_id || '-'}</p>
                         </div>
                       </div>
 
@@ -598,60 +595,27 @@ export default function OrderViewPage() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-3 bg-muted/30 rounded-lg text-sm">
                         <div>
                           <p className="text-muted-foreground">Collateral Name</p>
-                          <p className="font-medium">{issue.collateral?.name || '-'}</p>
+                          <p className="font-medium">{collateral.name}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Quantity</p>
-                          <p className="font-medium">{issue.quantity}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Issued To</p>
-                          <p className="font-medium">{issue.issued_to_name || '-'}</p>
+                          <p className="font-medium">{collateral.quantity}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Type</p>
-                          <p className="font-medium capitalize">{issue.collateral?.type || '-'}</p>
+                          <p className="font-medium capitalize">{collateral.type}</p>
                         </div>
-                        {issue.remarks && (
+                        <div>
+                          <p className="text-muted-foreground">Tracking ID</p>
+                          <p className="font-medium font-mono">{collateral.tracking_id || '-'}</p>
+                        </div>
+                        {collateral.notes && (
                           <div className="col-span-2 md:col-span-4">
                             <p className="text-muted-foreground">Collateral Notes</p>
-                            <p className="font-medium">{issue.remarks}</p>
+                            <p className="font-medium">{collateral.notes}</p>
                           </div>
                         )}
                       </div>
-
-                      {/* Action Buttons */}
-                      {issue.issue_stage !== 'delivered' && issue.issue_stage !== 'returned' && (
-                        <div className="flex gap-2 mt-3">
-                          {issue.issue_stage === 'requested' && (
-                            <button
-                              onClick={() => handleCollateralStatusChange(issue.id, 'approved', 'acknowledged')}
-                              className="btn-outline text-xs py-1 px-3"
-                              disabled={updateCollateralStatus.isPending}
-                            >
-                              Acknowledge
-                            </button>
-                          )}
-                          {issue.issue_stage === 'acknowledged' && (
-                            <button
-                              onClick={() => handleCollateralStatusChange(issue.id, 'dispatched', 'dispatched')}
-                              className="btn-outline text-xs py-1 px-3"
-                              disabled={updateCollateralStatus.isPending}
-                            >
-                              Mark Dispatched
-                            </button>
-                          )}
-                          {issue.issue_stage === 'dispatched' && (
-                            <button
-                              onClick={() => handleCollateralStatusChange(issue.id, 'delivered', 'delivered')}
-                              className="btn-primary text-xs py-1 px-3"
-                              disabled={updateCollateralStatus.isPending}
-                            >
-                              Mark Delivered
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -759,15 +723,15 @@ export default function OrderViewPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {collateralIssues.map((issue, index) => (
-                        <tr key={issue.id} className="border-b border-border">
+                      {orderCollaterals.map((collateral, index) => (
+                        <tr key={collateral.id} className="border-b border-border">
                           <td className="p-3">{index + 1}</td>
                           <td className="p-3">
-                            <p className="font-medium">{issue.collateral?.name || 'Unknown'}</p>
-                            <p className="text-xs text-muted-foreground">Type: {issue.collateral?.type || '-'}</p>
+                            <p className="font-medium">{collateral.name}</p>
+                            <p className="text-xs text-muted-foreground">Type: {collateral.type}</p>
                           </td>
-                          <td className="p-3 text-center">{issue.quantity}</td>
-                          <td className="p-3 text-sm text-muted-foreground">{issue.remarks || '-'}</td>
+                          <td className="p-3 text-center">{collateral.quantity}</td>
+                          <td className="p-3 text-sm text-muted-foreground">{collateral.notes || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
