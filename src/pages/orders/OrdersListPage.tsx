@@ -17,6 +17,7 @@ import {
   Loader2,
   MapPin,
   Package2,
+  Package,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -137,7 +138,43 @@ export default function OrdersListPage() {
     },
     {
       key: 'tracking',
-      header: 'Live Tracking',
+      header: 'Tracking IDs',
+      render: (item: typeof orders[0]) => {
+        const collaterals = orderCollateralsMap[item.id] || [];
+        const hasCollaterals = collaterals.length > 0;
+        const hasDifferentTracking = collaterals.some(c => c.issue_stage !== item.status);
+        
+        return (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5">
+              <Package size={12} className="text-primary" />
+              <span className="text-xs font-mono">{item.order_number}</span>
+            </div>
+            {hasCollaterals && (
+              <div className="space-y-0.5">
+                {collaterals.slice(0, 2).map((c) => (
+                  <div key={c.id} className="flex items-center gap-1.5">
+                    <Package2 size={12} className={hasDifferentTracking ? 'text-warning' : 'text-info'} />
+                    <span className="text-xs font-mono text-muted-foreground">{c.issue_number}</span>
+                    {c.issue_stage !== item.status && (
+                      <span className="text-[10px] px-1 py-0.5 rounded bg-warning/10 text-warning">
+                        Different
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {collaterals.length > 2 && (
+                  <span className="text-[10px] text-muted-foreground">+{collaterals.length - 2} more</span>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'liveTracking',
+      header: 'Track',
       render: (item: typeof orders[0]) => {
         const hasCollaterals = (orderCollateralsMap[item.id] || []).length > 0;
         return (

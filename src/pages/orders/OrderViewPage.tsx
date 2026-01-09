@@ -448,13 +448,19 @@ export default function OrderViewPage() {
             animate={{ opacity: 1, y: 0 }}
             className="card p-6"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Package size={20} className="text-primary" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Package size={20} className="text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">Product Order Tracking</h3>
+                  <p className="text-sm text-muted-foreground">Track your product order status</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-foreground">Order Tracking</h3>
-                <p className="text-sm text-muted-foreground">Track your order status</p>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Tracking ID</p>
+                <p className="font-mono text-sm font-medium text-primary">{order.order_number}</p>
               </div>
             </div>
 
@@ -496,6 +502,14 @@ export default function OrderViewPage() {
                 />
               </div>
             </div>
+
+            {/* Order Notes */}
+            {order.notes && (
+              <div className="mt-4 p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Order Notes</p>
+                <p className="text-sm">{order.notes}</p>
+              </div>
+            )}
           </motion.div>
 
           {/* Marketing Collateral Tracking */}
@@ -520,7 +534,7 @@ export default function OrderViewPage() {
               <div className="space-y-4">
                 {collateralIssues.map((issue) => {
                   const collateralStageIndex = getCollateralStageIndex(issue.issue_stage);
-                  const isSameTracking = issue.status === order.status;
+                  const isSameTracking = issue.issue_stage === order.status;
                   
                   return (
                     <div key={issue.id} className="border border-border rounded-lg p-4">
@@ -539,7 +553,13 @@ export default function OrderViewPage() {
                             Qty: {issue.quantity} • Type: {issue.collateral?.type || '-'}
                           </p>
                         </div>
-                        <StatusBadge status={issue.status as StatusType} />
+                        <div className="text-right">
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={issue.status as StatusType} />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Tracking ID</p>
+                          <p className="font-mono text-xs font-medium text-info">{issue.issue_number}</p>
+                        </div>
                       </div>
 
                       {/* Collateral Progress */}
@@ -575,18 +595,26 @@ export default function OrderViewPage() {
                       </div>
 
                       {/* Collateral Details */}
-                      <div className="grid grid-cols-2 gap-4 p-3 bg-muted/30 rounded-lg text-sm">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-3 bg-muted/30 rounded-lg text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Collateral Name</p>
+                          <p className="font-medium">{issue.collateral?.name || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Quantity</p>
+                          <p className="font-medium">{issue.quantity}</p>
+                        </div>
                         <div>
                           <p className="text-muted-foreground">Issued To</p>
                           <p className="font-medium">{issue.issued_to_name || '-'}</p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Issue Number</p>
-                          <p className="font-medium">{issue.issue_number}</p>
+                          <p className="text-muted-foreground">Type</p>
+                          <p className="font-medium capitalize">{issue.collateral?.type || '-'}</p>
                         </div>
                         {issue.remarks && (
-                          <div className="col-span-2">
-                            <p className="text-muted-foreground">Notes</p>
+                          <div className="col-span-2 md:col-span-4">
+                            <p className="text-muted-foreground">Collateral Notes</p>
                             <p className="font-medium">{issue.remarks}</p>
                           </div>
                         )}
