@@ -99,6 +99,31 @@ interface FormData {
   min_order_value: string;
   max_benefit: string;
   outlet_claim_limit: string;
+  // Buy X Get Y fields
+  buy_product: string;
+  buy_quantity: string;
+  get_product: string;
+  get_quantity: string;
+  get_product_type: 'same' | 'different';
+  // Combo scheme fields
+  combo_name: string;
+  combo_products: string[];
+  combo_quantities: Record<string, number>;
+  combo_price: string;
+  combo_discount_type: 'flat' | 'percent';
+  combo_discount_value: string;
+  max_combos_per_order: string;
+  // Bill-wise scheme fields
+  bill_value_from: string;
+  bill_value_to: string;
+  bill_discount_type: 'flat' | 'percent';
+  bill_discount_value: string;
+  bill_max_discount: string;
+  // Display scheme fields
+  display_type: 'rack' | 'banner' | 'standee';
+  display_quantity: string;
+  display_free_product: string;
+  display_free_quantity: string;
 }
 
 const initialFormData: FormData = {
@@ -119,6 +144,31 @@ const initialFormData: FormData = {
   min_order_value: '',
   max_benefit: '',
   outlet_claim_limit: '',
+  // Buy X Get Y fields
+  buy_product: '',
+  buy_quantity: '',
+  get_product: '',
+  get_quantity: '',
+  get_product_type: 'same',
+  // Combo scheme fields
+  combo_name: '',
+  combo_products: [],
+  combo_quantities: {},
+  combo_price: '',
+  combo_discount_type: 'percent',
+  combo_discount_value: '',
+  max_combos_per_order: '',
+  // Bill-wise scheme fields
+  bill_value_from: '',
+  bill_value_to: '',
+  bill_discount_type: 'percent',
+  bill_discount_value: '',
+  bill_max_discount: '',
+  // Display scheme fields
+  display_type: 'rack',
+  display_quantity: '',
+  display_free_product: '',
+  display_free_quantity: '',
 };
 
 export default function SchemesPage() {
@@ -246,6 +296,31 @@ export default function SchemesPage() {
       min_order_value: scheme.min_order_value?.toString() || '',
       max_benefit: scheme.max_benefit?.toString() || '',
       outlet_claim_limit: scheme.outlet_claim_limit?.toString() || '',
+      // Buy X Get Y fields - use initialFormData defaults for now
+      buy_product: initialFormData.buy_product,
+      buy_quantity: initialFormData.buy_quantity,
+      get_product: initialFormData.get_product,
+      get_quantity: initialFormData.get_quantity,
+      get_product_type: initialFormData.get_product_type,
+      // Combo scheme fields
+      combo_name: initialFormData.combo_name,
+      combo_products: initialFormData.combo_products,
+      combo_quantities: initialFormData.combo_quantities,
+      combo_price: initialFormData.combo_price,
+      combo_discount_type: initialFormData.combo_discount_type,
+      combo_discount_value: initialFormData.combo_discount_value,
+      max_combos_per_order: initialFormData.max_combos_per_order,
+      // Bill-wise scheme fields
+      bill_value_from: initialFormData.bill_value_from,
+      bill_value_to: initialFormData.bill_value_to,
+      bill_discount_type: initialFormData.bill_discount_type,
+      bill_discount_value: initialFormData.bill_discount_value,
+      bill_max_discount: initialFormData.bill_max_discount,
+      // Display scheme fields
+      display_type: initialFormData.display_type,
+      display_quantity: initialFormData.display_quantity,
+      display_free_product: initialFormData.display_free_product,
+      display_free_quantity: initialFormData.display_free_quantity,
     });
     setShowModal(true);
   };
@@ -772,8 +847,10 @@ export default function SchemesPage() {
               </div>
 
               {/* Conditional Fields based on Scheme Type */}
+              
+              {/* Slab Type Fields */}
               {formData.type === 'slab' && (
-                <div className="space-y-3">
+                <div className="space-y-3 p-4 bg-muted/50 rounded-lg border border-border">
                   <div className="flex items-center justify-between">
                     <label className="block text-sm font-medium">Slab Configuration</label>
                     <button type="button" className="btn-secondary text-sm py-1" onClick={addSlabRow}>
@@ -821,78 +898,446 @@ export default function SchemesPage() {
                 </div>
               )}
 
-              {(formData.type === 'buy_x_get_y' || formData.benefit_type === 'free_qty') && (
-                <div className="grid grid-cols-2 gap-4">
+              {/* Buy X Get Y Type Fields */}
+              {formData.type === 'buy_x_get_y' && (
+                <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <Gift size={16} className="text-success" />
+                    Buy X Get Y Configuration
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Buy Product *</label>
+                      <select
+                        className="input-field w-full"
+                        value={formData.buy_product}
+                        onChange={(e) => setFormData({ ...formData, buy_product: e.target.value })}
+                      >
+                        <option value="">Select Product</option>
+                        {products.map(product => (
+                          <option key={product.id} value={product.id}>
+                            {product.name} ({product.sku})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Buy Quantity (X) *</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.buy_quantity}
+                        onChange={(e) => setFormData({ ...formData, buy_quantity: e.target.value })}
+                        placeholder="e.g., 5"
+                        min="1"
+                      />
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Min Quantity (Buy)</label>
+                    <label className="block text-sm font-medium mb-1">Buy Minimum Order Value (₹)</label>
                     <input
                       type="number"
                       className="input-field w-full"
-                      value={formData.min_quantity}
-                      onChange={(e) => setFormData({ ...formData, min_quantity: e.target.value })}
+                      value={formData.min_order_value}
+                      onChange={(e) => setFormData({ ...formData, min_order_value: e.target.value })}
                       placeholder="0"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Free Quantity (Get)</label>
-                    <input
-                      type="number"
-                      className="input-field w-full"
-                      value={formData.free_quantity}
-                      onChange={(e) => setFormData({ ...formData, free_quantity: e.target.value })}
-                      placeholder="0"
-                    />
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Get Product Type *</label>
+                      <select
+                        className="input-field w-full"
+                        value={formData.get_product_type}
+                        onChange={(e) => setFormData({ ...formData, get_product_type: e.target.value as 'same' | 'different' })}
+                      >
+                        <option value="same">Same Product</option>
+                        <option value="different">Different Product</option>
+                      </select>
+                    </div>
+                    {formData.get_product_type === 'different' && (
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Get Product (Y) *</label>
+                        <select
+                          className="input-field w-full"
+                          value={formData.get_product}
+                          onChange={(e) => setFormData({ ...formData, get_product: e.target.value })}
+                        >
+                          <option value="">Select Product</option>
+                          {products.map(product => (
+                            <option key={product.id} value={product.id}>
+                              {product.name} ({product.sku})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Get Quantity (Y) *</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.get_quantity}
+                        onChange={(e) => setFormData({ ...formData, get_quantity: e.target.value })}
+                        placeholder="e.g., 1"
+                        min="1"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
 
-              {formData.benefit_type === 'discount' && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">Discount %</label>
-                  <input
-                    type="number"
-                    className="input-field w-full"
-                    value={formData.discount_percent}
-                    onChange={(e) => setFormData({ ...formData, discount_percent: e.target.value })}
-                    placeholder="0"
-                    max="100"
-                  />
+              {/* Combo Scheme Fields */}
+              {formData.type === 'combo' && (
+                <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <Package size={16} className="text-secondary" />
+                    Combo Scheme Configuration
+                  </h4>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Combo Name *</label>
+                    <input
+                      type="text"
+                      className="input-field w-full"
+                      value={formData.combo_name}
+                      onChange={(e) => setFormData({ ...formData, combo_name: e.target.value })}
+                      placeholder="e.g., Summer Special Combo"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Combo Products *</label>
+                    <select
+                      className="input-field w-full"
+                      multiple
+                      value={formData.combo_products}
+                      onChange={(e) => {
+                        const selected = Array.from(e.target.selectedOptions, option => option.value);
+                        const newQuantities = { ...formData.combo_quantities };
+                        selected.forEach(id => {
+                          if (!newQuantities[id]) newQuantities[id] = 1;
+                        });
+                        setFormData({ ...formData, combo_products: selected, combo_quantities: newQuantities });
+                      }}
+                      style={{ minHeight: '80px' }}
+                    >
+                      {products.map(product => (
+                        <option key={product.id} value={product.id}>
+                          {product.name} ({product.sku})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-1">Hold Ctrl/Cmd to select multiple</p>
+                  </div>
+                  {formData.combo_products.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">Quantity per Product</label>
+                      {formData.combo_products.map(productId => {
+                        const product = products.find(p => p.id === productId);
+                        return (
+                          <div key={productId} className="flex items-center gap-3">
+                            <span className="text-sm flex-1">{product?.name || productId}</span>
+                            <input
+                              type="number"
+                              className="input-field w-24"
+                              value={formData.combo_quantities[productId] || 1}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                combo_quantities: {
+                                  ...formData.combo_quantities,
+                                  [productId]: parseInt(e.target.value) || 1
+                                }
+                              })}
+                              min="1"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Combo Price (₹) *</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.combo_price}
+                        onChange={(e) => setFormData({ ...formData, combo_price: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Max Combos per Order</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.max_combos_per_order}
+                        onChange={(e) => setFormData({ ...formData, max_combos_per_order: e.target.value })}
+                        placeholder="Unlimited"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Combo Discount Type</label>
+                      <select
+                        className="input-field w-full"
+                        value={formData.combo_discount_type}
+                        onChange={(e) => setFormData({ ...formData, combo_discount_type: e.target.value as 'flat' | 'percent' })}
+                      >
+                        <option value="percent">Percentage (%)</option>
+                        <option value="flat">Flat (₹)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Discount Value {formData.combo_discount_type === 'percent' ? '(%)' : '(₹)'}
+                      </label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.combo_discount_value}
+                        onChange={(e) => setFormData({ ...formData, combo_discount_value: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* Value Constraints */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Min Order Value (₹)</label>
-                  <input
-                    type="number"
-                    className="input-field w-full"
-                    value={formData.min_order_value}
-                    onChange={(e) => setFormData({ ...formData, min_order_value: e.target.value })}
-                    placeholder="0"
-                  />
+              {/* Bill-wise Scheme Fields */}
+              {formData.type === 'bill_wise' && (
+                <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <DollarSign size={16} className="text-info" />
+                    Bill-wise Scheme Configuration
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Bill Value From (₹) *</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.bill_value_from}
+                        onChange={(e) => setFormData({ ...formData, bill_value_from: e.target.value })}
+                        placeholder="e.g., 1000"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Bill Value To (₹) *</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.bill_value_to}
+                        onChange={(e) => setFormData({ ...formData, bill_value_to: e.target.value })}
+                        placeholder="e.g., 5000"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Discount Type *</label>
+                      <select
+                        className="input-field w-full"
+                        value={formData.bill_discount_type}
+                        onChange={(e) => setFormData({ ...formData, bill_discount_type: e.target.value as 'flat' | 'percent' })}
+                      >
+                        <option value="percent">Percentage (%)</option>
+                        <option value="flat">Flat (₹)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Discount Value {formData.bill_discount_type === 'percent' ? '(%)' : '(₹)'} *
+                      </label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.bill_discount_value}
+                        onChange={(e) => setFormData({ ...formData, bill_discount_value: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Max Discount (₹)</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.bill_max_discount}
+                        onChange={(e) => setFormData({ ...formData, bill_max_discount: e.target.value })}
+                        placeholder="Unlimited"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Max Benefit (₹)</label>
-                  <input
-                    type="number"
-                    className="input-field w-full"
-                    value={formData.max_benefit}
-                    onChange={(e) => setFormData({ ...formData, max_benefit: e.target.value })}
-                    placeholder="0"
-                  />
+              )}
+
+              {/* Display Scheme Fields */}
+              {formData.type === 'display' && (
+                <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <Eye size={16} className="text-accent-foreground" />
+                    Display Scheme Configuration
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Display Type *</label>
+                      <select
+                        className="input-field w-full"
+                        value={formData.display_type}
+                        onChange={(e) => setFormData({ ...formData, display_type: e.target.value as 'rack' | 'banner' | 'standee' })}
+                      >
+                        <option value="rack">Rack</option>
+                        <option value="banner">Banner</option>
+                        <option value="standee">Standee</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Required Display Quantity *</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.display_quantity}
+                        onChange={(e) => setFormData({ ...formData, display_quantity: e.target.value })}
+                        placeholder="e.g., 1"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Free Product / Gift</label>
+                      <select
+                        className="input-field w-full"
+                        value={formData.display_free_product}
+                        onChange={(e) => setFormData({ ...formData, display_free_product: e.target.value })}
+                      >
+                        <option value="">Select Product (Optional)</option>
+                        {products.map(product => (
+                          <option key={product.id} value={product.id}>
+                            {product.name} ({product.sku})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Free Quantity</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.display_free_quantity}
+                        onChange={(e) => setFormData({ ...formData, display_free_quantity: e.target.value })}
+                        placeholder="0"
+                        min="0"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Outlet Claim Limit</label>
-                  <input
-                    type="number"
-                    className="input-field w-full"
-                    value={formData.outlet_claim_limit}
-                    onChange={(e) => setFormData({ ...formData, outlet_claim_limit: e.target.value })}
-                    placeholder="Unlimited"
-                  />
+              )}
+
+              {/* Value-wise Scheme Fields */}
+              {formData.type === 'value_wise' && (
+                <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <IndianRupee size={16} className="text-warning" />
+                    Value-wise Scheme Configuration
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Min Order Value (₹) *</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.min_order_value}
+                        onChange={(e) => setFormData({ ...formData, min_order_value: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Max Benefit (₹)</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.max_benefit}
+                        onChange={(e) => setFormData({ ...formData, max_benefit: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  {formData.benefit_type === 'discount' && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Discount %</label>
+                      <input
+                        type="number"
+                        className="input-field w-full"
+                        value={formData.discount_percent}
+                        onChange={(e) => setFormData({ ...formData, discount_percent: e.target.value })}
+                        placeholder="0"
+                        max="100"
+                      />
+                    </div>
+                  )}
+                  {formData.benefit_type === 'free_qty' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Min Quantity (Buy)</label>
+                        <input
+                          type="number"
+                          className="input-field w-full"
+                          value={formData.min_quantity}
+                          onChange={(e) => setFormData({ ...formData, min_quantity: e.target.value })}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Free Quantity (Get)</label>
+                        <input
+                          type="number"
+                          className="input-field w-full"
+                          value={formData.free_quantity}
+                          onChange={(e) => setFormData({ ...formData, free_quantity: e.target.value })}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* General Constraints (for types that need them) */}
+              {!['buy_x_get_y', 'combo', 'bill_wise', 'value_wise'].includes(formData.type) && (
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Min Order Value (₹)</label>
+                    <input
+                      type="number"
+                      className="input-field w-full"
+                      value={formData.min_order_value}
+                      onChange={(e) => setFormData({ ...formData, min_order_value: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Max Benefit (₹)</label>
+                    <input
+                      type="number"
+                      className="input-field w-full"
+                      value={formData.max_benefit}
+                      onChange={(e) => setFormData({ ...formData, max_benefit: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Outlet Claim Limit</label>
+                    <input
+                      type="number"
+                      className="input-field w-full"
+                      value={formData.outlet_claim_limit}
+                      onChange={(e) => setFormData({ ...formData, outlet_claim_limit: e.target.value })}
+                      placeholder="Unlimited"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="p-6 border-t border-border flex justify-end gap-3">
               <button className="btn-secondary" onClick={closeModal}>
