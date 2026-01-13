@@ -16,7 +16,6 @@ import {
   Upload,
   Package,
   Clock,
-  HelpCircle,
   Loader2,
   X,
 } from 'lucide-react';
@@ -55,7 +54,6 @@ export default function PresentationsPage() {
     type: 'ppt',
     description: '',
     duration: '',
-    has_quiz: false,
   });
 
   const handleCreate = async () => {
@@ -69,10 +67,9 @@ export default function PresentationsPage() {
       type: formData.type,
       description: formData.description || undefined,
       duration: parseInt(formData.duration) || 0,
-      has_quiz: formData.has_quiz,
     });
     setShowCreateModal(false);
-    setFormData({ title: '', product_id: '', type: 'ppt', description: '', duration: '', has_quiz: false });
+    setFormData({ title: '', product_id: '', type: 'ppt', description: '', duration: '' });
   };
 
   const handleDelete = async (id: string) => {
@@ -129,20 +126,6 @@ export default function PresentationsPage() {
       ),
     },
     {
-      key: 'has_quiz',
-      header: 'Quiz',
-      render: (item: Presentation) => (
-        item.has_quiz ? (
-          <div className="flex items-center gap-2">
-            <HelpCircle size={14} className="text-success" />
-            <span className="text-success">{(item.quiz_questions as any[])?.length || 0} Qs</span>
-          </div>
-        ) : (
-          <span className="text-muted-foreground">No Quiz</span>
-        )
-      ),
-    },
-    {
       key: 'stats',
       header: 'Stats',
       render: (item: Presentation) => (
@@ -182,7 +165,6 @@ export default function PresentationsPage() {
   const stats = {
     total: presentations.length,
     active: presentations.filter(p => p.status === 'active').length,
-    withQuiz: presentations.filter(p => p.has_quiz).length,
     totalViews: presentations.reduce((sum, p) => sum + p.view_count, 0),
   };
 
@@ -231,17 +213,6 @@ export default function PresentationsPage() {
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-secondary/10">
-              <HelpCircle size={24} className="text-secondary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.withQuiz}</p>
-              <p className="text-sm text-muted-foreground">With Quiz</p>
-            </div>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-warning/10">
               <Eye size={24} className="text-warning" />
@@ -343,18 +314,6 @@ export default function PresentationsPage() {
                 <p className="text-xs text-muted-foreground">PPT, PDF, or Video (Max 100MB)</p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="hasQuiz"
-                  checked={formData.has_quiz}
-                  onChange={(e) => setFormData({ ...formData, has_quiz: e.target.checked })}
-                  className="w-4 h-4 rounded border-border"
-                />
-                <label htmlFor="hasQuiz" className="text-sm font-medium text-foreground">
-                  Add Quiz after presentation
-                </label>
-              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 mt-6">
