@@ -28,6 +28,7 @@ import {
   AdvancedScheme,
   SchemeClaim,
 } from '@/hooks/useAdvancedSchemesData';
+import { useProducts } from '@/hooks/useProductsData';
 
 const schemeTypeColors: Record<string, string> = {
   slab: 'bg-primary/10 text-primary',
