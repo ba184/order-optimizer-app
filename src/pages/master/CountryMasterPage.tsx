@@ -1,67 +1,18 @@
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { CrudModal, FieldConfig } from '@/components/ui/CrudModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
-import { useCountries, useCreateCountry, useUpdateCountry, useDeleteCountry, Country } from '@/hooks/useGeoMasterData';
-import { Plus, Globe, Edit, Trash2, Eye, Loader2 } from 'lucide-react';
-
-const fields: FieldConfig[] = [
-  { key: 'name', label: 'Country Name', type: 'text', required: true, placeholder: 'Enter country name' },
-  { key: 'code', label: 'Country Code', type: 'text', required: true, placeholder: 'e.g., IN, US' },
-  { key: 'currency', label: 'Currency', type: 'text', required: true, placeholder: 'e.g., INR, USD' },
-  { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] },
-];
+import { useCountries, useDeleteCountry, Country } from '@/hooks/useGeoMasterData';
+import { Plus, Globe, Edit, Trash2, Eye, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { useState } from 'react';
 
 export default function CountryMasterPage() {
+  const navigate = useNavigate();
   const { data: countries = [], isLoading } = useCountries();
-  const createCountry = useCreateCountry();
-  const updateCountry = useUpdateCountry();
   const deleteCountry = useDeleteCountry();
 
-  const [modalOpen, setModalOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState<Country | null>(null);
-  const [selectedItem, setSelectedItem] = useState<Country | null>(null);
-  const [mode, setMode] = useState<'create' | 'edit' | 'view'>('create');
-
-  const handleCreate = () => {
-    setSelectedItem(null);
-    setMode('create');
-    setModalOpen(true);
-  };
-
-  const handleView = (item: Country) => {
-    setSelectedItem(item);
-    setMode('view');
-    setModalOpen(true);
-  };
-
-  const handleEdit = (item: Country) => {
-    setSelectedItem(item);
-    setMode('edit');
-    setModalOpen(true);
-  };
-
-  const handleSubmit = async (formData: Record<string, any>) => {
-    if (mode === 'create') {
-      await createCountry.mutateAsync({
-        name: formData.name,
-        code: formData.code,
-        currency: formData.currency,
-        status: formData.status || 'active',
-      });
-    } else if (selectedItem) {
-      await updateCountry.mutateAsync({
-        id: selectedItem.id,
-        name: formData.name,
-        code: formData.code,
-        currency: formData.currency,
-        status: formData.status,
-      });
-    }
-    setModalOpen(false);
-  };
 
   const handleDelete = async () => {
     if (deleteModal) {
@@ -69,6 +20,9 @@ export default function CountryMasterPage() {
       setDeleteModal(null);
     }
   };
+
+  const activeCount = countries.filter(c => c.status === 'active').length;
+  const inactiveCount = countries.filter(c => c.status === 'inactive').length;
 
   const columns = [
     {
@@ -98,10 +52,10 @@ export default function CountryMasterPage() {
       header: 'Actions',
       render: (item: Country) => (
         <div className="flex items-center gap-1">
-          <button onClick={() => handleView(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+          <button onClick={() => navigate(`/master/countries/${item.id}`)} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Eye size={16} className="text-muted-foreground" />
           </button>
-          <button onClick={() => handleEdit(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+          <button onClick={() => navigate(`/master/countries/${item.id}/edit`)} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Edit size={16} className="text-muted-foreground" />
           </button>
           <button onClick={() => setDeleteModal(item)} className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
@@ -127,39 +81,55 @@ export default function CountryMasterPage() {
           <h1 className="module-title">Country Master</h1>
           <p className="text-muted-foreground">Manage countries in the system</p>
         </div>
-        <button onClick={handleCreate} className="btn-primary flex items-center gap-2">
+        <button onClick={() => navigate('/master/countries/new')} className="btn-primary flex items-center gap-2">
           <Plus size={18} />
           Add Country
         </button>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-primary/10">
-            <Globe size={24} className="text-primary" />
+      <div className="grid grid-cols-3 gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-primary/10">
+              <Globe size={24} className="text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{countries.length}</p>
+              <p className="text-sm text-muted-foreground">Total Countries</p>
+            </div>
           </div>
-          <div>
-            <p className="text-2xl font-bold text-foreground">{countries.length}</p>
-            <p className="text-sm text-muted-foreground">Total Countries</p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-success/10">
+              <CheckCircle size={24} className="text-success" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{activeCount}</p>
+              <p className="text-sm text-muted-foreground">Active</p>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-destructive/10">
+              <XCircle size={24} className="text-destructive" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{inactiveCount}</p>
+              <p className="text-sm text-muted-foreground">Inactive</p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
       <DataTable 
         data={countries} 
         columns={columns} 
         searchPlaceholder="Search countries..."
         emptyMessage="No countries found. Add your first country to get started."
-      />
-
-      <CrudModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={mode === 'create' ? 'Add Country' : mode === 'edit' ? 'Edit Country' : 'Country Details'}
-        fields={fields}
-        initialData={selectedItem || undefined}
-        onSubmit={handleSubmit}
-        mode={mode}
       />
 
       <DeleteConfirmModal
