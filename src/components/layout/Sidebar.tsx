@@ -149,6 +149,18 @@ const navigationItems: NavItem[] = [
     roles: ['asm', 'rsm', 'admin'],
   },
   {
+    label: 'Employees',
+    icon: Users,
+    path: '/master/employees',
+    roles: ['admin'],
+  },
+  {
+    label: 'Roles & Permissions',
+    icon: Shield,
+    path: '/master/roles',
+    roles: ['admin'],
+  },
+  {
     label: 'Master Data',
     icon: Database,
     roles: ['admin'],
@@ -168,8 +180,6 @@ const navigationItems: NavItem[] = [
           { label: 'Territories', path: '/master/territories', icon: MapPin },
         ],
       },
-      { label: 'Employees', path: '/master/employees', icon: Users },
-      { label: 'Roles & Permissions', path: '/master/roles', icon: Shield },
       { label: 'Targets', path: '/master/targets', icon: Target },
       { label: 'Presentations', path: '/master/presentations', icon: GraduationCap },
     ],
