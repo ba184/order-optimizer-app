@@ -40,13 +40,10 @@ export function useCreatePresentation() {
   return useMutation({
     mutationFn: async (presentation: {
       title: string;
-      product_id?: string;
       type: string;
       description?: string;
-      duration: number;
       file_url?: string;
-      has_quiz?: boolean;
-      quiz_questions?: any[];
+      duration?: number;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase
