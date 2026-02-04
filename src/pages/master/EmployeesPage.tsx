@@ -3,21 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
-import { useUsersData, useRoles, UserWithRole } from '@/hooks/useUsersData';
+import { useUsersData, UserWithRole } from '@/hooks/useUsersData';
 import {
   Plus,
   Users,
-  User,
-  Phone,
-  Mail,
-  MapPin,
+  Eye,
   Edit,
   Trash2,
-  Eye,
+  Key,
   UserCheck,
   UserX,
   Loader2,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 const roleColors: Record<string, string> = {
   sales_executive: 'bg-info/10 text-info',
@@ -28,8 +28,12 @@ const roleColors: Record<string, string> = {
 
 export default function EmployeesPage() {
   const navigate = useNavigate();
-  const { users, isLoading, updateUser, deleteUser } = useUsersData();
+  const { users, isLoading, deleteUser, resetPassword } = useUsersData();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<UserWithRole | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const filteredUsers = users.filter(u => {
     if (statusFilter === 'all') return true;
@@ -42,53 +46,66 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleToggleStatus = async (user: UserWithRole) => {
-    const newStatus = user.status === 'active' ? 'inactive' : 'active';
+  const handleResetPasswordClick = (user: UserWithRole) => {
+    setSelectedEmployee(user);
+    setShowPasswordModal(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    if (!selectedEmployee) return;
+
+    setIsResettingPassword(true);
     try {
-      await updateUser.mutateAsync({
-        id: user.id,
-        status: newStatus,
+      await resetPassword.mutateAsync({
+        userId: selectedEmployee.id,
+        newPassword,
       });
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setSelectedEmployee(null);
     } catch (error) {
       // Error handled by mutation
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
   const columns = [
     {
       key: 'employee_id',
-      header: 'Employee ID',
+      header: 'E Code',
       render: (item: UserWithRole) => (
-        <span className="font-mono text-sm text-muted-foreground">
-          {item.id.slice(0, 8).toUpperCase()}
+        <span className="font-mono text-sm text-foreground font-medium">
+          {item.employee_id || item.id.slice(0, 8).toUpperCase()}
         </span>
       ),
       sortable: true,
     },
     {
       key: 'name',
-      header: 'Employee',
+      header: 'Employee Name',
       render: (item: UserWithRole) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <User size={20} className="text-primary" />
-          </div>
-          <div>
-            <p className="font-medium text-foreground">{item.name}</p>
-            <p className="text-xs text-muted-foreground">{item.email}</p>
-          </div>
-        </div>
+        <span className="font-medium text-foreground">{item.name}</span>
       ),
       sortable: true,
+    },
+    {
+      key: 'email',
+      header: 'Email',
+      render: (item: UserWithRole) => (
+        <span className="text-sm text-muted-foreground">{item.email}</span>
+      ),
     },
     {
       key: 'mobile',
       header: 'Mobile',
       render: (item: UserWithRole) => (
-        <div className="flex items-center gap-2 text-sm">
-          <Phone size={14} className="text-muted-foreground" />
-          <span>{item.phone || '-'}</span>
-        </div>
+        <span className="text-sm">{item.phone || '-'}</span>
       ),
     },
     {
@@ -102,25 +119,9 @@ export default function EmployeesPage() {
     },
     {
       key: 'reportingTo',
-      header: 'Reports To',
+      header: 'Report To',
       render: (item: UserWithRole) => (
-        item.reporting_to_name ? (
-          <span className="text-sm">{item.reporting_to_name}</span>
-        ) : (
-          <span className="text-muted-foreground">-</span>
-        )
-      ),
-    },
-    {
-      key: 'territory',
-      header: 'Territory',
-      render: (item: UserWithRole) => (
-        <div className="flex items-center gap-2">
-          <MapPin size={14} className="text-muted-foreground" />
-          <span className="text-sm">
-            {item.territory || '-'}
-          </span>
-        </div>
+        <span className="text-sm">{item.reporting_to_name || '-'}</span>
       ),
     },
     {
@@ -141,17 +142,6 @@ export default function EmployeesPage() {
             <Eye size={16} className="text-muted-foreground" />
           </button>
           <button 
-            onClick={() => handleToggleStatus(item)}
-            className={`p-2 rounded-lg transition-colors ${item.status === 'active' ? 'hover:bg-destructive/10' : 'hover:bg-success/10'}`}
-            title={item.status === 'active' ? 'Deactivate' : 'Activate'}
-          >
-            {item.status === 'active' ? (
-              <UserX size={16} className="text-destructive" />
-            ) : (
-              <UserCheck size={16} className="text-success" />
-            )}
-          </button>
-          <button 
             onClick={() => navigate(`/master/employees/${item.id}/edit`)}
             className="p-2 hover:bg-muted rounded-lg transition-colors" 
             title="Edit"
@@ -164,6 +154,13 @@ export default function EmployeesPage() {
             title="Delete"
           >
             <Trash2 size={16} className="text-destructive" />
+          </button>
+          <button 
+            onClick={() => handleResetPasswordClick(item)}
+            className="p-2 hover:bg-warning/10 rounded-lg transition-colors" 
+            title="Reset Password"
+          >
+            <Key size={16} className="text-warning" />
           </button>
         </div>
       ),
@@ -236,6 +233,53 @@ export default function EmployeesPage() {
         searchPlaceholder="Search employees..." 
         emptyMessage="No employees found. Click 'Add Employee' to create one."
       />
+
+      {/* Reset Password Modal */}
+      {showPasswordModal && selectedEmployee && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+          >
+            <h2 className="text-lg font-semibold text-foreground mb-4">Reset Password</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Set a new password for {selectedEmployee.name}
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>New Password</Label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setNewPassword('');
+                    setSelectedEmployee(null);
+                  }}
+                  className="btn-outline"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResetPassword}
+                  disabled={isResettingPassword}
+                  className="btn-primary"
+                >
+                  {isResettingPassword ? 'Resetting...' : 'Reset Password'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

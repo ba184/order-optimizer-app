@@ -2241,10 +2241,15 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          blood_group: string | null
           city: string | null
           created_at: string | null
           designation_code: string | null
+          dob: string | null
+          doj: string | null
           email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           employee_id: string | null
           id: string
           last_login_at: string | null
@@ -2259,10 +2264,15 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          blood_group?: string | null
           city?: string | null
           created_at?: string | null
           designation_code?: string | null
+          dob?: string | null
+          doj?: string | null
           email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           employee_id?: string | null
           id: string
           last_login_at?: string | null
@@ -2277,10 +2287,15 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          blood_group?: string | null
           city?: string | null
           created_at?: string | null
           designation_code?: string | null
+          dob?: string | null
+          doj?: string | null
           email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           employee_id?: string | null
           id?: string
           last_login_at?: string | null
