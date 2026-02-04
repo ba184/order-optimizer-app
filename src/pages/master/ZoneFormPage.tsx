@@ -1,16 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Compass, Save, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Compass, Map, Building, MapPin, X } from 'lucide-react';
 import { useZones, useStates, useCountries, useCities, useCreateZone, useUpdateZone } from '@/hooks/useGeoMasterData';
 import { useTerritories } from '@/hooks/useTerritoriesData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+const zoneTypeOptions = [
+  { value: 'state', label: 'State Zone', description: 'Zone based on states', icon: Map },
+  { value: 'city', label: 'City Zone', description: 'Zone based on cities', icon: Building },
+  { value: 'territory', label: 'Territory Zone', description: 'Zone based on territories', icon: MapPin },
+];
+
 export default function ZoneFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = Boolean(id);
+  const isEdit = !!id;
 
   const { data: zones = [], isLoading: isLoadingZones } = useZones();
   const { data: countries = [] } = useCountries();
@@ -27,6 +33,9 @@ export default function ZoneFormPage() {
     status: 'active' as 'active' | 'inactive',
   });
 
+  const [zoneType, setZoneType] = useState<'state' | 'city' | 'territory'>('state');
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [selectedState, setSelectedState] = useState('');
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [selectedTerritories, setSelectedTerritories] = useState<string[]>([]);
@@ -35,17 +44,17 @@ export default function ZoneFormPage() {
   const existingZone = zones.find(z => z.id === id);
 
   useEffect(() => {
-    if (isEdit && existingZone) {
+    if (existingZone) {
       setFormData({
         name: existingZone.name,
         code: existingZone.code,
         country_id: existingZone.country_id,
         status: existingZone.status,
       });
-      // Fetch linked states, cities, territories
+      setSelectedCountry(existingZone.country_id);
       loadLinkedData();
     }
-  }, [isEdit, existingZone]);
+  }, [existingZone]);
 
   const loadLinkedData = async () => {
     if (!id) return;
@@ -55,32 +64,63 @@ export default function ZoneFormPage() {
       .from('zone_states' as any)
       .select('state_id')
       .eq('zone_id', id);
-    if (zoneStates) setSelectedStates(zoneStates.map((zs: any) => zs.state_id));
+    if (zoneStates && zoneStates.length > 0) {
+      setSelectedStates(zoneStates.map((zs: any) => zs.state_id));
+      setZoneType('state');
+    }
 
     // Fetch linked cities
     const { data: zoneCities } = await supabase
       .from('zone_cities' as any)
       .select('city_id')
       .eq('zone_id', id);
-    if (zoneCities) setSelectedCities(zoneCities.map((zc: any) => zc.city_id));
+    if (zoneCities && zoneCities.length > 0) {
+      setSelectedCities(zoneCities.map((zc: any) => zc.city_id));
+      setZoneType('city');
+    }
 
     // Fetch linked territories
     const { data: zoneTerritories } = await supabase
       .from('zone_territories' as any)
       .select('territory_id')
       .eq('zone_id', id);
-    if (zoneTerritories) setSelectedTerritories(zoneTerritories.map((zt: any) => zt.territory_id));
+    if (zoneTerritories && zoneTerritories.length > 0) {
+      setSelectedTerritories(zoneTerritories.map((zt: any) => zt.territory_id));
+      setZoneType('territory');
+    }
   };
 
-  const filteredStates = states.filter(s => s.country_id === formData.country_id);
-  const filteredCities = cities.filter(c => selectedStates.includes(c.state_id));
+  const filteredStates = states.filter(s => s.country_id === selectedCountry);
+  const filteredCities = cities.filter(c => c.state_id === selectedState);
   const filteredTerritories = territories.filter(t => t.status === 'active');
+
+  const handleZoneTypeChange = (type: 'state' | 'city' | 'territory') => {
+    setZoneType(type);
+    setSelectedStates([]);
+    setSelectedCities([]);
+    setSelectedTerritories([]);
+    setSelectedState('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.code || !formData.country_id) {
+    if (!formData.name || !formData.code || !selectedCountry) {
       toast.error('Please fill required fields');
+      return;
+    }
+
+    // Validate selection based on zone type
+    if (zoneType === 'state' && selectedStates.length === 0) {
+      toast.error('Please select at least one state');
+      return;
+    }
+    if (zoneType === 'city' && selectedCities.length === 0) {
+      toast.error('Please select at least one city');
+      return;
+    }
+    if (zoneType === 'territory' && selectedTerritories.length === 0) {
+      toast.error('Please select at least one territory');
       return;
     }
 
@@ -88,32 +128,37 @@ export default function ZoneFormPage() {
     try {
       let zoneId = id;
 
+      const zoneData = {
+        ...formData,
+        country_id: selectedCountry,
+      };
+
       if (isEdit && id) {
-        await updateZone.mutateAsync({ id, ...formData });
+        await updateZone.mutateAsync({ id, ...zoneData });
       } else {
-        const result = await createZone.mutateAsync(formData);
+        const result = await createZone.mutateAsync(zoneData);
         zoneId = result.id;
       }
 
-      // Update zone_states
+      // Clear all existing links
       await supabase.from('zone_states' as any).delete().eq('zone_id', zoneId);
-      if (selectedStates.length > 0) {
+      await supabase.from('zone_cities' as any).delete().eq('zone_id', zoneId);
+      await supabase.from('zone_territories' as any).delete().eq('zone_id', zoneId);
+
+      // Insert new links based on zone type
+      if (zoneType === 'state' && selectedStates.length > 0) {
         await supabase.from('zone_states' as any).insert(
           selectedStates.map(stateId => ({ zone_id: zoneId, state_id: stateId }))
         );
       }
 
-      // Update zone_cities
-      await supabase.from('zone_cities' as any).delete().eq('zone_id', zoneId);
-      if (selectedCities.length > 0) {
+      if (zoneType === 'city' && selectedCities.length > 0) {
         await supabase.from('zone_cities' as any).insert(
           selectedCities.map(cityId => ({ zone_id: zoneId, city_id: cityId }))
         );
       }
 
-      // Update zone_territories
-      await supabase.from('zone_territories' as any).delete().eq('zone_id', zoneId);
-      if (selectedTerritories.length > 0) {
+      if (zoneType === 'territory' && selectedTerritories.length > 0) {
         await supabase.from('zone_territories' as any).insert(
           selectedTerritories.map(territoryId => ({ zone_id: zoneId, territory_id: territoryId }))
         );
@@ -128,19 +173,19 @@ export default function ZoneFormPage() {
   };
 
   const toggleState = (stateId: string) => {
-    setSelectedStates(prev => 
+    setSelectedStates(prev =>
       prev.includes(stateId) ? prev.filter(id => id !== stateId) : [...prev, stateId]
     );
   };
 
   const toggleCity = (cityId: string) => {
-    setSelectedCities(prev => 
+    setSelectedCities(prev =>
       prev.includes(cityId) ? prev.filter(id => id !== cityId) : [...prev, cityId]
     );
   };
 
   const toggleTerritory = (territoryId: string) => {
-    setSelectedTerritories(prev => 
+    setSelectedTerritories(prev =>
       prev.includes(territoryId) ? prev.filter(id => id !== territoryId) : [...prev, territoryId]
     );
   };
@@ -160,165 +205,229 @@ export default function ZoneFormPage() {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="module-title">{isEdit ? 'Edit Zone' : 'Add Zone'}</h1>
+          <div className="flex items-center gap-3">
+            <Compass size={28} className="text-warning" />
+            <h1 className="module-title">{isEdit ? 'Edit' : 'New'} Zone</h1>
+          </div>
           <p className="text-muted-foreground">
-            {isEdit ? 'Update zone details' : 'Create a new zone entry'}
+            {isEdit ? 'Update zone details' : 'Add a new zone to the system'}
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 rounded-xl bg-warning/10">
-                <Compass size={24} className="text-warning" />
-              </div>
-              <h2 className="text-lg font-semibold text-foreground">Zone Details</h2>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Country *</label>
-                <select
-                  value={formData.country_id}
-                  onChange={(e) => {
-                    setFormData({ ...formData, country_id: e.target.value });
-                    setSelectedStates([]);
-                    setSelectedCities([]);
-                  }}
-                  className="input-field"
-                  required
+      <motion.form
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        onSubmit={handleSubmit}
+        className="card p-6 space-y-6"
+      >
+        {/* Zone Type Selection */}
+        <div className="space-y-3">
+          <label className="text-sm font-medium text-foreground">Zone Type *</label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {zoneTypeOptions.map((option) => {
+              const Icon = option.icon;
+              return (
+                <label
+                  key={option.value}
+                  className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    zoneType === option.value
+                      ? 'border-warning bg-warning/5'
+                      : 'border-border hover:border-warning/50'
+                  }`}
                 >
-                  <option value="">Select Country</option>
-                  {countries.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
+                  <input
+                    type="radio"
+                    name="zone_type"
+                    value={option.value}
+                    checked={zoneType === option.value}
+                    onChange={() => handleZoneTypeChange(option.value as any)}
+                    className="sr-only"
+                  />
+                  <Icon
+                    size={24}
+                    className={zoneType === option.value ? 'text-warning' : 'text-muted-foreground'}
+                  />
+                  <div>
+                    <p className="font-medium">{option.label}</p>
+                    <p className="text-xs text-muted-foreground">{option.description}</p>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Zone Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., North Zone"
-                  className="input-field"
-                  required
-                />
-              </div>
+        {/* Basic Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Zone Name *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="input-field w-full"
+              placeholder="e.g., North Zone"
+              required
+            />
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Zone Code *</label>
-                <input
-                  type="text"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  placeholder="e.g., NZ"
-                  className="input-field"
-                  maxLength={10}
-                  required
-                />
-              </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Zone Code *</label>
+            <input
+              type="text"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+              className="input-field w-full"
+              placeholder="e.g., NZ"
+              maxLength={10}
+              required
+            />
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                className="input-field"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-              </div>
-            </div>
-          </motion.div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Country *</label>
+            <select
+              value={selectedCountry}
+              onChange={(e) => {
+                setSelectedCountry(e.target.value);
+                setFormData({ ...formData, country_id: e.target.value });
+                setSelectedStates([]);
+                setSelectedCities([]);
+                setSelectedState('');
+              }}
+              className="input-field w-full"
+              required
+            >
+              <option value="">Select Country</option>
+              {countries.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
-            <h2 className="text-lg font-semibold text-foreground mb-4">States (Multi-select)</h2>
-            {formData.country_id ? (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {filteredStates.length > 0 ? filteredStates.map(state => (
-                  <label key={state.id} className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedStates.includes(state.id)}
-                      onChange={() => toggleState(state.id)}
-                      className="rounded border-border"
-                    />
-                    <span className="text-foreground">{state.name}</span>
-                    <span className="text-xs text-muted-foreground">({state.code})</span>
-                  </label>
-                )) : (
-                  <p className="text-muted-foreground text-sm">No states available for selected country</p>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Status</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+              className="input-field w-full"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Dynamic Fields Based on Zone Type */}
+        {zoneType === 'state' && (
+          <div className="space-y-4">
+            <label className="text-sm font-medium text-foreground">Select States *</label>
+            {selectedCountry ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 border border-border rounded-lg">
+                  {filteredStates.length > 0 ? filteredStates.map(state => (
+                    <label key={state.id} className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedStates.includes(state.id)}
+                        onChange={() => toggleState(state.id)}
+                        className="rounded border-border"
+                      />
+                      <span className="text-sm text-foreground">{state.name}</span>
+                    </label>
+                  )) : (
+                    <p className="text-muted-foreground text-sm col-span-full">No states available</p>
+                  )}
+                </div>
+                {selectedStates.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedStates.map(stateId => {
+                      const state = states.find(s => s.id === stateId);
+                      return state && (
+                        <span key={stateId} className="inline-flex items-center gap-1 px-3 py-1 bg-secondary/20 text-secondary rounded-lg text-sm">
+                          {state.name}
+                          <button type="button" onClick={() => toggleState(stateId)} className="hover:text-destructive">
+                            <X size={14} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
                 )}
-              </div>
+              </>
             ) : (
               <p className="text-muted-foreground text-sm">Select a country first</p>
             )}
+          </div>
+        )}
 
-            {selectedStates.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {selectedStates.map(stateId => {
-                  const state = states.find(s => s.id === stateId);
-                  return state && (
-                    <span key={stateId} className="inline-flex items-center gap-1 px-2 py-1 bg-secondary/20 text-secondary rounded-lg text-sm">
-                      {state.name}
-                      <button type="button" onClick={() => toggleState(stateId)} className="hover:text-destructive">
-                        <X size={14} />
-                      </button>
-                    </span>
-                  );
-                })}
+        {zoneType === 'city' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">State *</label>
+                <select
+                  value={selectedState}
+                  onChange={(e) => {
+                    setSelectedState(e.target.value);
+                    setSelectedCities([]);
+                  }}
+                  className="input-field w-full"
+                  disabled={!selectedCountry}
+                >
+                  <option value="">Select State</option>
+                  {filteredStates.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
               </div>
-            )}
-          </motion.div>
+            </div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Cities (Multi-select)</h2>
-            {selectedStates.length > 0 ? (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {filteredCities.length > 0 ? filteredCities.map(city => (
-                  <label key={city.id} className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedCities.includes(city.id)}
-                      onChange={() => toggleCity(city.id)}
-                      className="rounded border-border"
-                    />
-                    <span className="text-foreground">{city.name}</span>
-                    <span className="text-xs text-muted-foreground">({(city.state as any)?.name})</span>
-                  </label>
-                )) : (
-                  <p className="text-muted-foreground text-sm">No cities available for selected states</p>
+            <label className="text-sm font-medium text-foreground">Select Cities *</label>
+            {selectedState ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 border border-border rounded-lg">
+                  {filteredCities.length > 0 ? filteredCities.map(city => (
+                    <label key={city.id} className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedCities.includes(city.id)}
+                        onChange={() => toggleCity(city.id)}
+                        className="rounded border-border"
+                      />
+                      <span className="text-sm text-foreground">{city.name}</span>
+                    </label>
+                  )) : (
+                    <p className="text-muted-foreground text-sm col-span-full">No cities available</p>
+                  )}
+                </div>
+                {selectedCities.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCities.map(cityId => {
+                      const city = cities.find(c => c.id === cityId);
+                      return city && (
+                        <span key={cityId} className="inline-flex items-center gap-1 px-3 py-1 bg-info/20 text-info rounded-lg text-sm">
+                          {city.name}
+                          <button type="button" onClick={() => toggleCity(cityId)} className="hover:text-destructive">
+                            <X size={14} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
                 )}
-              </div>
+              </>
             ) : (
-              <p className="text-muted-foreground text-sm">Select states first</p>
+              <p className="text-muted-foreground text-sm">Select a state first</p>
             )}
+          </div>
+        )}
 
-            {selectedCities.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {selectedCities.map(cityId => {
-                  const city = cities.find(c => c.id === cityId);
-                  return city && (
-                    <span key={cityId} className="inline-flex items-center gap-1 px-2 py-1 bg-info/20 text-info rounded-lg text-sm">
-                      {city.name}
-                      <button type="button" onClick={() => toggleCity(cityId)} className="hover:text-destructive">
-                        <X size={14} />
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Territories (Multi-select)</h2>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+        {zoneType === 'territory' && (
+          <div className="space-y-4">
+            <label className="text-sm font-medium text-foreground">Select Territories *</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 border border-border rounded-lg">
               {filteredTerritories.length > 0 ? filteredTerritories.map(territory => (
                 <label key={territory.id} className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg cursor-pointer">
                   <input
@@ -327,20 +436,18 @@ export default function ZoneFormPage() {
                     onChange={() => toggleTerritory(territory.id)}
                     className="rounded border-border"
                   />
-                  <span className="text-foreground">{territory.name}</span>
-                  <span className="text-xs text-muted-foreground capitalize">({territory.type})</span>
+                  <span className="text-sm text-foreground">{territory.name}</span>
                 </label>
               )) : (
-                <p className="text-muted-foreground text-sm">No territories available</p>
+                <p className="text-muted-foreground text-sm col-span-full">No territories available</p>
               )}
             </div>
-
             {selectedTerritories.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
+              <div className="flex flex-wrap gap-2">
                 {selectedTerritories.map(territoryId => {
                   const territory = territories.find(t => t.id === territoryId);
                   return territory && (
-                    <span key={territoryId} className="inline-flex items-center gap-1 px-2 py-1 bg-success/20 text-success rounded-lg text-sm">
+                    <span key={territoryId} className="inline-flex items-center gap-1 px-3 py-1 bg-success/20 text-success rounded-lg text-sm">
                       {territory.name}
                       <button type="button" onClick={() => toggleTerritory(territoryId)} className="hover:text-destructive">
                         <X size={14} />
@@ -350,11 +457,15 @@ export default function ZoneFormPage() {
                 })}
               </div>
             )}
-          </motion.div>
-        </div>
+          </div>
+        )}
 
-        <div className="flex items-center justify-end gap-3 mt-6">
-          <button type="button" onClick={() => navigate('/master/zones')} className="btn-outline">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+          <button
+            type="button"
+            onClick={() => navigate('/master/zones')}
+            className="btn-secondary"
+          >
             Cancel
           </button>
           <button
@@ -362,11 +473,15 @@ export default function ZoneFormPage() {
             disabled={isSaving}
             className="btn-primary flex items-center gap-2"
           >
-            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            {isEdit ? 'Update Zone' : 'Create Zone'}
+            {isSaving ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Save size={18} />
+            )}
+            {isEdit ? 'Update' : 'Create'} Zone
           </button>
         </div>
-      </form>
+      </motion.form>
     </div>
   );
 }

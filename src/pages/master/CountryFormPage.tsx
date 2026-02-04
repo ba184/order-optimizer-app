@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Globe, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Globe } from 'lucide-react';
 import { useCountries, useCreateCountry, useUpdateCountry } from '@/hooks/useGeoMasterData';
 import { toast } from 'sonner';
+
+const currencyOptions = [
+  { value: 'INR', label: 'INR - Indian Rupee' },
+  { value: 'USD', label: 'USD - US Dollar' },
+  { value: 'EUR', label: 'EUR - Euro' },
+  { value: 'GBP', label: 'GBP - British Pound' },
+  { value: 'AED', label: 'AED - UAE Dirham' },
+];
 
 export default function CountryFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = Boolean(id);
+  const isEdit = !!id;
 
   const { data: countries = [], isLoading: isLoadingCountries } = useCountries();
   const createCountry = useCreateCountry();
@@ -24,7 +32,7 @@ export default function CountryFormPage() {
   const existingCountry = countries.find(c => c.id === id);
 
   useEffect(() => {
-    if (isEdit && existingCountry) {
+    if (existingCountry) {
       setFormData({
         name: existingCountry.name,
         code: existingCountry.code,
@@ -32,7 +40,7 @@ export default function CountryFormPage() {
         status: existingCountry.status,
       });
     }
-  }, [isEdit, existingCountry]);
+  }, [existingCountry]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +62,8 @@ export default function CountryFormPage() {
     }
   };
 
+  const isSubmitting = createCountry.isPending || updateCountry.isPending;
+
   if (isEdit && isLoadingCountries) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -69,93 +79,97 @@ export default function CountryFormPage() {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="module-title">{isEdit ? 'Edit Country' : 'Add Country'}</h1>
+          <div className="flex items-center gap-3">
+            <Globe size={28} className="text-primary" />
+            <h1 className="module-title">{isEdit ? 'Edit' : 'New'} Country</h1>
+          </div>
           <p className="text-muted-foreground">
-            {isEdit ? 'Update country details' : 'Create a new country entry'}
+            {isEdit ? 'Update country details' : 'Add a new country to the system'}
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-2xl">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <Globe size={24} className="text-primary" />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground">Country Details</h2>
+      <motion.form
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        onSubmit={handleSubmit}
+        className="card p-6 space-y-6"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Country Name *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="input-field w-full"
+              placeholder="Enter country name"
+              required
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-foreground mb-2">Country Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter country name"
-                className="input-field"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Country Code *</label>
-              <input
-                type="text"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                placeholder="e.g., IN, US"
-                className="input-field"
-                maxLength={3}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Currency *</label>
-              <input
-                type="text"
-                value={formData.currency}
-                onChange={(e) => setFormData({ ...formData, currency: e.target.value.toUpperCase() })}
-                placeholder="e.g., INR, USD"
-                className="input-field"
-                maxLength={3}
-                required
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-foreground mb-2">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                className="input-field"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Country Code *</label>
+            <input
+              type="text"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+              className="input-field w-full"
+              placeholder="e.g., IN, US"
+              maxLength={3}
+              required
+            />
           </div>
-        </motion.div>
 
-        <div className="flex items-center justify-end gap-3 mt-6">
-          <button type="button" onClick={() => navigate('/master/countries')} className="btn-outline">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Currency *</label>
+            <select
+              value={formData.currency}
+              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              className="input-field w-full"
+              required
+            >
+              {currencyOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Status</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+              className="input-field w-full"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+          <button
+            type="button"
+            onClick={() => navigate('/master/countries')}
+            className="btn-secondary"
+          >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={createCountry.isPending || updateCountry.isPending}
+            disabled={isSubmitting}
             className="btn-primary flex items-center gap-2"
           >
-            {(createCountry.isPending || updateCountry.isPending) ? (
+            {isSubmitting ? (
               <Loader2 size={18} className="animate-spin" />
             ) : (
               <Save size={18} />
             )}
-            {isEdit ? 'Update Country' : 'Create Country'}
+            {isEdit ? 'Update' : 'Create'} Country
           </button>
         </div>
-      </form>
+      </motion.form>
     </div>
   );
 }

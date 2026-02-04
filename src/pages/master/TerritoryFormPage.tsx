@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, MapPin, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, MapPin } from 'lucide-react';
 import { useTerritories, useCreateTerritory, useUpdateTerritory } from '@/hooks/useTerritoriesData';
 import { toast } from 'sonner';
+
+const territoryTypeOptions = [
+  { value: 'region', label: 'Region' },
+  { value: 'district', label: 'District' },
+  { value: 'area', label: 'Area' },
+  { value: 'beat', label: 'Beat' },
+];
 
 export default function TerritoryFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = Boolean(id);
+  const isEdit = !!id;
 
   const { data: territories = [], isLoading: isLoadingTerritories } = useTerritories();
   const createTerritory = useCreateTerritory();
@@ -16,47 +23,46 @@ export default function TerritoryFormPage() {
 
   const [formData, setFormData] = useState({
     name: '',
-    type: 'area' as 'country' | 'state' | 'zone' | 'city' | 'area',
+    type: 'region',
     parent_id: '',
-    manager_id: '',
-    status: 'active',
+    status: 'active' as 'active' | 'inactive',
   });
 
   const existingTerritory = territories.find(t => t.id === id);
 
   useEffect(() => {
-    if (isEdit && existingTerritory) {
+    if (existingTerritory) {
       setFormData({
         name: existingTerritory.name,
-        type: existingTerritory.type,
+        type: existingTerritory.type || 'region',
         parent_id: existingTerritory.parent_id || '',
-        manager_id: existingTerritory.manager_id || '',
-        status: existingTerritory.status,
+        status: existingTerritory.status as 'active' | 'inactive',
       });
     }
-  }, [isEdit, existingTerritory]);
+  }, [existingTerritory]);
+
+  const parentTerritories = territories.filter(t => t.id !== id && t.status === 'active');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.type) {
+    if (!formData.name) {
       toast.error('Please fill required fields');
       return;
     }
 
     try {
-      const submitData = {
+      const data = {
         name: formData.name,
-        type: formData.type,
+        type: formData.type as any,
         parent_id: formData.parent_id || null,
-        manager_id: formData.manager_id || null,
-        status: formData.status as 'active' | 'inactive',
+        status: formData.status,
       };
 
       if (isEdit && id) {
-        await updateTerritory.mutateAsync({ id, ...submitData });
+        await updateTerritory.mutateAsync({ id, ...data });
       } else {
-        await createTerritory.mutateAsync(submitData);
+        await createTerritory.mutateAsync(data);
       }
       navigate('/master/territories');
     } catch (error) {
@@ -64,15 +70,7 @@ export default function TerritoryFormPage() {
     }
   };
 
-  // Filter parent territories based on type hierarchy
-  const parentOptions = territories.filter(t => {
-    if (formData.type === 'country') return false;
-    if (formData.type === 'state') return t.type === 'country';
-    if (formData.type === 'zone') return ['country', 'state'].includes(t.type);
-    if (formData.type === 'city') return ['state', 'zone'].includes(t.type);
-    if (formData.type === 'area') return ['city', 'zone'].includes(t.type);
-    return true;
-  });
+  const isSubmitting = createTerritory.isPending || updateTerritory.isPending;
 
   if (isEdit && isLoadingTerritories) {
     return (
@@ -89,97 +87,99 @@ export default function TerritoryFormPage() {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="module-title">{isEdit ? 'Edit Territory' : 'Add Territory'}</h1>
+          <div className="flex items-center gap-3">
+            <MapPin size={28} className="text-success" />
+            <h1 className="module-title">{isEdit ? 'Edit' : 'New'} Territory</h1>
+          </div>
           <p className="text-muted-foreground">
-            {isEdit ? 'Update territory details' : 'Create a new territory entry'}
+            {isEdit ? 'Update territory details' : 'Add a new territory to the system'}
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-2xl">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 rounded-xl bg-success/10">
-              <MapPin size={24} className="text-success" />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground">Territory Details</h2>
+      <motion.form
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        onSubmit={handleSubmit}
+        className="card p-6 space-y-6"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Territory Name *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="input-field w-full"
+              placeholder="Enter territory name"
+              required
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-foreground mb-2">Territory Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter territory name"
-                className="input-field"
-                required
-              />
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Type *</label>
-              <select
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as any, parent_id: '' })}
-                className="input-field"
-                required
-              >
-                <option value="country">Country</option>
-                <option value="state">State</option>
-                <option value="zone">Zone</option>
-                <option value="city">City</option>
-                <option value="area">Area</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="input-field"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-foreground mb-2">Parent Territory</label>
-              <select
-                value={formData.parent_id}
-                onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
-                className="input-field"
-              >
-                <option value="">No Parent (Root Level)</option>
-                {parentOptions.map(t => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.type})</option>
-                ))}
-              </select>
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Type *</label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              className="input-field w-full"
+              required
+            >
+              {territoryTypeOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </div>
-        </motion.div>
 
-        <div className="flex items-center justify-end gap-3 mt-6">
-          <button type="button" onClick={() => navigate('/master/territories')} className="btn-outline">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Parent Territory</label>
+            <select
+              value={formData.parent_id}
+              onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
+              className="input-field w-full"
+            >
+              <option value="">None (Top Level)</option>
+              {parentTerritories.map(t => (
+                <option key={t.id} value={t.id}>{t.name} ({t.type})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Status</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+              className="input-field w-full"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+          <button
+            type="button"
+            onClick={() => navigate('/master/territories')}
+            className="btn-secondary"
+          >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={createTerritory.isPending || updateTerritory.isPending}
+            disabled={isSubmitting}
             className="btn-primary flex items-center gap-2"
           >
-            {(createTerritory.isPending || updateTerritory.isPending) ? (
+            {isSubmitting ? (
               <Loader2 size={18} className="animate-spin" />
             ) : (
               <Save size={18} />
             )}
-            {isEdit ? 'Update Territory' : 'Create Territory'}
+            {isEdit ? 'Update' : 'Create'} Territory
           </button>
         </div>
-      </form>
+      </motion.form>
     </div>
   );
 }
