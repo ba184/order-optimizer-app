@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Edit, Globe, Loader2, Calendar, DollarSign } from 'lucide-react';
+import { ArrowLeft, Edit, Globe, Loader2, Calendar } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useCountries } from '@/hooks/useGeoMasterData';
 import { format } from 'date-fns';
@@ -60,7 +60,7 @@ export default function CountryViewPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="card p-6 lg:col-span-2"
+          className="card p-6 lg:col-span-3"
         >
           <h2 className="text-lg font-semibold text-foreground mb-4">Country Details</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
@@ -79,28 +79,11 @@ export default function CountryViewPage() {
           </div>
         </motion.div>
 
-        {/* Currency Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="card p-6"
-        >
-          <h2 className="text-lg font-semibold text-foreground mb-4">Currency</h2>
-          <div className="text-center py-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-3">
-              <DollarSign size={32} className="text-primary" />
-            </div>
-            <p className="text-3xl font-bold text-foreground">{country.currency}</p>
-            <p className="text-sm text-muted-foreground mt-1">Default Currency</p>
-          </div>
-        </motion.div>
-
         {/* Timestamps */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.1 }}
           className="card p-6 lg:col-span-3"
         >
           <div className="flex items-center gap-3 mb-4">

@@ -67,7 +67,7 @@ export function useCountries() {
 export function useCreateCountry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (country: { name: string; code: string; currency: string; status?: string }) => {
+    mutationFn: async (country: { name: string; code: string; currency?: string; status?: string }) => {
       const { data, error } = await supabase
         .from('countries' as any)
         .insert(country)

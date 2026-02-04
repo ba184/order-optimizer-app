@@ -3,14 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Save, Loader2, MapPin } from 'lucide-react';
 import { useTerritories, useCreateTerritory, useUpdateTerritory } from '@/hooks/useTerritoriesData';
+import { useCountries, useStates, useCities } from '@/hooks/useGeoMasterData';
 import { toast } from 'sonner';
-
-const territoryTypeOptions = [
-  { value: 'region', label: 'Region' },
-  { value: 'district', label: 'District' },
-  { value: 'area', label: 'Area' },
-  { value: 'beat', label: 'Beat' },
-];
 
 export default function TerritoryFormPage() {
   const navigate = useNavigate();
@@ -18,15 +12,22 @@ export default function TerritoryFormPage() {
   const isEdit = !!id;
 
   const { data: territories = [], isLoading: isLoadingTerritories } = useTerritories();
+  const { data: countries = [] } = useCountries();
   const createTerritory = useCreateTerritory();
   const updateTerritory = useUpdateTerritory();
 
   const [formData, setFormData] = useState({
     name: '',
-    type: 'region',
-    parent_id: '',
+    country_id: '',
+    state_id: '',
+    city_id: '',
     status: 'active' as 'active' | 'inactive',
   });
+
+  // Fetch states based on selected country
+  const { data: states = [] } = useStates(formData.country_id || undefined);
+  // Fetch cities based on selected state
+  const { data: cities = [] } = useCities(formData.state_id || undefined);
 
   const existingTerritory = territories.find(t => t.id === id);
 
@@ -34,28 +35,43 @@ export default function TerritoryFormPage() {
     if (existingTerritory) {
       setFormData({
         name: existingTerritory.name,
-        type: existingTerritory.type || 'region',
-        parent_id: existingTerritory.parent_id || '',
+        country_id: (existingTerritory as any).country_id || '',
+        state_id: (existingTerritory as any).state_id || '',
+        city_id: (existingTerritory as any).city_id || '',
         status: existingTerritory.status as 'active' | 'inactive',
       });
     }
   }, [existingTerritory]);
 
-  const parentTerritories = territories.filter(t => t.id !== id && t.status === 'active');
+  // Reset state when country changes
+  useEffect(() => {
+    if (!isEdit) {
+      setFormData(prev => ({ ...prev, state_id: '', city_id: '' }));
+    }
+  }, [formData.country_id, isEdit]);
+
+  // Reset city when state changes
+  useEffect(() => {
+    if (!isEdit) {
+      setFormData(prev => ({ ...prev, city_id: '' }));
+    }
+  }, [formData.state_id, isEdit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name) {
-      toast.error('Please fill required fields');
+    if (!formData.name || !formData.country_id || !formData.state_id || !formData.city_id) {
+      toast.error('Please fill all required fields');
       return;
     }
 
     try {
       const data = {
         name: formData.name,
-        type: formData.type as any,
-        parent_id: formData.parent_id || null,
+        type: 'area' as any, // Default type
+        country_id: formData.country_id,
+        state_id: formData.state_id,
+        city_id: formData.city_id,
         status: formData.status,
       };
 
@@ -79,6 +95,10 @@ export default function TerritoryFormPage() {
       </div>
     );
   }
+
+  const activeCountries = countries.filter(c => c.status === 'active');
+  const activeStates = states.filter(s => s.status === 'active');
+  const activeCities = cities.filter(c => c.status === 'active');
 
   return (
     <div className="space-y-6">
@@ -105,6 +125,53 @@ export default function TerritoryFormPage() {
       >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Country *</label>
+            <select
+              value={formData.country_id}
+              onChange={(e) => setFormData({ ...formData, country_id: e.target.value, state_id: '', city_id: '' })}
+              className="input-field w-full"
+              required
+            >
+              <option value="">Select Country</option>
+              {activeCountries.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">State *</label>
+            <select
+              value={formData.state_id}
+              onChange={(e) => setFormData({ ...formData, state_id: e.target.value, city_id: '' })}
+              className="input-field w-full"
+              required
+              disabled={!formData.country_id}
+            >
+              <option value="">Select State</option>
+              {activeStates.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">City *</label>
+            <select
+              value={formData.city_id}
+              onChange={(e) => setFormData({ ...formData, city_id: e.target.value })}
+              className="input-field w-full"
+              required
+              disabled={!formData.state_id}
+            >
+              <option value="">Select City</option>
+              {activeCities.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Territory Name *</label>
             <input
               type="text"
@@ -114,35 +181,6 @@ export default function TerritoryFormPage() {
               placeholder="Enter territory name"
               required
             />
-          </div>
-
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Type *</label>
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              className="input-field w-full"
-              required
-            >
-              {territoryTypeOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Parent Territory</label>
-            <select
-              value={formData.parent_id}
-              onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
-              className="input-field w-full"
-            >
-              <option value="">None (Top Level)</option>
-              {parentTerritories.map(t => (
-                <option key={t.id} value={t.id}>{t.name} ({t.type})</option>
-              ))}
-            </select>
           </div>
 
           <div className="space-y-2">
