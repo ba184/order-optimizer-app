@@ -19,18 +19,24 @@ import {
   useDeleteProduct,
   Product,
 } from '@/hooks/useProductsData';
+import { useSamples } from '@/hooks/useSamplesData';
 
 export default function ProductsPage() {
   const navigate = useNavigate();
-  const { data: products = [], isLoading } = useProducts();
+  const { data: products = [], isLoading: isLoadingProducts } = useProducts();
+  const { data: samples = [], isLoading: isLoadingSamples } = useSamples();
   const deleteProduct = useDeleteProduct();
 
   const [deleteModal, setDeleteModal] = useState<Product | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
-  const filteredData = typeFilter === 'all' 
-    ? products 
-    : products.filter(p => p.product_type === typeFilter);
+  // Filter products (exclude samples from products table)
+  const filteredProducts = products.filter(p => p.product_type !== 'sample');
+  
+  // Combined data based on filter
+  const displayData = typeFilter === 'samples' 
+    ? [] // Samples shown in separate table
+    : filteredProducts;
 
   const handleDelete = () => {
     if (deleteModal) {
@@ -41,13 +47,14 @@ export default function ProductsPage() {
   };
 
   const stats = {
-    total: products.length,
-    products: products.filter(p => p.product_type === 'product').length,
-    samples: products.filter(p => p.product_type === 'sample').length,
-    active: products.filter(p => p.status === 'active').length,
+    total: filteredProducts.length + samples.length,
+    products: filteredProducts.length,
+    samples: samples.length,
+    active: filteredProducts.filter(p => p.status === 'active').length + 
+            samples.filter(s => s.status === 'active').length,
   };
 
-  const columns = [
+  const productColumns = [
     {
       key: 'product_code',
       header: 'Product ID',
@@ -59,23 +66,8 @@ export default function ProductsPage() {
       sortable: true,
     },
     {
-      key: 'product_type',
-      header: 'Type',
-      render: (item: Product) => (
-        <div className="flex items-center gap-2">
-          {item.product_type === 'sample' ? (
-            <FlaskConical size={16} className="text-secondary" />
-          ) : (
-            <Package size={16} className="text-primary" />
-          )}
-          <span className="capitalize">{item.product_type || 'product'}</span>
-        </div>
-      ),
-      sortable: true,
-    },
-    {
       key: 'name',
-      header: 'Name',
+      header: 'Product Name',
       render: (item: Product) => (
         <div>
           <p className="font-medium text-foreground">{item.name}</p>
@@ -100,13 +92,6 @@ export default function ProductsPage() {
       ),
     },
     {
-      key: 'sku_size',
-      header: 'SKU Size',
-      render: (item: Product) => (
-        <span>{item.sku_size || '-'}</span>
-      ),
-    },
-    {
       key: 'pack_size',
       header: 'Pack Size',
       render: (item: Product) => (
@@ -117,7 +102,7 @@ export default function ProductsPage() {
       key: 'mrp',
       header: 'MRP',
       render: (item: Product) => (
-        item.product_type === 'sample' ? '-' : <span className="font-medium">₹{item.mrp}</span>
+        <span className="font-medium">₹{item.mrp}</span>
       ),
       sortable: true,
     },
@@ -125,7 +110,7 @@ export default function ProductsPage() {
       key: 'ptr',
       header: 'PTR',
       render: (item: Product) => (
-        item.product_type === 'sample' ? '-' : <span className="font-medium text-primary">₹{item.ptr}</span>
+        <span className="font-medium text-primary">₹{item.ptr}</span>
       ),
       sortable: true,
     },
@@ -133,16 +118,9 @@ export default function ProductsPage() {
       key: 'pts',
       header: 'PTS',
       render: (item: Product) => (
-        item.product_type === 'sample' ? '-' : <span className="font-medium text-secondary">₹{item.pts || 0}</span>
+        <span className="font-medium text-secondary">₹{item.pts || 0}</span>
       ),
       sortable: true,
-    },
-    {
-      key: 'gst',
-      header: 'GST',
-      render: (item: Product) => (
-        item.product_type === 'sample' ? '-' : <span>{item.gst}%</span>
-      ),
     },
     {
       key: 'status',
@@ -187,6 +165,85 @@ export default function ProductsPage() {
     },
   ];
 
+  const sampleColumns = [
+    {
+      key: 'sku',
+      header: 'Sample ID',
+      render: (item: any) => (
+        <span className="font-mono text-sm font-medium text-secondary">
+          {item.sku || '-'}
+        </span>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'name',
+      header: 'Sample Name',
+      render: (item: any) => (
+        <p className="font-medium text-foreground">{item.name}</p>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'type',
+      header: 'Variant',
+      render: (item: any) => (
+        <span className="text-sm">{item.type || '-'}</span>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'stock',
+      header: 'Quantity',
+      render: (item: any) => (
+        <span className="font-medium">{item.stock || 0}</span>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'issued_this_month',
+      header: 'Issued (Month)',
+      render: (item: any) => (
+        <span className="text-sm">{item.issued_this_month || 0}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (item: any) => <StatusBadge status={item.status === 'active' ? 'active' : 'inactive'} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (item: any) => (
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={() => navigate(`/samples/${item.id}`)} 
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+            title="View"
+          >
+            <Eye size={16} className="text-muted-foreground" />
+          </button>
+          <button 
+            onClick={() => navigate(`/samples/${item.id}/edit`)} 
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+            title="Edit"
+          >
+            <Edit size={16} className="text-muted-foreground" />
+          </button>
+          <button 
+            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+            title="Delete"
+          >
+            <Trash2 size={16} className="text-destructive" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const isLoading = isLoadingProducts || isLoadingSamples;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -204,7 +261,7 @@ export default function ProductsPage() {
         </div>
         <button onClick={() => navigate('/master/products/new')} className="btn-primary flex items-center gap-2">
           <Plus size={18} />
-          Add Product
+          Add Product / Sample
         </button>
       </div>
 
@@ -258,15 +315,60 @@ export default function ProductsPage() {
         </motion.div>
       </div>
 
-      <div className="filter-bar">
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="input-field w-40">
-          <option value="all">All Types</option>
-          <option value="product">Products</option>
-          <option value="sample">Samples</option>
-        </select>
+      {/* Filter Tabs */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setTypeFilter('all')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            typeFilter === 'all' 
+              ? 'bg-primary text-primary-foreground' 
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          }`}
+        >
+          All Products
+        </button>
+        <button
+          onClick={() => setTypeFilter('samples')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+            typeFilter === 'samples' 
+              ? 'bg-secondary text-secondary-foreground' 
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          }`}
+        >
+          <FlaskConical size={16} />
+          Samples
+        </button>
       </div>
 
-      <DataTable data={filteredData} columns={columns} searchPlaceholder="Search products by name, SKU, or code..." />
+      {/* Products Table */}
+      {typeFilter !== 'samples' && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Package size={20} className="text-primary" />
+            Products ({filteredProducts.length})
+          </h2>
+          <DataTable 
+            data={displayData} 
+            columns={productColumns} 
+            searchPlaceholder="Search products by name, SKU, or code..." 
+          />
+        </div>
+      )}
+
+      {/* Samples Table */}
+      {typeFilter === 'samples' && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <FlaskConical size={20} className="text-secondary" />
+            Samples ({samples.length})
+          </h2>
+          <DataTable 
+            data={samples} 
+            columns={sampleColumns} 
+            searchPlaceholder="Search samples by name or ID..." 
+          />
+        </div>
+      )}
 
       <DeleteConfirmModal
         isOpen={!!deleteModal}
