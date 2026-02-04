@@ -5,11 +5,18 @@ import { toast } from 'sonner';
 
 export interface Product {
   id: string;
+  product_code: string | null;
+  product_type: string | null;
   name: string;
   sku: string;
+  variant: string | null;
   category: string | null;
+  pack_type: string | null;
+  sku_size: string | null;
+  pack_size: string | null;
   mrp: number;
   ptr: number;
+  pts: number | null;
   gst: number;
   stock: number;
   status: string | null;
@@ -18,11 +25,17 @@ export interface Product {
 }
 
 export interface CreateProductData {
+  product_type?: string;
   name: string;
   sku: string;
+  variant?: string;
   category?: string;
+  pack_type?: string;
+  sku_size?: string;
+  pack_size?: string;
   mrp: number;
   ptr: number;
+  pts?: number;
   gst: number;
   stock?: number;
   status?: string;
@@ -37,11 +50,30 @@ export function useProducts() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .order('name');
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data as Product[];
     },
     enabled: !!user,
+  });
+}
+
+export function useProduct(id: string | undefined) {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['products', id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error) throw error;
+      return data as Product;
+    },
+    enabled: !!user && !!id,
   });
 }
 
@@ -53,12 +85,18 @@ export function useCreateProduct() {
       const { data, error } = await supabase
         .from('products')
         .insert({
+          product_type: productData.product_type || 'product',
           name: productData.name,
           sku: productData.sku,
-          category: productData.category || null,
-          mrp: productData.mrp,
-          ptr: productData.ptr,
-          gst: productData.gst,
+          variant: productData.variant || null,
+          category: productData.category || productData.variant || null,
+          pack_type: productData.pack_type || null,
+          sku_size: productData.sku_size || null,
+          pack_size: productData.pack_size || null,
+          mrp: productData.mrp || 0,
+          ptr: productData.ptr || 0,
+          pts: productData.pts || 0,
+          gst: productData.gst || 0,
           stock: productData.stock || 0,
           status: productData.status || 'active',
         })
@@ -86,11 +124,17 @@ export function useUpdateProduct() {
       const { data, error } = await supabase
         .from('products')
         .update({
+          product_type: productData.product_type,
           name: productData.name,
           sku: productData.sku,
-          category: productData.category,
+          variant: productData.variant,
+          category: productData.category || productData.variant,
+          pack_type: productData.pack_type,
+          sku_size: productData.sku_size,
+          pack_size: productData.pack_size,
           mrp: productData.mrp,
           ptr: productData.ptr,
+          pts: productData.pts,
           gst: productData.gst,
           stock: productData.stock,
           status: productData.status,
