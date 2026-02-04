@@ -1,18 +1,76 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
-import { useZones, useDeleteZone, Zone } from '@/hooks/useGeoMasterData';
-import { Plus, Compass, Edit, Trash2, Eye, Loader2, CheckCircle, XCircle, Users } from 'lucide-react';
+import { useZones, useStates, useCities, useDeleteZone, Zone } from '@/hooks/useGeoMasterData';
+import { useTerritories } from '@/hooks/useTerritoriesData';
+import { supabase } from '@/integrations/supabase/client';
+import { Plus, Compass, Edit, Trash2, Eye, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 export default function ZoneMasterPage() {
   const navigate = useNavigate();
   const { data: zones = [], isLoading } = useZones();
+  const { data: states = [] } = useStates();
+  const { data: cities = [] } = useCities();
+  const { data: territories = [] } = useTerritories();
   const deleteZone = useDeleteZone();
 
   const [deleteModal, setDeleteModal] = useState<Zone | null>(null);
+  const [zoneValues, setZoneValues] = useState<Record<string, string[]>>({});
+
+  // Load zone values (linked states/cities/territories)
+  useEffect(() => {
+    const loadZoneValues = async () => {
+      const values: Record<string, string[]> = {};
+      
+      for (const zone of zones) {
+        const zoneType = (zone as any).zone_type || 'state';
+        
+        if (zoneType === 'state') {
+          const { data } = await supabase
+            .from('zone_states' as any)
+            .select('state_id')
+            .eq('zone_id', zone.id);
+          if (data) {
+            values[zone.id] = data.map((zs: any) => {
+              const state = states.find(s => s.id === zs.state_id);
+              return state?.name || '';
+            }).filter(Boolean);
+          }
+        } else if (zoneType === 'city') {
+          const { data } = await supabase
+            .from('zone_cities' as any)
+            .select('city_id')
+            .eq('zone_id', zone.id);
+          if (data) {
+            values[zone.id] = data.map((zc: any) => {
+              const city = cities.find(c => c.id === zc.city_id);
+              return city?.name || '';
+            }).filter(Boolean);
+          }
+        } else if (zoneType === 'territory') {
+          const { data } = await supabase
+            .from('zone_territories' as any)
+            .select('territory_id')
+            .eq('zone_id', zone.id);
+          if (data) {
+            values[zone.id] = data.map((zt: any) => {
+              const territory = territories.find(t => t.id === zt.territory_id);
+              return territory?.name || '';
+            }).filter(Boolean);
+          }
+        }
+      }
+      
+      setZoneValues(values);
+    };
+
+    if (zones.length > 0) {
+      loadZoneValues();
+    }
+  }, [zones, states, cities, territories]);
 
   const handleDelete = async () => {
     if (deleteModal) {
@@ -23,12 +81,20 @@ export default function ZoneMasterPage() {
 
   const activeCount = zones.filter(z => z.status === 'active').length;
   const inactiveCount = zones.filter(z => z.status === 'inactive').length;
-  const withManagerCount = zones.filter(z => z.manager_id).length;
+
+  const getZoneTypeLabel = (zoneType: string) => {
+    switch (zoneType) {
+      case 'state': return 'State';
+      case 'city': return 'City';
+      case 'territory': return 'Territory';
+      default: return 'State';
+    }
+  };
 
   const columns = [
     {
       key: 'name',
-      header: 'Zone',
+      header: 'Zone Name',
       render: (item: Zone) => (
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-warning/10">
@@ -36,26 +102,50 @@ export default function ZoneMasterPage() {
           </div>
           <div>
             <p className="font-medium text-foreground">{item.name}</p>
-            <p className="text-xs text-muted-foreground">{item.code}</p>
           </div>
         </div>
       ),
       sortable: true,
     },
     { 
-      key: 'country', 
-      header: 'Country',
-      render: (item: Zone) => (item.country as any)?.name || '-'
-    },
-    { 
-      key: 'manager', 
-      header: 'Manager', 
-      render: (item: Zone) => (item.manager as any)?.name || '-' 
+      key: 'zone_type', 
+      header: 'Zone Type',
+      render: (item: Zone) => (
+        <span className="px-2 py-1 bg-muted rounded-lg text-sm font-medium">
+          {getZoneTypeLabel((item as any).zone_type || 'state')}
+        </span>
+      )
     },
     {
       key: 'status',
       header: 'Status',
       render: (item: Zone) => <StatusBadge status={item.status} />,
+    },
+    { 
+      key: 'values', 
+      header: 'Zone Values',
+      render: (item: Zone) => {
+        const values = zoneValues[item.id] || [];
+        if (values.length === 0) return <span className="text-muted-foreground">-</span>;
+        
+        const displayValues = values.slice(0, 3);
+        const remaining = values.length - 3;
+        
+        return (
+          <div className="flex flex-wrap gap-1">
+            {displayValues.map((v, i) => (
+              <span key={i} className="px-2 py-0.5 bg-secondary/20 text-secondary rounded text-xs">
+                {v}
+              </span>
+            ))}
+            {remaining > 0 && (
+              <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded text-xs">
+                +{remaining} more
+              </span>
+            )}
+          </div>
+        );
+      }
     },
     {
       key: 'actions',
@@ -97,7 +187,7 @@ export default function ZoneMasterPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-warning/10">
@@ -130,18 +220,6 @@ export default function ZoneMasterPage() {
             <div>
               <p className="text-2xl font-bold text-foreground">{inactiveCount}</p>
               <p className="text-sm text-muted-foreground">Inactive</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <Users size={24} className="text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{withManagerCount}</p>
-              <p className="text-sm text-muted-foreground">With Managers</p>
             </div>
           </div>
         </motion.div>
