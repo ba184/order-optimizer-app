@@ -42,6 +42,8 @@ import VariantMasterPage from "./pages/master/VariantMasterPage";
 import VariantFormPage from "./pages/master/VariantFormPage";
 import VariantViewPage from "./pages/master/VariantViewPage";
 import WarehouseMasterPage from "./pages/master/WarehouseMasterPage";
+import WarehouseFormPage from "./pages/master/WarehouseFormPage";
+import WarehouseViewPage from "./pages/master/WarehouseViewPage";
 import PresentationsPage from "./pages/master/PresentationsPage";
 import TerritoriesPage from "./pages/master/TerritoriesPage";
 import UsersPage from "./pages/master/UsersPage";
@@ -177,6 +179,9 @@ function AppRoutes() {
       <Route path="/master/variants/:id" element={<ProtectedRoute><VariantViewPage /></ProtectedRoute>} />
       <Route path="/master/variants/:id/edit" element={<ProtectedRoute><VariantFormPage /></ProtectedRoute>} />
       <Route path="/master/warehouses" element={<ProtectedRoute><WarehouseMasterPage /></ProtectedRoute>} />
+      <Route path="/master/warehouses/new" element={<ProtectedRoute><WarehouseFormPage /></ProtectedRoute>} />
+      <Route path="/master/warehouses/:id" element={<ProtectedRoute><WarehouseViewPage /></ProtectedRoute>} />
+      <Route path="/master/warehouses/:id/edit" element={<ProtectedRoute><WarehouseFormPage /></ProtectedRoute>} />
       <Route path="/master/schemes" element={<ProtectedRoute><AdvancedSchemesPage /></ProtectedRoute>} />
       <Route path="/master/countries" element={<ProtectedRoute><CountryMasterPage /></ProtectedRoute>} />
       <Route path="/master/states" element={<ProtectedRoute><StateMasterPage /></ProtectedRoute>} />

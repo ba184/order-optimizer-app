@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Download, Eye, Edit2, Power, Warehouse, MapPin, Building2, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Download, Eye, Edit2, Power, Warehouse, MapPin, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/StatCard';
 import { DataTable } from '@/components/ui/DataTable';
-import { CrudModal, FieldConfig } from '@/components/ui/CrudModal';
 import {
   Select,
   SelectContent,
@@ -16,10 +16,8 @@ import {
 } from '@/components/ui/select';
 import {
   useWarehouses,
-  useCreateWarehouse,
   useUpdateWarehouse,
   Warehouse as WarehouseType,
-  CreateWarehouseData,
 } from '@/hooks/useWarehousesData';
 import { Loader2 } from 'lucide-react';
 import {
@@ -33,77 +31,33 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const locationTypes = ['central', 'regional', 'distributor'] as const;
-
-const fields: FieldConfig[] = [
-  { key: 'name', label: 'Warehouse Name', type: 'text', required: true, placeholder: 'Enter warehouse name' },
-  { key: 'code', label: 'Warehouse Code', type: 'text', required: true, placeholder: 'e.g., WH-001' },
-  {
-    key: 'location_type',
-    label: 'Location Type',
-    type: 'select',
-    required: true,
-    options: locationTypes.map(t => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) })),
-  },
-  { key: 'state', label: 'State', type: 'text', required: true, placeholder: 'Enter state' },
-  { key: 'city', label: 'City', type: 'text', required: true, placeholder: 'Enter city' },
-  { key: 'address', label: 'Address', type: 'textarea', required: false, placeholder: 'Full warehouse address' },
-  { key: 'contact_person', label: 'Contact Person', type: 'text', required: false, placeholder: 'Contact name' },
-  { key: 'contact_number', label: 'Contact Number', type: 'text', required: false, placeholder: '10-digit number' },
-  {
-    key: 'status',
-    label: 'Status',
-    type: 'select',
-    required: true,
-    options: [
-      { value: 'active', label: 'Active' },
-      { value: 'inactive', label: 'Inactive' },
-    ],
-  },
-];
+const locationTypes = ['central', 'depot'] as const;
 
 export default function WarehouseMasterPage() {
+  const navigate = useNavigate();
   const { data: warehouses, isLoading } = useWarehouses();
-  const createWarehouse = useCreateWarehouse();
   const updateWarehouse = useUpdateWarehouse();
 
-  const [modalOpen, setModalOpen] = useState(false);
   const [disableModal, setDisableModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<WarehouseType | null>(null);
-  const [mode, setMode] = useState<'create' | 'edit' | 'view'>('create');
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
   const handleCreate = () => {
-    setSelectedItem(null);
-    setMode('create');
-    setModalOpen(true);
+    navigate('/master/warehouses/new');
   };
 
   const handleView = (item: WarehouseType) => {
-    setSelectedItem(item);
-    setMode('view');
-    setModalOpen(true);
+    navigate(`/master/warehouses/${item.id}`);
   };
 
   const handleEdit = (item: WarehouseType) => {
-    setSelectedItem(item);
-    setMode('edit');
-    setModalOpen(true);
+    navigate(`/master/warehouses/${item.id}/edit`);
   };
 
   const handleDisable = (item: WarehouseType) => {
     setSelectedItem(item);
     setDisableModal(true);
-  };
-
-  const handleSubmit = async (data: Record<string, unknown>) => {
-    if (mode === 'create') {
-      await createWarehouse.mutateAsync(data as unknown as CreateWarehouseData);
-    } else if (mode === 'edit' && selectedItem) {
-      await updateWarehouse.mutateAsync({ id: selectedItem.id, ...data } as Partial<WarehouseType> & { id: string });
-    }
-    setModalOpen(false);
   };
 
   const handleToggleStatus = async () => {
@@ -138,17 +92,15 @@ export default function WarehouseMasterPage() {
     const data = warehouses || [];
     return {
       total: data.length,
-      active: data.filter(w => w.status === 'active').length,
       central: data.filter(w => w.location_type === 'central').length,
-      regional: data.filter(w => w.location_type === 'regional').length,
+      depot: data.filter(w => w.location_type === 'depot').length,
     };
   }, [warehouses]);
 
   const getTypeBadgeVariant = (type: string) => {
     switch (type) {
       case 'central': return 'default';
-      case 'regional': return 'secondary';
-      case 'distributor': return 'outline';
+      case 'depot': return 'secondary';
       default: return 'outline';
     }
   };
@@ -175,6 +127,13 @@ export default function WarehouseMasterPage() {
       ),
     },
     {
+      key: 'territory',
+      header: 'Territory',
+      render: (item: WarehouseType) => (
+        <span className="text-sm">{item.territory || '-'}</span>
+      ),
+    },
+    {
       key: 'location_type',
       header: 'Type',
       render: (item: WarehouseType) => (
@@ -191,6 +150,13 @@ export default function WarehouseMasterPage() {
           <p className="text-sm">{item.contact_person || '-'}</p>
           <p className="text-xs text-muted-foreground">{item.contact_number || ''}</p>
         </div>
+      ),
+    },
+    {
+      key: 'capacity',
+      header: 'Capacity',
+      render: (item: WarehouseType) => (
+        <span className="text-sm">{item.capacity || '-'}</span>
       ),
     },
     {
@@ -244,26 +210,21 @@ export default function WarehouseMasterPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           title="Total Warehouses"
           value={stats.total}
           icon={Warehouse}
         />
         <StatCard
-          title="Active Warehouses"
-          value={stats.active}
+          title="Central Warehouses"
+          value={stats.central}
           icon={Building2}
         />
         <StatCard
-          title="Central Locations"
-          value={stats.central}
+          title="Depot Warehouses"
+          value={stats.depot}
           icon={MapPin}
-        />
-        <StatCard
-          title="Regional Locations"
-          value={stats.regional}
-          icon={Users}
         />
       </div>
 
@@ -308,17 +269,6 @@ export default function WarehouseMasterPage() {
         columns={columns}
         data={filteredData}
         searchable={false}
-      />
-
-      {/* Create/Edit Modal */}
-      <CrudModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={mode === 'create' ? 'Add Warehouse' : mode === 'edit' ? 'Edit Warehouse' : 'Warehouse Details'}
-        fields={fields}
-        initialData={selectedItem || undefined}
-        onSubmit={handleSubmit}
-        mode={mode}
       />
 
       {/* Disable Confirmation */}
