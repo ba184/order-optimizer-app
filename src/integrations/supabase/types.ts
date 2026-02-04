@@ -3649,47 +3649,62 @@ export type Database = {
       warehouses: {
         Row: {
           address: string | null
+          capacity: string | null
           city: string
           code: string
           contact_number: string | null
           contact_person: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           id: string
+          latitude: number | null
           location_type: string
+          longitude: number | null
           name: string
           state: string
           status: string
+          territory: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          capacity?: string | null
           city: string
           code: string
           contact_number?: string | null
           contact_person?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          latitude?: number | null
           location_type?: string
+          longitude?: number | null
           name: string
           state: string
           status?: string
+          territory?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          capacity?: string | null
           city?: string
           code?: string
           contact_number?: string | null
           contact_person?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          latitude?: number | null
           location_type?: string
+          longitude?: number | null
           name?: string
           state?: string
           status?: string
+          territory?: string | null
           updated_at?: string
         }
         Relationships: [

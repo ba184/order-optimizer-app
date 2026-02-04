@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { StatCard } from '@/components/ui/StatCard';
 import {
   IndianRupee,
@@ -7,9 +6,10 @@ import {
   Users,
   TrendingUp,
   Target,
-  UserCheck,
   Building2,
+  Warehouse,
 } from 'lucide-react';
+import { useWarehouses } from '@/hooks/useWarehousesData';
 
 interface DashboardKPICardsProps {
   isAdmin: boolean;
@@ -34,6 +34,14 @@ const kpiData = {
 };
 
 export function DashboardKPICards({ isAdmin, formatCurrency }: DashboardKPICardsProps) {
+  const { data: warehouses } = useWarehouses();
+  
+  const warehouseStats = {
+    total: warehouses?.length || 0,
+    central: warehouses?.filter(w => w.location_type === 'central').length || 0,
+    depot: warehouses?.filter(w => w.location_type === 'depot').length || 0,
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Total Sales - Today */}
@@ -78,6 +86,16 @@ export function DashboardKPICards({ isAdmin, formatCurrency }: DashboardKPICards
 
       {isAdmin && (
         <>
+          {/* Total Warehouses */}
+          <StatCard
+            title="Total Warehouses"
+            value={warehouseStats.total.toString()}
+            change={`${warehouseStats.central} Central, ${warehouseStats.depot} Depot`}
+            changeType="neutral"
+            icon={Warehouse}
+            iconColor="bg-info"
+          />
+          
           {/* Active Distributors */}
           <StatCard
             title="Active Distributors"
@@ -85,7 +103,7 @@ export function DashboardKPICards({ isAdmin, formatCurrency }: DashboardKPICards
             change="12 new this month"
             changeType="positive"
             icon={Building2}
-            iconColor="bg-info"
+            iconColor="bg-primary"
           />
           
           {/* Active Retailers */}
@@ -95,7 +113,7 @@ export function DashboardKPICards({ isAdmin, formatCurrency }: DashboardKPICards
             change="32 new this week"
             changeType="positive"
             icon={Store}
-            iconColor="bg-primary"
+            iconColor="bg-secondary"
           />
           
           {/* Active Sales Team */}
@@ -105,16 +123,6 @@ export function DashboardKPICards({ isAdmin, formatCurrency }: DashboardKPICards
             change="38 on field today"
             changeType="positive"
             icon={Users}
-            iconColor="bg-secondary"
-          />
-          
-          {/* YTD Sales */}
-          <StatCard
-            title="YTD Sales"
-            value={formatCurrency(kpiData.totalSales.ytd)}
-            change="+15.8% vs last year"
-            changeType="positive"
-            icon={IndianRupee}
             iconColor="bg-success"
           />
         </>

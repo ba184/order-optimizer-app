@@ -1,0 +1,346 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  useWarehouse,
+  useCreateWarehouse,
+  useUpdateWarehouse,
+  CreateWarehouseData,
+} from '@/hooks/useWarehousesData';
+import { toast } from 'sonner';
+
+const indianStates = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+];
+
+export default function WarehouseFormPage() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
+
+  const { data: warehouse, isLoading: isLoadingWarehouse } = useWarehouse(id);
+  const createWarehouse = useCreateWarehouse();
+  const updateWarehouse = useUpdateWarehouse();
+
+  const [formData, setFormData] = useState<CreateWarehouseData>({
+    name: '',
+    location_type: 'depot',
+    country: 'India',
+    state: '',
+    city: '',
+    territory: '',
+    latitude: undefined,
+    longitude: undefined,
+    address: '',
+    contact_person: '',
+    contact_number: '',
+    capacity: '',
+    status: 'active',
+  });
+
+  useEffect(() => {
+    if (warehouse && isEdit) {
+      setFormData({
+        name: warehouse.name,
+        location_type: warehouse.location_type,
+        country: warehouse.country || 'India',
+        state: warehouse.state,
+        city: warehouse.city,
+        territory: warehouse.territory || '',
+        latitude: warehouse.latitude || undefined,
+        longitude: warehouse.longitude || undefined,
+        address: warehouse.address || '',
+        contact_person: warehouse.contact_person || '',
+        contact_number: warehouse.contact_number || '',
+        capacity: warehouse.capacity || '',
+        status: warehouse.status,
+      });
+    }
+  }, [warehouse, isEdit]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.name || !formData.location_type || !formData.state || !formData.city || !formData.contact_person) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      if (isEdit && id) {
+        await updateWarehouse.mutateAsync({ id, ...formData });
+      } else {
+        await createWarehouse.mutateAsync(formData);
+      }
+      navigate('/master/warehouses');
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  if (isEdit && isLoadingWarehouse) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/master/warehouses')}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            {isEdit ? 'Edit Warehouse' : 'Add Warehouse'}
+          </h1>
+          <p className="text-muted-foreground">
+            {isEdit ? 'Update warehouse details' : 'Create a new warehouse location'}
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        <div className="grid gap-6">
+          {/* Basic Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="name">Warehouse Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter warehouse name"
+                  required
+                />
+              </div>
+
+              {isEdit && warehouse && (
+                <div className="space-y-2">
+                  <Label>Warehouse Code</Label>
+                  <Input value={warehouse.code} disabled className="bg-muted" />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="location_type">Location Type *</Label>
+                <Select
+                  value={formData.location_type}
+                  onValueChange={(value: 'central' | 'depot') =>
+                    setFormData({ ...formData, location_type: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="central">Central</SelectItem>
+                    <SelectItem value="depot">Depot</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: 'active' | 'inactive') =>
+                    setFormData({ ...formData, status: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Location Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Location Details</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="country">Country *</Label>
+                <Select
+                  value={formData.country}
+                  onValueChange={(value) => setFormData({ ...formData, country: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="India">India</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="state">State *</Label>
+                <Select
+                  value={formData.state}
+                  onValueChange={(value) => setFormData({ ...formData, state: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {indianStates.map((state) => (
+                      <SelectItem key={state} value={state}>
+                        {state}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="city">City *</Label>
+                <Input
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="Enter city"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="territory">Territory</Label>
+                <Input
+                  id="territory"
+                  value={formData.territory}
+                  onChange={(e) => setFormData({ ...formData, territory: e.target.value })}
+                  placeholder="Enter territory"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="latitude">Latitude</Label>
+                <Input
+                  id="latitude"
+                  type="number"
+                  step="any"
+                  value={formData.latitude || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, latitude: e.target.value ? parseFloat(e.target.value) : undefined })
+                  }
+                  placeholder="e.g., 28.6139"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="longitude">Longitude</Label>
+                <Input
+                  id="longitude"
+                  type="number"
+                  step="any"
+                  value={formData.longitude || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, longitude: e.target.value ? parseFloat(e.target.value) : undefined })
+                  }
+                  placeholder="e.g., 77.2090"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="address">Address</Label>
+                <Textarea
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Enter full address"
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Contact & Capacity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact & Capacity</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="contact_person">Contact Person *</Label>
+                <Input
+                  id="contact_person"
+                  value={formData.contact_person}
+                  onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                  placeholder="Enter contact person name"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="contact_number">Contact Number</Label>
+                <Input
+                  id="contact_number"
+                  value={formData.contact_number}
+                  onChange={(e) => setFormData({ ...formData, contact_number: e.target.value })}
+                  placeholder="Enter contact number"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="capacity">Capacity</Label>
+                <Input
+                  id="capacity"
+                  value={formData.capacity}
+                  onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                  placeholder="e.g., 10000 sq ft"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-4">
+            <Button type="button" variant="outline" onClick={() => navigate('/master/warehouses')}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={createWarehouse.isPending || updateWarehouse.isPending}>
+              {(createWarehouse.isPending || updateWarehouse.isPending) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              <Save className="mr-2 h-4 w-4" />
+              {isEdit ? 'Update Warehouse' : 'Create Warehouse'}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
