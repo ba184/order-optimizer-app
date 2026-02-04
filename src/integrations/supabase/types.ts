@@ -3664,15 +3664,19 @@ export type Database = {
       warehouses: {
         Row: {
           address: string | null
+          alt_contact_number: string | null
+          alt_contact_person: string | null
           capacity: string | null
           city: string
           code: string
           contact_number: string | null
           contact_person: string | null
+          contact_person_id: string | null
           country: string | null
           created_at: string
           created_by: string | null
           id: string
+          images: string[] | null
           latitude: number | null
           location_type: string
           longitude: number | null
@@ -3684,15 +3688,19 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          alt_contact_number?: string | null
+          alt_contact_person?: string | null
           capacity?: string | null
           city: string
           code: string
           contact_number?: string | null
           contact_person?: string | null
+          contact_person_id?: string | null
           country?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          images?: string[] | null
           latitude?: number | null
           location_type?: string
           longitude?: number | null
@@ -3704,15 +3712,19 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          alt_contact_number?: string | null
+          alt_contact_person?: string | null
           capacity?: string | null
           city?: string
           code?: string
           contact_number?: string | null
           contact_person?: string | null
+          contact_person_id?: string | null
           country?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          images?: string[] | null
           latitude?: number | null
           location_type?: string
           longitude?: number | null
@@ -3723,6 +3735,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "warehouses_contact_person_id_fkey"
+            columns: ["contact_person_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "warehouses_created_by_fkey"
             columns: ["created_by"]
