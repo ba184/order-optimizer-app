@@ -2181,11 +2181,18 @@ export type Database = {
           low_stock_threshold: number | null
           mrp: number
           name: string
+          pack_size: string | null
+          pack_type: string | null
+          product_code: string | null
+          product_type: string | null
           ptr: number
+          pts: number | null
           sku: string
+          sku_size: string | null
           status: string | null
           stock: number
           updated_at: string | null
+          variant: string | null
         }
         Insert: {
           category?: string | null
@@ -2195,11 +2202,18 @@ export type Database = {
           low_stock_threshold?: number | null
           mrp?: number
           name: string
+          pack_size?: string | null
+          pack_type?: string | null
+          product_code?: string | null
+          product_type?: string | null
           ptr?: number
+          pts?: number | null
           sku: string
+          sku_size?: string | null
           status?: string | null
           stock?: number
           updated_at?: string | null
+          variant?: string | null
         }
         Update: {
           category?: string | null
@@ -2209,11 +2223,18 @@ export type Database = {
           low_stock_threshold?: number | null
           mrp?: number
           name?: string
+          pack_size?: string | null
+          pack_type?: string | null
+          product_code?: string | null
+          product_type?: string | null
           ptr?: number
+          pts?: number | null
           sku?: string
+          sku_size?: string | null
           status?: string | null
           stock?: number
           updated_at?: string | null
+          variant?: string | null
         }
         Relationships: []
       }
