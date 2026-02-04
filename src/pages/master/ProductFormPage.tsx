@@ -26,6 +26,12 @@ const packTypeOptions = [
   { value: 'tube', label: 'Tube' },
 ];
 
+const skuSizeOptions = [
+  { value: '2g', label: '2g' },
+  { value: '4g', label: '4g' },
+  { value: '20g', label: '20g' },
+];
+
 const packSizeOptions = [
   { value: 5, label: '5 nos' },
   { value: 10, label: '10 nos' },
@@ -40,6 +46,7 @@ const statusOptions = [
 
 interface SKUEntry {
   id: string;
+  skuSize: string;
   packSize: number;
   unitMRP: string;
   unitPTR: string;
@@ -79,7 +86,7 @@ export default function ProductFormPage() {
 
   // SKU Entries for products
   const [skuEntries, setSkuEntries] = useState<SKUEntry[]>([
-    { id: crypto.randomUUID(), packSize: 5, unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0 }
+    { id: crypto.randomUUID(), skuSize: '2g', packSize: 5, unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0 }
   ]);
 
   // Validation errors
@@ -98,6 +105,7 @@ export default function ProductFormPage() {
         const packSizeNum = parseInt(product.pack_size) || 5;
         setSkuEntries([{
           id: crypto.randomUUID(),
+          skuSize: '2g',
           packSize: packSizeNum,
           unitMRP: product.mrp ? (product.mrp / packSizeNum).toFixed(2) : '',
           unitPTR: product.ptr ? (product.ptr / packSizeNum).toFixed(2) : '',
@@ -124,6 +132,7 @@ export default function ProductFormPage() {
   const addSKUEntry = () => {
     setSkuEntries([...skuEntries, {
       id: crypto.randomUUID(),
+      skuSize: '2g',
       packSize: 5,
       unitMRP: '',
       unitPTR: '',
@@ -219,7 +228,7 @@ export default function ProductFormPage() {
           await createProduct.mutateAsync({
             product_type: 'product',
             name: productInfo.name,
-            sku: `${productInfo.name.substring(0, 3).toUpperCase()}-${sku.packSize}`,
+            sku: `${productInfo.name.substring(0, 3).toUpperCase()}-${sku.skuSize}-${sku.packSize}`,
             variant: productInfo.variant,
             pack_type: productInfo.packType,
             pack_size: `${sku.packSize}nos`,
@@ -468,6 +477,7 @@ export default function ProductFormPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
+                        <TableHead className="w-[100px]">SKU Size</TableHead>
                         <TableHead className="w-[120px]">Pack Size</TableHead>
                         <TableHead>Unit MRP (₹)</TableHead>
                         <TableHead>Unit PTR (₹)</TableHead>
@@ -483,6 +493,17 @@ export default function ProductFormPage() {
                         const entryError = errors[`sku_${index}`];
                         return (
                           <TableRow key={entry.id} className={entryError ? 'bg-destructive/5' : ''}>
+                            <TableCell>
+                              <select
+                                value={entry.skuSize}
+                                onChange={(e) => updateSKUEntry(entry.id, 'skuSize', e.target.value)}
+                                className="input-field w-full text-sm"
+                              >
+                                {skuSizeOptions.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                              </select>
+                            </TableCell>
                             <TableCell>
                               <select
                                 value={entry.packSize}
