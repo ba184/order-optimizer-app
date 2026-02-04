@@ -44,7 +44,7 @@ export default function PresentationsPage() {
   const totalPresentations = presentations.length;
   const activePresentations = presentations.filter(p => p.status === 'active').length;
   const inactivePresentations = presentations.filter(p => p.status === 'inactive').length;
-  const totalViews = presentations.reduce((sum, p) => sum + (p.view_count || 0), 0);
+  
 
   const handleCreate = () => {
     setSelectedPresentation(null);
@@ -152,16 +152,6 @@ export default function PresentationsPage() {
       ),
     },
     {
-      key: 'view_count',
-      header: 'Views',
-      render: (item: Presentation) => (
-        <span className="flex items-center gap-1 text-sm">
-          <Eye size={14} className="text-muted-foreground" />
-          {item.view_count || 0}
-        </span>
-      ),
-    },
-    {
       key: 'status',
       header: 'Status',
       render: (item: Presentation) => <StatusBadge status={item.status} />,
@@ -201,7 +191,6 @@ export default function PresentationsPage() {
     { title: 'Total Presentations', value: totalPresentations, icon: PresentationIcon, color: 'bg-primary/10 text-primary' },
     { title: 'Active', value: activePresentations, icon: FileText, color: 'bg-success/10 text-success' },
     { title: 'Inactive', value: inactivePresentations, icon: FileText, color: 'bg-muted text-muted-foreground' },
-    { title: 'Total Views', value: totalViews, icon: Eye, color: 'bg-info/10 text-info' },
   ];
 
   return (
