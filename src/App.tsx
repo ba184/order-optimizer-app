@@ -38,7 +38,9 @@ import GenericReport from "./pages/reports/GenericReport";
 import ProductsPage from "./pages/master/ProductsPage";
 import ProductFormPage from "./pages/master/ProductFormPage";
 import ProductViewPage from "./pages/master/ProductViewPage";
-import CategoryMasterPage from "./pages/master/CategoryMasterPage";
+import VariantMasterPage from "./pages/master/VariantMasterPage";
+import VariantFormPage from "./pages/master/VariantFormPage";
+import VariantViewPage from "./pages/master/VariantViewPage";
 import WarehouseMasterPage from "./pages/master/WarehouseMasterPage";
 import PresentationsPage from "./pages/master/PresentationsPage";
 import TerritoriesPage from "./pages/master/TerritoriesPage";
@@ -170,7 +172,10 @@ function AppRoutes() {
       <Route path="/master/products/new" element={<ProtectedRoute><ProductFormPage /></ProtectedRoute>} />
       <Route path="/master/products/:id" element={<ProtectedRoute><ProductViewPage /></ProtectedRoute>} />
       <Route path="/master/products/:id/edit" element={<ProtectedRoute><ProductFormPage /></ProtectedRoute>} />
-      <Route path="/master/categories" element={<ProtectedRoute><CategoryMasterPage /></ProtectedRoute>} />
+      <Route path="/master/variants" element={<ProtectedRoute><VariantMasterPage /></ProtectedRoute>} />
+      <Route path="/master/variants/new" element={<ProtectedRoute><VariantFormPage /></ProtectedRoute>} />
+      <Route path="/master/variants/:id" element={<ProtectedRoute><VariantViewPage /></ProtectedRoute>} />
+      <Route path="/master/variants/:id/edit" element={<ProtectedRoute><VariantFormPage /></ProtectedRoute>} />
       <Route path="/master/warehouses" element={<ProtectedRoute><WarehouseMasterPage /></ProtectedRoute>} />
       <Route path="/master/schemes" element={<ProtectedRoute><AdvancedSchemesPage /></ProtectedRoute>} />
       <Route path="/master/countries" element={<ProtectedRoute><CountryMasterPage /></ProtectedRoute>} />
