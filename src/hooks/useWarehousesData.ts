@@ -17,6 +17,10 @@ export interface Warehouse {
   address: string | null;
   contact_person: string | null;
   contact_number: string | null;
+  contact_person_id: string | null;
+  alt_contact_person: string | null;
+  alt_contact_number: string | null;
+  images: string[] | null;
   capacity: string | null;
   status: 'active' | 'inactive';
   created_by: string | null;
@@ -37,6 +41,10 @@ export interface CreateWarehouseData {
   address?: string;
   contact_person?: string;
   contact_number?: string;
+  contact_person_id?: string;
+  alt_contact_person?: string;
+  alt_contact_number?: string;
+  images?: string[];
   capacity?: string;
   status?: 'active' | 'inactive';
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,8 @@ import {
   useUpdateWarehouse,
   CreateWarehouseData,
 } from '@/hooks/useWarehousesData';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 const indianStates = [
@@ -31,12 +33,30 @@ const indianStates = [
   'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
 ];
 
+// Hook to fetch employees for contact person selection
+function useEmployees() {
+  return useQuery({
+    queryKey: ['employees-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, phone, employee_id')
+        .eq('status', 'active')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+}
+
 export default function WarehouseFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
 
   const { data: warehouse, isLoading: isLoadingWarehouse } = useWarehouse(id);
+  const { data: employees = [] } = useEmployees();
   const createWarehouse = useCreateWarehouse();
   const updateWarehouse = useUpdateWarehouse();
 
@@ -52,9 +72,15 @@ export default function WarehouseFormPage() {
     address: '',
     contact_person: '',
     contact_number: '',
+    contact_person_id: '',
+    alt_contact_person: '',
+    alt_contact_number: '',
+    images: [],
     capacity: '',
     status: 'active',
   });
+
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (warehouse && isEdit) {
@@ -70,11 +96,74 @@ export default function WarehouseFormPage() {
         address: warehouse.address || '',
         contact_person: warehouse.contact_person || '',
         contact_number: warehouse.contact_number || '',
+        contact_person_id: warehouse.contact_person_id || '',
+        alt_contact_person: warehouse.alt_contact_person || '',
+        alt_contact_number: warehouse.alt_contact_number || '',
+        images: warehouse.images || [],
         capacity: warehouse.capacity || '',
         status: warehouse.status,
       });
     }
   }, [warehouse, isEdit]);
+
+  // Handle contact person selection - auto-populate phone number
+  const handleContactPersonSelect = (employeeId: string) => {
+    const selectedEmployee = employees.find(emp => emp.id === employeeId);
+    if (selectedEmployee) {
+      setFormData({
+        ...formData,
+        contact_person_id: employeeId,
+        contact_person: selectedEmployee.name,
+        contact_number: selectedEmployee.phone || '',
+      });
+    }
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingImage(true);
+    const newImages: string[] = [];
+
+    try {
+      for (const file of Array.from(files)) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${crypto.randomUUID()}.${fileExt}`;
+        const filePath = `warehouses/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('warehouse-images')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('warehouse-images')
+          .getPublicUrl(filePath);
+
+        newImages.push(urlData.publicUrl);
+      }
+
+      setFormData({
+        ...formData,
+        images: [...(formData.images || []), ...newImages],
+      });
+      toast.success('Images uploaded successfully');
+    } catch (error: any) {
+      toast.error('Failed to upload image: ' + error.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Remove image
+  const removeImage = (index: number) => {
+    const updatedImages = [...(formData.images || [])];
+    updatedImages.splice(index, 1);
+    setFormData({ ...formData, images: updatedImages });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -294,14 +383,22 @@ export default function WarehouseFormPage() {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="contact_person">Contact Person *</Label>
-                <Input
-                  id="contact_person"
-                  value={formData.contact_person}
-                  onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                  placeholder="Enter contact person name"
-                  required
-                />
+                <Label htmlFor="contact_person_id">Contact Person *</Label>
+                <Select
+                  value={formData.contact_person_id}
+                  onValueChange={handleContactPersonSelect}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select contact person" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.name} {emp.employee_id ? `(${emp.employee_id})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -310,7 +407,28 @@ export default function WarehouseFormPage() {
                   id="contact_number"
                   value={formData.contact_number}
                   onChange={(e) => setFormData({ ...formData, contact_number: e.target.value })}
-                  placeholder="Enter contact number"
+                  placeholder="Auto-filled from employee"
+                  className="bg-muted/50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="alt_contact_person">Alternate Contact Person</Label>
+                <Input
+                  id="alt_contact_person"
+                  value={formData.alt_contact_person}
+                  onChange={(e) => setFormData({ ...formData, alt_contact_person: e.target.value })}
+                  placeholder="Enter alternate contact name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="alt_contact_number">Alternate Contact Number</Label>
+                <Input
+                  id="alt_contact_number"
+                  value={formData.alt_contact_number}
+                  onChange={(e) => setFormData({ ...formData, alt_contact_number: e.target.value })}
+                  placeholder="Enter alternate contact number"
                 />
               </div>
 
@@ -322,6 +440,70 @@ export default function WarehouseFormPage() {
                   onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                   placeholder="e.g., 10000 sq ft"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Warehouse Images */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5" />
+                Warehouse Images
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Image Upload Button */}
+                <div className="flex items-center gap-4">
+                  <Label
+                    htmlFor="image-upload"
+                    className="flex items-center gap-2 px-4 py-2 border border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                  >
+                    {uploadingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    <span>{uploadingImage ? 'Uploading...' : 'Upload Images'}</span>
+                  </Label>
+                  <Input
+                    id="image-upload"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    disabled={uploadingImage}
+                    className="hidden"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Upload warehouse photos (max 5 images)
+                  </span>
+                </div>
+
+                {/* Image Preview Grid */}
+                {formData.images && formData.images.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {formData.images.map((url, index) => (
+                      <div key={index} className="relative group aspect-video rounded-lg overflow-hidden border">
+                        <img
+                          src={url}
+                          alt={`Warehouse image ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => removeImage(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
