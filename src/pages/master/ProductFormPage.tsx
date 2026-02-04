@@ -34,10 +34,10 @@ const skuSizeOptions = [
 ];
 
 const packSizeOptions = [
-  { value: '2g', label: '2g' },
-  { value: '4g', label: '4g' },
-  { value: '5g', label: '5g' },
-  { value: '20g', label: '20g' },
+  { value: '2nos', label: '2 nos' },
+  { value: '4nos', label: '4 nos' },
+  { value: '5nos', label: '5 nos' },
+  { value: '20nos', label: '20 nos' },
 ];
 
 const statusOptions = [
@@ -83,22 +83,15 @@ export default function ProductFormPage() {
     status: 'active',
   });
 
-  // Sample specific fields
-  const [sampleInfo, setSampleInfo] = useState({
-    quantity: '',
-    warehouse: '',
-    purpose: '',
-  });
-
   // Sample SKU info
   const [sampleSKU, setSampleSKU] = useState<SampleSKU>({
     skuSize: '2g',
-    packSize: '2g',
+    packSize: '2nos',
   });
 
   // SKU Entries for products
   const [skuEntries, setSkuEntries] = useState<SKUEntry[]>([
-    { id: crypto.randomUUID(), skuSize: '2g', packSize: '2g', unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0 }
+    { id: crypto.randomUUID(), skuSize: '2g', packSize: '2nos', unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0 }
   ]);
 
   // Validation errors
@@ -144,7 +137,7 @@ export default function ProductFormPage() {
     setSkuEntries([...skuEntries, {
       id: crypto.randomUUID(),
       skuSize: '2g',
-      packSize: '2g',
+      packSize: '2nos',
       unitMRP: '',
       unitPTR: '',
       unitPTS: '',
@@ -160,22 +153,39 @@ export default function ProductFormPage() {
     }
   };
 
+  // Extract numeric value from pack size (e.g., "2nos" -> 2)
+  const getPackSizeMultiplier = (packSize: string): number => {
+    const match = packSize.match(/^(\d+)/);
+    return match ? parseInt(match[1], 10) : 1;
+  };
+
   const updateSKUEntry = (id: string, field: keyof SKUEntry, value: string | number) => {
     setSkuEntries(skuEntries.map(entry => {
       if (entry.id !== id) return entry;
       
       const updated = { ...entry, [field]: value };
       
-      // For pack size as string (2g, 4g, etc.), just use the unit prices directly as box values
-      const unitMRP = parseFloat(String(updated.unitMRP)) || 0;
-      const unitPTR = parseFloat(String(updated.unitPTR)) || 0;
-      const unitPTS = parseFloat(String(updated.unitPTS)) || 0;
-      
-      updated.boxMRP = unitMRP;
-      updated.boxPTR = unitPTR;
-      updated.boxPTS = unitPTS;
+      // Auto-calculate box values when unit prices or pack size change
+      if (field === 'unitMRP' || field === 'unitPTR' || field === 'unitPTS' || field === 'packSize') {
+        const multiplier = getPackSizeMultiplier(updated.packSize);
+        const unitMRP = parseFloat(String(updated.unitMRP)) || 0;
+        const unitPTR = parseFloat(String(updated.unitPTR)) || 0;
+        const unitPTS = parseFloat(String(updated.unitPTS)) || 0;
+        
+        updated.boxMRP = unitMRP * multiplier;
+        updated.boxPTR = unitPTR * multiplier;
+        updated.boxPTS = unitPTS * multiplier;
+      }
       
       return updated;
+    }));
+  };
+
+  // Handler for direct box price edits
+  const updateBoxPrice = (id: string, field: 'boxMRP' | 'boxPTR' | 'boxPTS', value: string) => {
+    setSkuEntries(skuEntries.map(entry => {
+      if (entry.id !== id) return entry;
+      return { ...entry, [field]: parseFloat(value) || 0 };
     }));
   };
 
@@ -186,11 +196,7 @@ export default function ProductFormPage() {
     if (!productInfo.variant) newErrors.variant = 'Variant is required';
     if (!productInfo.packType) newErrors.packType = 'Pack type is required';
 
-    if (isSample) {
-      if (!sampleInfo.quantity || parseInt(sampleInfo.quantity) <= 0) {
-        newErrors.quantity = 'Sample quantity is required';
-      }
-    } else {
+    if (!isSample) {
       // Validate SKU entries for products
       const validSKUs = skuEntries.filter(entry => 
         entry.unitMRP && entry.unitPTR && entry.unitPTS
@@ -224,8 +230,8 @@ export default function ProductFormPage() {
           sku: `SMPL-${productInfo.name.substring(0, 3).toUpperCase()}-${sampleSKU.skuSize}-${sampleSKU.packSize}`,
           type: productInfo.variant,
           cost_price: 0,
-          stock: parseInt(sampleInfo.quantity) || 0,
-          description: `Pack Type: ${productInfo.packType}, SKU Size: ${sampleSKU.skuSize}, Pack Size: ${sampleSKU.packSize}${sampleInfo.purpose ? `. ${sampleInfo.purpose}` : ''}`,
+          stock: 0,
+          description: `Pack Type: ${productInfo.packType}, SKU Size: ${sampleSKU.skuSize}, Pack Size: ${sampleSKU.packSize}`,
         });
         toast.success('Sample created successfully');
       } else {
@@ -405,12 +411,12 @@ export default function ProductFormPage() {
           >
             <Card>
               <CardHeader className="pb-4">
-                <CardTitle className="text-lg">Sample Details</CardTitle>
+                <CardTitle className="text-lg">Sample SKU Details</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="skuSizeSample">SKU Size *</Label>
+                    <Label htmlFor="skuSizeSample">SKU Size (g) *</Label>
                     <select
                       id="skuSizeSample"
                       value={sampleSKU.skuSize}
@@ -424,7 +430,7 @@ export default function ProductFormPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="packSizeSample">Pack Size *</Label>
+                    <Label htmlFor="packSizeSample">Pack Size (nos) *</Label>
                     <select
                       id="packSizeSample"
                       value={sampleSKU.packSize}
@@ -435,46 +441,6 @@ export default function ProductFormPage() {
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">Sample Quantity *</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      value={sampleInfo.quantity}
-                      onChange={(e) => setSampleInfo({ ...sampleInfo, quantity: e.target.value })}
-                      placeholder="Enter quantity"
-                      min="1"
-                      className={errors.quantity ? 'border-destructive' : ''}
-                    />
-                    {errors.quantity && <p className="text-xs text-destructive">{errors.quantity}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="warehouse">Warehouse / Location</Label>
-                    <select
-                      id="warehouse"
-                      value={sampleInfo.warehouse}
-                      onChange={(e) => setSampleInfo({ ...sampleInfo, warehouse: e.target.value })}
-                      className="input-field w-full"
-                    >
-                      <option value="">Select warehouse</option>
-                      {warehouses.map(wh => (
-                        <option key={wh.id} value={wh.id}>{wh.name} ({wh.code})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="purpose">Purpose / Remarks</Label>
-                    <Textarea
-                      id="purpose"
-                      value={sampleInfo.purpose}
-                      onChange={(e) => setSampleInfo({ ...sampleInfo, purpose: e.target.value })}
-                      placeholder="Enter purpose or remarks"
-                      rows={1}
-                    />
                   </div>
                 </div>
               </CardContent>
@@ -587,14 +553,35 @@ export default function ProductFormPage() {
                                 className="text-sm"
                               />
                             </TableCell>
-                            <TableCell className="text-right font-medium bg-primary/5">
-                              ₹{entry.boxMRP.toFixed(2)}
+                            <TableCell className="bg-primary/5">
+                              <Input
+                                type="number"
+                                value={entry.boxMRP}
+                                onChange={(e) => updateBoxPrice(entry.id, 'boxMRP', e.target.value)}
+                                min="0"
+                                step="0.01"
+                                className="text-sm text-right font-medium"
+                              />
                             </TableCell>
-                            <TableCell className="text-right font-medium bg-primary/5">
-                              ₹{entry.boxPTR.toFixed(2)}
+                            <TableCell className="bg-primary/5">
+                              <Input
+                                type="number"
+                                value={entry.boxPTR}
+                                onChange={(e) => updateBoxPrice(entry.id, 'boxPTR', e.target.value)}
+                                min="0"
+                                step="0.01"
+                                className="text-sm text-right font-medium"
+                              />
                             </TableCell>
-                            <TableCell className="text-right font-medium bg-primary/5">
-                              ₹{entry.boxPTS.toFixed(2)}
+                            <TableCell className="bg-primary/5">
+                              <Input
+                                type="number"
+                                value={entry.boxPTS}
+                                onChange={(e) => updateBoxPrice(entry.id, 'boxPTS', e.target.value)}
+                                min="0"
+                                step="0.01"
+                                className="text-sm text-right font-medium"
+                              />
                             </TableCell>
                             <TableCell>
                               <Button
