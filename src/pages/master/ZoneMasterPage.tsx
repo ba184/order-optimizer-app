@@ -1,70 +1,18 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { CrudModal, FieldConfig } from '@/components/ui/CrudModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
-import { useZones, useCreateZone, useUpdateZone, useDeleteZone, useCountries, Zone } from '@/hooks/useGeoMasterData';
-import { Plus, Compass, Edit, Trash2, Eye, Users, Loader2 } from 'lucide-react';
+import { useZones, useDeleteZone, Zone } from '@/hooks/useGeoMasterData';
+import { Plus, Compass, Edit, Trash2, Eye, Loader2, CheckCircle, XCircle, Users } from 'lucide-react';
 
 export default function ZoneMasterPage() {
+  const navigate = useNavigate();
   const { data: zones = [], isLoading } = useZones();
-  const { data: countries = [] } = useCountries();
-  const createZone = useCreateZone();
-  const updateZone = useUpdateZone();
   const deleteZone = useDeleteZone();
 
-  const [modalOpen, setModalOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState<Zone | null>(null);
-  const [selectedItem, setSelectedItem] = useState<Zone | null>(null);
-  const [mode, setMode] = useState<'create' | 'edit' | 'view'>('create');
-
-  const countryOptions = countries.map(c => ({ value: c.id, label: c.name }));
-
-  const fields: FieldConfig[] = [
-    { key: 'country_id', label: 'Country', type: 'select', required: true, options: countryOptions },
-    { key: 'name', label: 'Zone Name', type: 'text', required: true, placeholder: 'e.g., North Zone' },
-    { key: 'code', label: 'Zone Code', type: 'text', required: true, placeholder: 'e.g., NZ' },
-    { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] },
-  ];
-
-  const handleCreate = () => {
-    setSelectedItem(null);
-    setMode('create');
-    setModalOpen(true);
-  };
-
-  const handleView = (item: Zone) => {
-    setSelectedItem(item);
-    setMode('view');
-    setModalOpen(true);
-  };
-
-  const handleEdit = (item: Zone) => {
-    setSelectedItem(item);
-    setMode('edit');
-    setModalOpen(true);
-  };
-
-  const handleSubmit = async (formData: Record<string, any>) => {
-    if (mode === 'create') {
-      await createZone.mutateAsync({
-        name: formData.name,
-        code: formData.code,
-        country_id: formData.country_id,
-        status: formData.status || 'active',
-      });
-    } else if (selectedItem) {
-      await updateZone.mutateAsync({
-        id: selectedItem.id,
-        name: formData.name,
-        code: formData.code,
-        country_id: formData.country_id,
-        status: formData.status,
-      });
-    }
-    setModalOpen(false);
-  };
 
   const handleDelete = async () => {
     if (deleteModal) {
@@ -72,6 +20,10 @@ export default function ZoneMasterPage() {
       setDeleteModal(null);
     }
   };
+
+  const activeCount = zones.filter(z => z.status === 'active').length;
+  const inactiveCount = zones.filter(z => z.status === 'inactive').length;
+  const withManagerCount = zones.filter(z => z.manager_id).length;
 
   const columns = [
     {
@@ -110,10 +62,10 @@ export default function ZoneMasterPage() {
       header: 'Actions',
       render: (item: Zone) => (
         <div className="flex items-center gap-1">
-          <button onClick={() => handleView(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+          <button onClick={() => navigate(`/master/zones/${item.id}`)} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Eye size={16} className="text-muted-foreground" />
           </button>
-          <button onClick={() => handleEdit(item)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+          <button onClick={() => navigate(`/master/zones/${item.id}/edit`)} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Edit size={16} className="text-muted-foreground" />
           </button>
           <button onClick={() => setDeleteModal(item)} className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
@@ -139,13 +91,13 @@ export default function ZoneMasterPage() {
           <h1 className="module-title">Zone Master</h1>
           <p className="text-muted-foreground">Manage sales zones and regions</p>
         </div>
-        <button onClick={handleCreate} className="btn-primary flex items-center gap-2">
+        <button onClick={() => navigate('/master/zones/new')} className="btn-primary flex items-center gap-2">
           <Plus size={18} />
           Add Zone
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-warning/10">
@@ -160,11 +112,35 @@ export default function ZoneMasterPage() {
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
           <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-success/10">
+              <CheckCircle size={24} className="text-success" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{activeCount}</p>
+              <p className="text-sm text-muted-foreground">Active</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-destructive/10">
+              <XCircle size={24} className="text-destructive" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{inactiveCount}</p>
+              <p className="text-sm text-muted-foreground">Inactive</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
+          <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-primary/10">
               <Users size={24} className="text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{zones.filter(z => z.manager_id).length}</p>
+              <p className="text-2xl font-bold text-foreground">{withManagerCount}</p>
               <p className="text-sm text-muted-foreground">With Managers</p>
             </div>
           </div>
@@ -176,16 +152,6 @@ export default function ZoneMasterPage() {
         columns={columns} 
         searchPlaceholder="Search zones..."
         emptyMessage="No zones found. Add your first zone to get started."
-      />
-
-      <CrudModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={mode === 'create' ? 'Add Zone' : mode === 'edit' ? 'Edit Zone' : 'Zone Details'}
-        fields={fields}
-        initialData={selectedItem || undefined}
-        onSubmit={handleSubmit}
-        mode={mode}
       />
 
       <DeleteConfirmModal

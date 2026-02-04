@@ -3717,6 +3717,42 @@ export type Database = {
           },
         ]
       }
+      zone_cities: {
+        Row: {
+          city_id: string
+          created_at: string
+          id: string
+          zone_id: string
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          id?: string
+          zone_id: string
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          id?: string
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zone_cities_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zone_cities_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zone_states: {
         Row: {
           created_at: string
@@ -3746,6 +3782,42 @@ export type Database = {
           },
           {
             foreignKeyName: "zone_states_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zone_territories: {
+        Row: {
+          created_at: string
+          id: string
+          territory_id: string
+          zone_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          territory_id: string
+          zone_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          territory_id?: string
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zone_territories_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zone_territories_zone_id_fkey"
             columns: ["zone_id"]
             isOneToOne: false
             referencedRelation: "zones"

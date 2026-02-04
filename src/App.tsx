@@ -50,9 +50,19 @@ import UsersPage from "./pages/master/UsersPage";
 import RolesPermissionsPage from "./pages/master/RolesPermissionsPage";
 import TargetManagementPage from "./pages/master/TargetManagementPage";
 import CountryMasterPage from "./pages/master/CountryMasterPage";
+import CountryFormPage from "./pages/master/CountryFormPage";
+import CountryViewPage from "./pages/master/CountryViewPage";
 import StateMasterPage from "./pages/master/StateMasterPage";
+import StateFormPage from "./pages/master/StateFormPage";
+import StateViewPage from "./pages/master/StateViewPage";
 import CityMasterPage from "./pages/master/CityMasterPage";
+import CityFormPage from "./pages/master/CityFormPage";
+import CityViewPage from "./pages/master/CityViewPage";
 import ZoneMasterPage from "./pages/master/ZoneMasterPage";
+import ZoneFormPage from "./pages/master/ZoneFormPage";
+import ZoneViewPage from "./pages/master/ZoneViewPage";
+import TerritoryFormPage from "./pages/master/TerritoryFormPage";
+import TerritoryViewPage from "./pages/master/TerritoryViewPage";
 import SettingsPage from "./pages/SettingsPage";
 import ExpenseManagementPage from "./pages/ExpenseManagementPage";
 import SampleGiftManagementPage from "./pages/SampleGiftManagementPage";
@@ -184,10 +194,25 @@ function AppRoutes() {
       <Route path="/master/warehouses/:id/edit" element={<ProtectedRoute><WarehouseFormPage /></ProtectedRoute>} />
       <Route path="/master/schemes" element={<ProtectedRoute><AdvancedSchemesPage /></ProtectedRoute>} />
       <Route path="/master/countries" element={<ProtectedRoute><CountryMasterPage /></ProtectedRoute>} />
+      <Route path="/master/countries/new" element={<ProtectedRoute><CountryFormPage /></ProtectedRoute>} />
+      <Route path="/master/countries/:id" element={<ProtectedRoute><CountryViewPage /></ProtectedRoute>} />
+      <Route path="/master/countries/:id/edit" element={<ProtectedRoute><CountryFormPage /></ProtectedRoute>} />
       <Route path="/master/states" element={<ProtectedRoute><StateMasterPage /></ProtectedRoute>} />
+      <Route path="/master/states/new" element={<ProtectedRoute><StateFormPage /></ProtectedRoute>} />
+      <Route path="/master/states/:id" element={<ProtectedRoute><StateViewPage /></ProtectedRoute>} />
+      <Route path="/master/states/:id/edit" element={<ProtectedRoute><StateFormPage /></ProtectedRoute>} />
       <Route path="/master/cities" element={<ProtectedRoute><CityMasterPage /></ProtectedRoute>} />
+      <Route path="/master/cities/new" element={<ProtectedRoute><CityFormPage /></ProtectedRoute>} />
+      <Route path="/master/cities/:id" element={<ProtectedRoute><CityViewPage /></ProtectedRoute>} />
+      <Route path="/master/cities/:id/edit" element={<ProtectedRoute><CityFormPage /></ProtectedRoute>} />
       <Route path="/master/zones" element={<ProtectedRoute><ZoneMasterPage /></ProtectedRoute>} />
+      <Route path="/master/zones/new" element={<ProtectedRoute><ZoneFormPage /></ProtectedRoute>} />
+      <Route path="/master/zones/:id" element={<ProtectedRoute><ZoneViewPage /></ProtectedRoute>} />
+      <Route path="/master/zones/:id/edit" element={<ProtectedRoute><ZoneFormPage /></ProtectedRoute>} />
       <Route path="/master/territories" element={<ProtectedRoute><TerritoriesPage /></ProtectedRoute>} />
+      <Route path="/master/territories/new" element={<ProtectedRoute><TerritoryFormPage /></ProtectedRoute>} />
+      <Route path="/master/territories/:id" element={<ProtectedRoute><TerritoryViewPage /></ProtectedRoute>} />
+      <Route path="/master/territories/:id/edit" element={<ProtectedRoute><TerritoryFormPage /></ProtectedRoute>} />
       <Route path="/master/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
       <Route path="/master/roles" element={<ProtectedRoute><RolesPermissionsPage /></ProtectedRoute>} />
       <Route path="/master/targets" element={<ProtectedRoute><TargetManagementPage /></ProtectedRoute>} />

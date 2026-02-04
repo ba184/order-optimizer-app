@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { useTerritories, useCreateTerritory, useDeleteTerritory, Territory } from '@/hooks/useTerritoriesData';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
+import { useTerritories, useDeleteTerritory, Territory } from '@/hooks/useTerritoriesData';
 import {
   Plus,
   MapPin,
@@ -11,12 +14,13 @@ import {
   Navigation,
   Edit,
   Trash2,
+  Eye,
   User,
   ChevronRight,
   Loader2,
-  X,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
-import { toast } from 'sonner';
 
 const typeIcons = {
   country: Globe,
@@ -35,37 +39,22 @@ const typeColors = {
 };
 
 export default function TerritoriesPage() {
+  const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState<string>('all');
   const { data: territories = [], isLoading } = useTerritories(selectedType === 'all' ? undefined : selectedType);
-  const createTerritory = useCreateTerritory();
   const deleteTerritory = useDeleteTerritory();
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'area' as const,
-    parent_id: '',
-    manager_id: '',
-  });
+  const [deleteModal, setDeleteModal] = useState<Territory | null>(null);
 
-  const handleCreate = async () => {
-    if (!formData.name || !formData.type) {
-      toast.error('Please fill required fields');
-      return;
+  const handleDelete = async () => {
+    if (deleteModal) {
+      await deleteTerritory.mutateAsync(deleteModal.id);
+      setDeleteModal(null);
     }
-    await createTerritory.mutateAsync({
-      name: formData.name,
-      type: formData.type,
-      parent_id: formData.parent_id || null,
-      manager_id: formData.manager_id || null,
-    });
-    setShowCreateModal(false);
-    setFormData({ name: '', type: 'area', parent_id: '', manager_id: '' });
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteTerritory.mutateAsync(id);
-  };
+  const activeCount = territories.filter(t => t.status === 'active').length;
+  const inactiveCount = territories.filter(t => t.status === 'inactive').length;
 
   const columns = [
     {
@@ -117,31 +106,28 @@ export default function TerritoriesPage() {
       ),
     },
     {
+      key: 'status',
+      header: 'Status',
+      render: (item: Territory) => <StatusBadge status={item.status} />,
+    },
+    {
       key: 'actions',
       header: 'Actions',
       render: (item: Territory) => (
         <div className="flex items-center gap-1">
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+          <button onClick={() => navigate(`/master/territories/${item.id}`)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+            <Eye size={16} className="text-muted-foreground" />
+          </button>
+          <button onClick={() => navigate(`/master/territories/${item.id}/edit`)} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Edit size={16} className="text-muted-foreground" />
           </button>
-          <button 
-            onClick={() => handleDelete(item.id)}
-            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
-          >
+          <button onClick={() => setDeleteModal(item)} className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
             <Trash2 size={16} className="text-destructive" />
           </button>
         </div>
       ),
     },
   ];
-
-  const stats = {
-    countries: territories.filter(t => t.type === 'country').length,
-    states: territories.filter(t => t.type === 'state').length,
-    zones: territories.filter(t => t.type === 'zone').length,
-    cities: territories.filter(t => t.type === 'city').length,
-    areas: territories.filter(t => t.type === 'area').length,
-  };
 
   if (isLoading) {
     return (
@@ -158,38 +144,72 @@ export default function TerritoriesPage() {
           <h1 className="module-title">Territory Management</h1>
           <p className="text-muted-foreground">Manage geographical hierarchy and assignments</p>
         </div>
-        <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-2">
+        <button onClick={() => navigate('/master/territories/new')} className="btn-primary flex items-center gap-2">
           <Plus size={18} />
           Add Territory
         </button>
       </div>
 
-      <div className="grid grid-cols-5 gap-4">
-        {[
-          { type: 'country', label: 'Countries', count: stats.countries, icon: Globe },
-          { type: 'state', label: 'States', count: stats.states, icon: Map },
-          { type: 'zone', label: 'Zones', count: stats.zones, icon: Navigation },
-          { type: 'city', label: 'Cities', count: stats.cities, icon: Building },
-          { type: 'area', label: 'Areas', count: stats.areas, icon: MapPin },
-        ].map((stat, index) => (
-          <motion.div
-            key={stat.type}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className={`stat-card cursor-pointer ${selectedType === stat.type ? 'ring-2 ring-primary' : ''}`}
-            onClick={() => setSelectedType(selectedType === stat.type ? 'all' : stat.type)}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-xl ${typeColors[stat.type as keyof typeof typeColors]}`}>
-                <stat.icon size={20} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stat.count}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-              </div>
+      <div className="grid grid-cols-3 gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-primary/10">
+              <MapPin size={24} className="text-primary" />
             </div>
-          </motion.div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{territories.length}</p>
+              <p className="text-sm text-muted-foreground">Total Territories</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-success/10">
+              <CheckCircle size={24} className="text-success" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{activeCount}</p>
+              <p className="text-sm text-muted-foreground">Active</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-destructive/10">
+              <XCircle size={24} className="text-destructive" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{inactiveCount}</p>
+              <p className="text-sm text-muted-foreground">Inactive</p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Type filter chips */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { type: 'all', label: 'All', icon: MapPin },
+          { type: 'country', label: 'Countries', icon: Globe },
+          { type: 'state', label: 'States', icon: Map },
+          { type: 'zone', label: 'Zones', icon: Navigation },
+          { type: 'city', label: 'Cities', icon: Building },
+          { type: 'area', label: 'Areas', icon: MapPin },
+        ].map((item) => (
+          <button
+            key={item.type}
+            onClick={() => setSelectedType(item.type)}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              selectedType === item.type
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            <item.icon size={16} />
+            {item.label}
+          </button>
         ))}
       </div>
 
@@ -200,75 +220,13 @@ export default function TerritoriesPage() {
         emptyMessage="No territories found. Add your first territory to get started."
       />
 
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">Add Territory</h2>
-              <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-muted rounded-lg">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Territory Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter name"
-                  className="input-field"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Type *</label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                  className="input-field"
-                >
-                  <option value="country">Country</option>
-                  <option value="state">State</option>
-                  <option value="zone">Zone</option>
-                  <option value="city">City</option>
-                  <option value="area">Area</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Parent Territory</label>
-                <select
-                  value={formData.parent_id}
-                  onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
-                  className="input-field"
-                >
-                  <option value="">Select Parent</option>
-                  {territories.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name} ({t.type})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowCreateModal(false)} className="btn-outline">Cancel</button>
-              <button 
-                onClick={handleCreate} 
-                disabled={createTerritory.isPending}
-                className="btn-primary"
-              >
-                {createTerritory.isPending ? 'Creating...' : 'Create'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={!!deleteModal}
+        onClose={() => setDeleteModal(null)}
+        onConfirm={handleDelete}
+        title="Delete Territory"
+        message={`Are you sure you want to delete "${deleteModal?.name}"? This action cannot be undone.`}
+      />
     </div>
   );
 }
