@@ -45,6 +45,8 @@ import WarehouseMasterPage from "./pages/master/WarehouseMasterPage";
 import WarehouseFormPage from "./pages/master/WarehouseFormPage";
 import WarehouseViewPage from "./pages/master/WarehouseViewPage";
 import PresentationsPage from "./pages/master/PresentationsPage";
+import PresentationFormPage from "./pages/master/PresentationFormPage";
+import PresentationViewPage from "./pages/master/PresentationViewPage";
 import TerritoriesPage from "./pages/master/TerritoriesPage";
 import EmployeesPage from "./pages/master/EmployeesPage";
 import EmployeeFormPage from "./pages/master/EmployeeFormPage";
@@ -222,6 +224,9 @@ function AppRoutes() {
       <Route path="/master/roles" element={<ProtectedRoute><RolesPermissionsPage /></ProtectedRoute>} />
       <Route path="/master/targets" element={<ProtectedRoute><TargetManagementPage /></ProtectedRoute>} />
       <Route path="/master/presentations" element={<ProtectedRoute><PresentationsPage /></ProtectedRoute>} />
+      <Route path="/master/presentations/new" element={<ProtectedRoute><PresentationFormPage /></ProtectedRoute>} />
+      <Route path="/master/presentations/view/:id" element={<ProtectedRoute><PresentationViewPage /></ProtectedRoute>} />
+      <Route path="/master/presentations/edit/:id" element={<ProtectedRoute><PresentationFormPage /></ProtectedRoute>} />
       
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       

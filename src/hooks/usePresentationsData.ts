@@ -41,6 +41,7 @@ export function useCreatePresentation() {
     mutationFn: async (presentation: {
       title: string;
       type: string;
+      status?: string;
       description?: string;
       file_url?: string;
       duration?: number;

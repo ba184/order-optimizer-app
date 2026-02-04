@@ -1,10 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
-import { PresentationFormModal } from '@/components/presentations/PresentationFormModal';
-import { PresentationViewModal } from '@/components/presentations/PresentationViewModal';
 import {
   Plus,
   Presentation as PresentationIcon,
@@ -17,8 +16,6 @@ import {
 } from 'lucide-react';
 import {
   usePresentations,
-  useCreatePresentation,
-  useUpdatePresentation,
   useDeletePresentation,
   type Presentation,
 } from '@/hooks/usePresentationsData';
@@ -30,13 +27,10 @@ const typeConfig = {
 };
 
 export default function PresentationsPage() {
+  const navigate = useNavigate();
   const { data: presentations = [], isLoading } = usePresentations();
-  const createMutation = useCreatePresentation();
-  const updateMutation = useUpdatePresentation();
   const deleteMutation = useDeletePresentation();
 
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedPresentation, setSelectedPresentation] = useState<Presentation | null>(null);
 
@@ -44,56 +38,22 @@ export default function PresentationsPage() {
   const totalPresentations = presentations.length;
   const activePresentations = presentations.filter(p => p.status === 'active').length;
   const inactivePresentations = presentations.filter(p => p.status === 'inactive').length;
-  
 
   const handleCreate = () => {
-    setSelectedPresentation(null);
-    setIsFormOpen(true);
+    navigate('/master/presentations/new');
   };
 
   const handleEdit = (presentation: Presentation) => {
-    setSelectedPresentation(presentation);
-    setIsFormOpen(true);
+    navigate(`/master/presentations/edit/${presentation.id}`);
   };
 
   const handleView = (presentation: Presentation) => {
-    setSelectedPresentation(presentation);
-    setIsViewOpen(true);
+    navigate(`/master/presentations/view/${presentation.id}`);
   };
 
   const handleDeleteClick = (presentation: Presentation) => {
     setSelectedPresentation(presentation);
     setIsDeleteOpen(true);
-  };
-
-  const handleFormSubmit = async (data: {
-    title: string;
-    type: string;
-    description?: string;
-    file_url?: string;
-  }) => {
-    try {
-      if (selectedPresentation) {
-        await updateMutation.mutateAsync({ 
-          id: selectedPresentation.id, 
-          title: data.title,
-          type: data.type as 'ppt' | 'pdf' | 'video',
-          description: data.description,
-          file_url: data.file_url,
-        });
-      } else {
-        await createMutation.mutateAsync({
-          title: data.title,
-          type: data.type,
-          description: data.description,
-          file_url: data.file_url,
-          duration: 0,
-        });
-      }
-      setIsFormOpen(false);
-    } catch (error) {
-      console.error('Error saving presentation:', error);
-    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -238,21 +198,7 @@ export default function PresentationsPage() {
         emptyMessage={isLoading ? 'Loading presentations...' : 'No presentations found'}
       />
 
-      {/* Modals */}
-      <PresentationFormModal
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleFormSubmit}
-        presentation={selectedPresentation}
-        isLoading={createMutation.isPending || updateMutation.isPending}
-      />
-
-      <PresentationViewModal
-        isOpen={isViewOpen}
-        onClose={() => setIsViewOpen(false)}
-        presentation={selectedPresentation}
-      />
-
+      {/* Delete Modal */}
       <DeleteConfirmModal
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
