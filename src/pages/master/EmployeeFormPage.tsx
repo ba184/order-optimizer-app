@@ -10,6 +10,8 @@ import { useCountries, useStates, useCities } from '@/hooks/useGeoMasterData';
 import { useTerritories } from '@/hooks/useTerritoriesData';
 import { toast } from 'sonner';
 
+const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
 export default function EmployeeFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -35,6 +37,11 @@ export default function EmployeeFormPage() {
     city: '',
     territory: '',
     status: 'active',
+    doj: '',
+    dob: '',
+    bloodGroup: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
   });
 
   // Load existing employee data when editing
@@ -54,6 +61,11 @@ export default function EmployeeFormPage() {
           city: employee.territory || '',
           territory: employee.territory || '',
           status: employee.status || 'active',
+          doj: employee.doj || '',
+          dob: employee.dob || '',
+          bloodGroup: employee.blood_group || '',
+          emergencyContactName: employee.emergency_contact_name || '',
+          emergencyContactPhone: employee.emergency_contact_phone || '',
         });
       }
     }
@@ -109,6 +121,11 @@ export default function EmployeeFormPage() {
           region: formData.state || undefined,
           reporting_to: formData.reportingTo || undefined,
           status: formData.status,
+          doj: formData.doj || undefined,
+          dob: formData.dob || undefined,
+          blood_group: formData.bloodGroup || undefined,
+          emergency_contact_name: formData.emergencyContactName || undefined,
+          emergency_contact_phone: formData.emergencyContactPhone || undefined,
         });
 
         // Update role if changed
@@ -132,6 +149,11 @@ export default function EmployeeFormPage() {
           region: formData.state || undefined,
           reporting_to: formData.reportingTo || undefined,
           role_code: formData.role,
+          doj: formData.doj || undefined,
+          dob: formData.dob || undefined,
+          blood_group: formData.bloodGroup || undefined,
+          emergency_contact_name: formData.emergencyContactName || undefined,
+          emergency_contact_phone: formData.emergencyContactPhone || undefined,
         });
         toast.success('Employee created successfully');
       }
@@ -172,7 +194,7 @@ export default function EmployeeFormPage() {
         className="bg-card rounded-xl border border-border p-6"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Employee ID */}
+          {/* Employee ID & Status */}
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Employee ID</Label>
@@ -246,6 +268,65 @@ export default function EmployeeFormPage() {
                 />
               </div>
             )}
+          </div>
+
+          {/* DOJ, DOB, Blood Group */}
+          <div className="grid grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label>Date of Joining</Label>
+              <Input
+                type="date"
+                value={formData.doj}
+                onChange={(e) => setFormData({ ...formData, doj: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Date of Birth</Label>
+              <Input
+                type="date"
+                value={formData.dob}
+                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Blood Group</Label>
+              <Select
+                value={formData.bloodGroup}
+                onValueChange={(value) => setFormData({ ...formData, bloodGroup: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select blood group" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bloodGroups.map((bg) => (
+                    <SelectItem key={bg} value={bg}>
+                      {bg}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Emergency Contact */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label>Emergency Contact Name</Label>
+              <Input
+                value={formData.emergencyContactName}
+                onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
+                placeholder="Contact person name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Emergency Contact Phone</Label>
+              <Input
+                type="tel"
+                value={formData.emergencyContactPhone}
+                onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })}
+                placeholder="+91 98765 43210"
+              />
+            </div>
           </div>
 
           {/* Role & Reporting */}

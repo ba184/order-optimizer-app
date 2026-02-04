@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Edit, User, Mail, Phone, MapPin, Shield, Calendar, Key, Target } from 'lucide-react';
+import { ArrowLeft, Edit, User, Mail, Phone, MapPin, Shield, Calendar, Key, Target, Heart, AlertCircle } from 'lucide-react';
 import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import { useUsersData, useRoles } from '@/hooks/useUsersData';
 import { format } from 'date-fns';
@@ -128,7 +128,7 @@ export default function EmployeeViewPage() {
           <InfoCard title="Basic Information">
             <InfoRow 
               label="Employee ID" 
-              value={<span className="font-mono">{employee.id.slice(0, 8).toUpperCase()}</span>}
+              value={<span className="font-mono">{employee.employee_id || employee.id.slice(0, 8).toUpperCase()}</span>}
             />
             <InfoRow label="Full Name" value={employee.name} icon={User} />
             <InfoRow label="Email" value={employee.email} icon={Mail} />
@@ -158,6 +158,11 @@ export default function EmployeeViewPage() {
             />
             <InfoRow label="Reports To" value={employee.reporting_to_name || '-'} icon={User} />
             <InfoRow 
+              label="Date of Joining" 
+              value={employee.doj ? format(new Date(employee.doj), 'PPP') : '-'}
+              icon={Calendar}
+            />
+            <InfoRow 
               label="Created At" 
               value={employee.created_at ? format(new Date(employee.created_at), 'PPP') : '-'}
               icon={Calendar}
@@ -165,11 +170,39 @@ export default function EmployeeViewPage() {
           </InfoCard>
         </motion.div>
 
-        {/* Location Information */}
+        {/* Personal Details */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <InfoCard title="Personal Details">
+            <InfoRow 
+              label="Date of Birth" 
+              value={employee.dob ? format(new Date(employee.dob), 'PPP') : '-'}
+              icon={Calendar}
+            />
+            <InfoRow label="Blood Group" value={employee.blood_group || '-'} icon={Heart} />
+          </InfoCard>
+        </motion.div>
+
+        {/* Emergency Contact */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+        >
+          <InfoCard title="Emergency Contact">
+            <InfoRow label="Contact Name" value={employee.emergency_contact_name || '-'} icon={AlertCircle} />
+            <InfoRow label="Contact Phone" value={employee.emergency_contact_phone || '-'} icon={Phone} />
+          </InfoCard>
+        </motion.div>
+
+        {/* Location Information */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
         >
           <InfoCard title="Location Information">
             <InfoRow label="Region" value={employee.region || '-'} icon={MapPin} />

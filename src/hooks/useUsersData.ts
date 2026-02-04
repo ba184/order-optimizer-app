@@ -15,6 +15,12 @@ export interface UserWithRole {
   created_at: string | null;
   role_code: string | null;
   role_name: string | null;
+  employee_id: string | null;
+  doj: string | null;
+  dob: string | null;
+  blood_group: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
 }
 
 export function useUsersData() {
@@ -76,6 +82,12 @@ export function useUsersData() {
           created_at: profile.created_at,
           role_code: role?.code || null,
           role_name: role?.name || null,
+          employee_id: profile.employee_id,
+          doj: profile.doj,
+          dob: profile.dob,
+          blood_group: profile.blood_group,
+          emergency_contact_name: profile.emergency_contact_name,
+          emergency_contact_phone: profile.emergency_contact_phone,
         };
       });
 
@@ -93,6 +105,11 @@ export function useUsersData() {
       region?: string;
       reporting_to?: string;
       role_code?: string;
+      doj?: string;
+      dob?: string;
+      blood_group?: string;
+      emergency_contact_name?: string;
+      emergency_contact_phone?: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
@@ -124,6 +141,11 @@ export function useUsersData() {
       region: string;
       reporting_to: string;
       status: string;
+      doj: string;
+      dob: string;
+      blood_group: string;
+      emergency_contact_name: string;
+      emergency_contact_phone: string;
     }>) => {
       const { error } = await supabase
         .from('profiles')
