@@ -5,14 +5,6 @@ import { ArrowLeft, Save, Loader2, Globe } from 'lucide-react';
 import { useCountries, useCreateCountry, useUpdateCountry } from '@/hooks/useGeoMasterData';
 import { toast } from 'sonner';
 
-const currencyOptions = [
-  { value: 'INR', label: 'INR - Indian Rupee' },
-  { value: 'USD', label: 'USD - US Dollar' },
-  { value: 'EUR', label: 'EUR - Euro' },
-  { value: 'GBP', label: 'GBP - British Pound' },
-  { value: 'AED', label: 'AED - UAE Dirham' },
-];
-
 export default function CountryFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -25,7 +17,6 @@ export default function CountryFormPage() {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    currency: 'INR',
     status: 'active' as 'active' | 'inactive',
   });
 
@@ -36,7 +27,6 @@ export default function CountryFormPage() {
       setFormData({
         name: existingCountry.name,
         code: existingCountry.code,
-        currency: existingCountry.currency,
         status: existingCountry.status,
       });
     }
@@ -119,20 +109,6 @@ export default function CountryFormPage() {
               maxLength={3}
               required
             />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Currency *</label>
-            <select
-              value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-              className="input-field w-full"
-              required
-            >
-              {currencyOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
           </div>
 
           <div className="space-y-2">

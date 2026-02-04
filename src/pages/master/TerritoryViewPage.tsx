@@ -1,18 +1,25 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Edit, MapPin, Loader2, Calendar, GitBranch } from 'lucide-react';
+import { ArrowLeft, Edit, MapPin, Loader2, Calendar, Globe, Map, Building } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useTerritories } from '@/hooks/useTerritoriesData';
+import { useCountries, useStates, useCities } from '@/hooks/useGeoMasterData';
 import { format } from 'date-fns';
 
 export default function TerritoryViewPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { data: territories = [], isLoading } = useTerritories();
+  const { data: countries = [] } = useCountries();
+  const { data: states = [] } = useStates();
+  const { data: cities = [] } = useCities();
 
   const territory = territories.find(t => t.id === id);
-  const parentTerritory = territory?.parent_id ? territories.find(t => t.id === territory.parent_id) : null;
-  const childTerritories = territories.filter(t => t.parent_id === id);
+  
+  // Get related entities
+  const country = countries.find(c => c.id === (territory as any)?.country_id);
+  const state = states.find(s => s.id === (territory as any)?.state_id);
+  const city = cities.find(c => c.id === (territory as any)?.city_id);
 
   if (isLoading) {
     return (
@@ -45,7 +52,7 @@ export default function TerritoryViewPage() {
               <MapPin size={28} className="text-success" />
               <h1 className="module-title">{territory.name}</h1>
             </div>
-            <p className="text-muted-foreground">{territory.type} • Territory</p>
+            <p className="text-muted-foreground">Territory</p>
           </div>
         </div>
         <button
@@ -71,58 +78,47 @@ export default function TerritoryViewPage() {
               <p className="font-medium text-foreground">{territory.name}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Type</p>
-              <p className="font-medium text-foreground capitalize">{territory.type}</p>
-            </div>
-            <div>
               <p className="text-sm text-muted-foreground">Status</p>
               <StatusBadge status={territory.status === 'active' ? 'active' : 'inactive'} />
             </div>
           </div>
         </motion.div>
 
-        {/* Hierarchy Info */}
+        {/* Location Hierarchy */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="card p-6"
         >
-          <div className="flex items-center gap-3 mb-4">
-            <GitBranch size={20} className="text-muted-foreground" />
-            <h2 className="text-lg font-semibold text-foreground">Hierarchy</h2>
-          </div>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Location Hierarchy</h2>
           <div className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Parent Territory</p>
-              {parentTerritory ? (
-                <button
-                  onClick={() => navigate(`/master/territories/${parentTerritory.id}`)}
-                  className="font-medium text-primary hover:underline"
-                >
-                  {parentTerritory.name} ({parentTerritory.type})
-                </button>
-              ) : (
-                <p className="font-medium text-foreground">Top Level</p>
-              )}
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Globe size={16} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Country</p>
+                <p className="font-medium text-foreground">{country?.name || '-'}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Child Territories</p>
-              {childTerritories.length > 0 ? (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {childTerritories.map(child => (
-                    <button
-                      key={child.id}
-                      onClick={() => navigate(`/master/territories/${child.id}`)}
-                      className="px-3 py-1 bg-success/20 text-success rounded-lg text-sm hover:bg-success/30"
-                    >
-                      {child.name}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="font-medium text-foreground">None</p>
-              )}
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-secondary/10">
+                <Map size={16} className="text-secondary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">State</p>
+                <p className="font-medium text-foreground">{state?.name || '-'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-warning/10">
+                <Building size={16} className="text-warning" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">City</p>
+                <p className="font-medium text-foreground">{city?.name || '-'}</p>
+              </div>
             </div>
           </div>
         </motion.div>
