@@ -34,7 +34,6 @@ import {
   Compass,
   MessageSquare,
   RotateCcw,
-  Shield,
   Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -168,8 +167,6 @@ const navigationItems: NavItem[] = [
           { label: 'Territories', path: '/master/territories', icon: MapPin },
         ],
       },
-      { label: 'Employees', path: '/master/employees', icon: Users },
-      { label: 'Roles & Permissions', path: '/master/roles', icon: Shield },
       { label: 'Targets', path: '/master/targets', icon: Target },
       { label: 'Presentations', path: '/master/presentations', icon: GraduationCap },
     ],
