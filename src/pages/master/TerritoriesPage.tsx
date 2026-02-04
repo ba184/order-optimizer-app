@@ -5,43 +5,24 @@ import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { useTerritories, useDeleteTerritory, Territory } from '@/hooks/useTerritoriesData';
+import { useCountries, useStates, useCities } from '@/hooks/useGeoMasterData';
 import {
   Plus,
   MapPin,
-  Globe,
-  Building,
-  Map,
-  Navigation,
   Edit,
   Trash2,
   Eye,
-  User,
-  ChevronRight,
   Loader2,
   CheckCircle,
   XCircle,
 } from 'lucide-react';
 
-const typeIcons = {
-  country: Globe,
-  state: Map,
-  zone: Navigation,
-  city: Building,
-  area: MapPin,
-};
-
-const typeColors = {
-  country: 'bg-primary/10 text-primary',
-  state: 'bg-secondary/10 text-secondary',
-  zone: 'bg-success/10 text-success',
-  city: 'bg-warning/10 text-warning',
-  area: 'bg-info/10 text-info',
-};
-
 export default function TerritoriesPage() {
   const navigate = useNavigate();
-  const [selectedType, setSelectedType] = useState<string>('all');
-  const { data: territories = [], isLoading } = useTerritories(selectedType === 'all' ? undefined : selectedType);
+  const { data: territories = [], isLoading } = useTerritories();
+  const { data: countries = [] } = useCountries();
+  const { data: states = [] } = useStates();
+  const { data: cities = [] } = useCities();
   const deleteTerritory = useDeleteTerritory();
 
   const [deleteModal, setDeleteModal] = useState<Territory | null>(null);
@@ -56,53 +37,57 @@ export default function TerritoriesPage() {
   const activeCount = territories.filter(t => t.status === 'active').length;
   const inactiveCount = territories.filter(t => t.status === 'inactive').length;
 
+  // Helper functions to get names
+  const getCountryName = (countryId: string) => {
+    const country = countries.find(c => c.id === countryId);
+    return country?.name || '-';
+  };
+
+  const getStateName = (stateId: string) => {
+    const state = states.find(s => s.id === stateId);
+    return state?.name || '-';
+  };
+
+  const getCityName = (cityId: string) => {
+    const city = cities.find(c => c.id === cityId);
+    return city?.name || '-';
+  };
+
   const columns = [
     {
       key: 'name',
       header: 'Territory',
-      render: (item: Territory) => {
-        const TypeIcon = typeIcons[item.type as keyof typeof typeIcons] || MapPin;
-        return (
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${typeColors[item.type as keyof typeof typeColors] || 'bg-muted'}`}>
-              <TypeIcon size={20} />
-            </div>
-            <div>
-              <p className="font-medium text-foreground">{item.name}</p>
-              <p className="text-xs text-muted-foreground capitalize">{item.type}</p>
-            </div>
+      render: (item: Territory) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-success/10 text-success">
+            <MapPin size={20} />
           </div>
-        );
-      },
+          <div>
+            <p className="font-medium text-foreground">{item.name}</p>
+          </div>
+        </div>
+      ),
       sortable: true,
     },
     {
-      key: 'hierarchy',
-      header: 'Hierarchy',
+      key: 'country',
+      header: 'Country',
       render: (item: Territory) => (
-        item.parent ? (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <span>{(item.parent as any)?.name}</span>
-            <ChevronRight size={14} />
-            <span className="text-foreground">{item.name}</span>
-          </div>
-        ) : (
-          <span className="text-muted-foreground">Root Level</span>
-        )
+        <span className="text-foreground">{getCountryName((item as any).country_id)}</span>
       ),
     },
     {
-      key: 'manager',
-      header: 'Manager',
+      key: 'state',
+      header: 'State',
       render: (item: Territory) => (
-        item.manager ? (
-          <div className="flex items-center gap-2">
-            <User size={14} className="text-muted-foreground" />
-            <span>{(item.manager as any)?.name}</span>
-          </div>
-        ) : (
-          <span className="text-muted-foreground">-</span>
-        )
+        <span className="text-foreground">{getStateName((item as any).state_id)}</span>
+      ),
+    },
+    {
+      key: 'city',
+      header: 'City',
+      render: (item: Territory) => (
+        <span className="text-foreground">{getCityName((item as any).city_id)}</span>
       ),
     },
     {
@@ -142,7 +127,7 @@ export default function TerritoriesPage() {
       <div className="module-header">
         <div>
           <h1 className="module-title">Territory Management</h1>
-          <p className="text-muted-foreground">Manage geographical hierarchy and assignments</p>
+          <p className="text-muted-foreground">Manage geographical territories and assignments</p>
         </div>
         <button onClick={() => navigate('/master/territories/new')} className="btn-primary flex items-center gap-2">
           <Plus size={18} />
@@ -186,31 +171,6 @@ export default function TerritoriesPage() {
             </div>
           </div>
         </motion.div>
-      </div>
-
-      {/* Type filter chips */}
-      <div className="flex flex-wrap gap-2">
-        {[
-          { type: 'all', label: 'All', icon: MapPin },
-          { type: 'country', label: 'Countries', icon: Globe },
-          { type: 'state', label: 'States', icon: Map },
-          { type: 'zone', label: 'Zones', icon: Navigation },
-          { type: 'city', label: 'Cities', icon: Building },
-          { type: 'area', label: 'Areas', icon: MapPin },
-        ].map((item) => (
-          <button
-            key={item.type}
-            onClick={() => setSelectedType(item.type)}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedType === item.type
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            <item.icon size={16} />
-            {item.label}
-          </button>
-        ))}
       </div>
 
       <DataTable 
