@@ -29,14 +29,15 @@ const packTypeOptions = [
 const skuSizeOptions = [
   { value: '2g', label: '2g' },
   { value: '4g', label: '4g' },
+  { value: '5g', label: '5g' },
   { value: '20g', label: '20g' },
 ];
 
 const packSizeOptions = [
-  { value: 5, label: '5 nos' },
-  { value: 10, label: '10 nos' },
-  { value: 12, label: '12 nos' },
-  { value: 24, label: '24 nos' },
+  { value: '2g', label: '2g' },
+  { value: '4g', label: '4g' },
+  { value: '5g', label: '5g' },
+  { value: '20g', label: '20g' },
 ];
 
 const statusOptions = [
@@ -47,13 +48,18 @@ const statusOptions = [
 interface SKUEntry {
   id: string;
   skuSize: string;
-  packSize: number;
+  packSize: string;
   unitMRP: string;
   unitPTR: string;
   unitPTS: string;
   boxMRP: number;
   boxPTR: number;
   boxPTS: number;
+}
+
+interface SampleSKU {
+  skuSize: string;
+  packSize: string;
 }
 
 export default function ProductFormPage() {
@@ -84,9 +90,15 @@ export default function ProductFormPage() {
     purpose: '',
   });
 
+  // Sample SKU info
+  const [sampleSKU, setSampleSKU] = useState<SampleSKU>({
+    skuSize: '2g',
+    packSize: '2g',
+  });
+
   // SKU Entries for products
   const [skuEntries, setSkuEntries] = useState<SKUEntry[]>([
-    { id: crypto.randomUUID(), skuSize: '2g', packSize: 5, unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0 }
+    { id: crypto.randomUUID(), skuSize: '2g', packSize: '2g', unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0 }
   ]);
 
   // Validation errors
@@ -102,14 +114,13 @@ export default function ProductFormPage() {
         status: product.status || 'active',
       });
       if (product.pack_size) {
-        const packSizeNum = parseInt(product.pack_size) || 5;
         setSkuEntries([{
           id: crypto.randomUUID(),
-          skuSize: '2g',
-          packSize: packSizeNum,
-          unitMRP: product.mrp ? (product.mrp / packSizeNum).toFixed(2) : '',
-          unitPTR: product.ptr ? (product.ptr / packSizeNum).toFixed(2) : '',
-          unitPTS: product.pts ? (product.pts / packSizeNum).toFixed(2) : '',
+          skuSize: product.sku_size || '2g',
+          packSize: product.pack_size || '2g',
+          unitMRP: product.mrp?.toString() || '',
+          unitPTR: product.ptr?.toString() || '',
+          unitPTS: product.pts?.toString() || '',
           boxMRP: product.mrp || 0,
           boxPTR: product.ptr || 0,
           boxPTS: product.pts || 0,
@@ -133,7 +144,7 @@ export default function ProductFormPage() {
     setSkuEntries([...skuEntries, {
       id: crypto.randomUUID(),
       skuSize: '2g',
-      packSize: 5,
+      packSize: '2g',
       unitMRP: '',
       unitPTR: '',
       unitPTS: '',
@@ -155,15 +166,14 @@ export default function ProductFormPage() {
       
       const updated = { ...entry, [field]: value };
       
-      // Recalculate box values when unit prices or pack size change
+      // For pack size as string (2g, 4g, etc.), just use the unit prices directly as box values
       const unitMRP = parseFloat(String(updated.unitMRP)) || 0;
       const unitPTR = parseFloat(String(updated.unitPTR)) || 0;
       const unitPTS = parseFloat(String(updated.unitPTS)) || 0;
-      const packSize = typeof updated.packSize === 'number' ? updated.packSize : parseInt(String(updated.packSize)) || 5;
       
-      updated.boxMRP = unitMRP * packSize;
-      updated.boxPTR = unitPTR * packSize;
-      updated.boxPTS = unitPTS * packSize;
+      updated.boxMRP = unitMRP;
+      updated.boxPTR = unitPTR;
+      updated.boxPTS = unitPTS;
       
       return updated;
     }));
@@ -211,11 +221,11 @@ export default function ProductFormPage() {
         // Create sample
         await createSample.mutateAsync({
           name: productInfo.name,
-          sku: `SMPL-${productInfo.name.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+          sku: `SMPL-${productInfo.name.substring(0, 3).toUpperCase()}-${sampleSKU.skuSize}-${sampleSKU.packSize}`,
           type: productInfo.variant,
           cost_price: 0,
           stock: parseInt(sampleInfo.quantity) || 0,
-          description: sampleInfo.purpose || undefined,
+          description: `Pack Type: ${productInfo.packType}, SKU Size: ${sampleSKU.skuSize}, Pack Size: ${sampleSKU.packSize}${sampleInfo.purpose ? `. ${sampleInfo.purpose}` : ''}`,
         });
         toast.success('Sample created successfully');
       } else {
@@ -231,7 +241,8 @@ export default function ProductFormPage() {
             sku: `${productInfo.name.substring(0, 3).toUpperCase()}-${sku.skuSize}-${sku.packSize}`,
             variant: productInfo.variant,
             pack_type: productInfo.packType,
-            pack_size: `${sku.packSize}nos`,
+            sku_size: sku.skuSize,
+            pack_size: sku.packSize,
             mrp: sku.boxMRP,
             ptr: sku.boxPTR,
             pts: sku.boxPTS,
@@ -397,7 +408,35 @@ export default function ProductFormPage() {
                 <CardTitle className="text-lg">Sample Details</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="skuSizeSample">SKU Size *</Label>
+                    <select
+                      id="skuSizeSample"
+                      value={sampleSKU.skuSize}
+                      onChange={(e) => setSampleSKU({ ...sampleSKU, skuSize: e.target.value })}
+                      className="input-field w-full"
+                    >
+                      {skuSizeOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="packSizeSample">Pack Size *</Label>
+                    <select
+                      id="packSizeSample"
+                      value={sampleSKU.packSize}
+                      onChange={(e) => setSampleSKU({ ...sampleSKU, packSize: e.target.value })}
+                      className="input-field w-full"
+                    >
+                      {packSizeOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="quantity">Sample Quantity *</Label>
                     <Input
@@ -427,7 +466,7 @@ export default function ProductFormPage() {
                     </select>
                   </div>
 
-                  <div className="space-y-2 md:col-span-1">
+                  <div className="space-y-2">
                     <Label htmlFor="purpose">Purpose / Remarks</Label>
                     <Textarea
                       id="purpose"
@@ -507,7 +546,7 @@ export default function ProductFormPage() {
                             <TableCell>
                               <select
                                 value={entry.packSize}
-                                onChange={(e) => updateSKUEntry(entry.id, 'packSize', parseInt(e.target.value))}
+                                onChange={(e) => updateSKUEntry(entry.id, 'packSize', e.target.value)}
                                 className="input-field w-full text-sm"
                               >
                                 {packSizeOptions.map(opt => (

@@ -92,6 +92,14 @@ export default function ProductsPage() {
       ),
     },
     {
+      key: 'sku_size',
+      header: 'SKU Size',
+      render: (item: Product) => (
+        <span className="font-medium">{item.sku_size || '-'}</span>
+      ),
+      sortable: true,
+    },
+    {
       key: 'pack_size',
       header: 'Pack Size',
       render: (item: Product) => (
