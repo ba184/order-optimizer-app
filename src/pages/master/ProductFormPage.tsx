@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Save, Loader2, Plus, Trash2, Package, FlaskConical, Calculator } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Plus, Trash2, Package, FlaskConical, Calculator, Upload, X, ImageIcon } from 'lucide-react';
 import { useProduct, useCreateProduct } from '@/hooks/useProductsData';
 import { useCreateSample } from '@/hooks/useSamplesData';
 import { useWarehouses } from '@/hooks/useWarehousesData';
@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const variantOptions = [
   { value: 'Liquid', label: 'Liquid' },
@@ -55,6 +56,7 @@ interface SKUEntry {
   boxMRP: number;
   boxPTR: number;
   boxPTS: number;
+  imageUrl: string;
 }
 
 interface SampleSKU {
@@ -75,6 +77,9 @@ export default function ProductFormPage() {
   // Sample toggle
   const [isSample, setIsSample] = useState(false);
 
+  // System generated Product ID
+  const [productId] = useState(() => `PRD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`);
+
   // Product Info
   const [productInfo, setProductInfo] = useState({
     name: '',
@@ -82,6 +87,9 @@ export default function ProductFormPage() {
     packType: '',
     status: 'active',
   });
+
+  // Image upload state
+  const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
 
   // Sample SKU info
   const [sampleSKU, setSampleSKU] = useState<SampleSKU>({
@@ -91,7 +99,7 @@ export default function ProductFormPage() {
 
   // SKU Entries for products
   const [skuEntries, setSkuEntries] = useState<SKUEntry[]>([
-    { id: crypto.randomUUID(), skuSize: '2g', packSize: '2nos', unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0 }
+    { id: crypto.randomUUID(), skuSize: '2g', packSize: '2nos', unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0, imageUrl: '' }
   ]);
 
   // Validation errors
@@ -117,6 +125,7 @@ export default function ProductFormPage() {
           boxMRP: product.mrp || 0,
           boxPTR: product.ptr || 0,
           boxPTS: product.pts || 0,
+          imageUrl: '',
         }]);
       }
     }
@@ -144,7 +153,71 @@ export default function ProductFormPage() {
       boxMRP: 0,
       boxPTR: 0,
       boxPTS: 0,
+      imageUrl: '',
     }]);
+  };
+
+  // Handle image upload for SKU entry
+  const handleImageUpload = async (entryId: string, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setUploadingImageId(entryId);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `products/${productId}/${entryId}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        // If bucket doesn't exist, just store local preview
+        const localUrl = URL.createObjectURL(file);
+        setSkuEntries(entries => entries.map(entry => 
+          entry.id === entryId ? { ...entry, imageUrl: localUrl } : entry
+        ));
+        toast.success('Image added');
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(fileName);
+
+      setSkuEntries(entries => entries.map(entry => 
+        entry.id === entryId ? { ...entry, imageUrl: publicUrl } : entry
+      ));
+
+      toast.success('Image uploaded');
+    } catch (error) {
+      console.error('Upload error:', error);
+      // Fallback to local preview
+      const localUrl = URL.createObjectURL(file);
+      setSkuEntries(entries => entries.map(entry => 
+        entry.id === entryId ? { ...entry, imageUrl: localUrl } : entry
+      ));
+      toast.success('Image added');
+    } finally {
+      setUploadingImageId(null);
+    }
+  };
+
+  const removeImage = (entryId: string) => {
+    setSkuEntries(entries => entries.map(entry => 
+      entry.id === entryId ? { ...entry, imageUrl: '' } : entry
+    ));
   };
 
   const removeSKUEntry = (id: string) => {
@@ -339,7 +412,20 @@ export default function ProductFormPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {/* Product ID - System Generated */}
+                <div className="space-y-2">
+                  <Label htmlFor="productId">Product ID</Label>
+                  <Input
+                    id="productId"
+                    value={productId}
+                    readOnly
+                    disabled
+                    className="bg-muted cursor-not-allowed"
+                  />
+                  <p className="text-xs text-muted-foreground">System generated</p>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="name">Product Name *</Label>
                   <Input
@@ -490,6 +576,7 @@ export default function ProductFormPage() {
                         <TableHead className="text-right bg-primary/5">Box MRP (₹)</TableHead>
                         <TableHead className="text-right bg-primary/5">Box PTR (₹)</TableHead>
                         <TableHead className="text-right bg-primary/5">Box PTS (₹)</TableHead>
+                        <TableHead className="w-[100px]">Image</TableHead>
                         <TableHead className="w-[60px]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -582,6 +669,47 @@ export default function ProductFormPage() {
                                 step="0.01"
                                 className="text-sm text-right font-medium"
                               />
+                            </TableCell>
+                            {/* Image Upload Cell */}
+                            <TableCell>
+                              <div className="flex items-center justify-center">
+                                {entry.imageUrl ? (
+                                  <div className="relative group">
+                                    <img
+                                      src={entry.imageUrl}
+                                      alt="SKU Image"
+                                      className="w-12 h-12 object-cover rounded border border-border"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeImage(entry.id)}
+                                      className="absolute -top-1 -right-1 p-0.5 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <label className="cursor-pointer">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleImageUpload(entry.id, file);
+                                      }}
+                                      disabled={uploadingImageId === entry.id}
+                                    />
+                                    <div className="w-12 h-12 border-2 border-dashed border-border rounded flex items-center justify-center hover:border-primary/50 transition-colors">
+                                      {uploadingImageId === entry.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                      ) : (
+                                        <Upload className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </label>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Button
