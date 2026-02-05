@@ -444,12 +444,12 @@ export default function WarehouseFormPage() {
             </CardContent>
           </Card>
 
-          {/* Warehouse Images */}
+          {/* Warehouse Images/Videos */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ImageIcon className="h-5 w-5" />
-                Warehouse Images
+                Warehouse Images/Videos
               </CardTitle>
             </CardHeader>
             <CardContent>
