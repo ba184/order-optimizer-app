@@ -116,18 +116,40 @@ export function useDeleteTarget() {
   });
 }
 
-// Get users for target assignment
+// Get users for target assignment with location data
 export function useUsers() {
   return useQuery({
     queryKey: ['users-for-targets'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, email, territory, region')
+        .select('id, name, email, territory, region, city, zone')
         .eq('status', 'active')
         .order('name');
       if (error) throw error;
       return data || [];
     },
+  });
+}
+
+// Get unique employee locations for filtering
+export function useEmployeeLocations(users: Array<{ city?: string | null; zone?: string | null; territory?: string | null }>) {
+  const states = [...new Set(users.map(u => u.zone).filter(Boolean))] as string[];
+  const cities = [...new Set(users.map(u => u.city).filter(Boolean))] as string[];
+  const territories = [...new Set(users.map(u => u.territory).filter(Boolean))] as string[];
+  
+  return { states, cities, territories };
+}
+
+// Filter users by geo hierarchy
+export function filterUsersByGeo(
+  users: Array<{ id: string; name: string; email: string; city?: string | null; zone?: string | null; territory?: string | null }>,
+  geoFilter: { state: string; city: string; territory: string }
+) {
+  return users.filter(user => {
+    if (geoFilter.state && user.zone !== geoFilter.state) return false;
+    if (geoFilter.city && user.city !== geoFilter.city) return false;
+    if (geoFilter.territory && user.territory !== geoFilter.territory) return false;
+    return true;
   });
 }

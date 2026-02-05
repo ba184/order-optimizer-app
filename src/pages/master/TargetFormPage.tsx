@@ -1,19 +1,27 @@
- import { useState, useEffect } from 'react';
- import { useNavigate, useParams } from 'react-router-dom';
- import { motion } from 'framer-motion';
- import { ArrowLeft, Target as TargetIcon, Save, Loader2 } from 'lucide-react';
- import { useTargets, useCreateTarget, useUpdateTarget, useUsers, Target } from '@/hooks/useTargetsData';
- import { toast } from 'sonner';
- 
- interface TargetFormData {
-   user_id: string;
-   target_type: string;
-   target_value: number;
-   period: string;
-   start_date: string;
-   end_date: string;
-   status: string;
- }
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Target as TargetIcon, Save, Loader2, MapPin, X } from 'lucide-react';
+import { useTargets, useCreateTarget, useUpdateTarget, useUsers, useEmployeeLocations, filterUsersByGeo, Target } from '@/hooks/useTargetsData';
+import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+
+interface TargetFormData {
+  user_id: string;
+  target_type: string;
+  target_value: number;
+  period: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+}
  
  const periodOptions = [
    { value: 'daily', label: 'Daily' },
@@ -45,32 +53,77 @@
    const createTarget = useCreateTarget();
    const updateTarget = useUpdateTarget();
  
-   const [formData, setFormData] = useState<TargetFormData>({
-     user_id: '',
-     target_type: 'sales',
-     target_value: 0,
-     period: 'monthly',
-     start_date: '',
-     end_date: '',
-     status: 'active',
-   });
- 
-   useEffect(() => {
-     if (isEditMode && targets.length > 0) {
-       const target = targets.find((t) => t.id === id);
-       if (target) {
-         setFormData({
-           user_id: target.user_id,
-           target_type: target.target_type,
-           target_value: target.target_value,
-           period: target.period === 'quarterly' ? 'custom' : target.period,
-           start_date: target.start_date,
-           end_date: target.end_date,
-           status: target.status,
-         });
-       }
-     }
-   }, [isEditMode, id, targets]);
+  const [formData, setFormData] = useState<TargetFormData>({
+    user_id: '',
+    target_type: 'sales',
+    target_value: 0,
+    period: 'monthly',
+    start_date: '',
+    end_date: '',
+    status: 'active',
+  });
+
+  // Location filter state
+  const [geoFilter, setGeoFilter] = useState({ state: '', city: '', territory: '' });
+
+  // Get unique locations from users
+  const { states, cities, territories } = useEmployeeLocations(users);
+
+  // Get available cities and territories based on selected state
+  const availableCities = useMemo(() => {
+    if (!geoFilter.state) return cities;
+    return [...new Set(
+      users
+        .filter(u => u.zone === geoFilter.state)
+        .map(u => u.city)
+        .filter(Boolean)
+    )] as string[];
+  }, [geoFilter.state, users, cities]);
+
+  const availableTerritories = useMemo(() => {
+    if (!geoFilter.state) return territories;
+    let filtered = users.filter(u => u.zone === geoFilter.state);
+    if (geoFilter.city) {
+      filtered = filtered.filter(u => u.city === geoFilter.city);
+    }
+    return [...new Set(filtered.map(u => u.territory).filter(Boolean))] as string[];
+  }, [geoFilter.state, geoFilter.city, users, territories]);
+
+  // Filter users by location
+  const filteredUsers = useMemo(() => {
+    return filterUsersByGeo(users, geoFilter);
+  }, [users, geoFilter]);
+
+  const handleGeoFilterChange = (field: 'state' | 'city' | 'territory', value: string) => {
+    if (field === 'state') {
+      setGeoFilter({ state: value, city: '', territory: '' });
+    } else if (field === 'city') {
+      setGeoFilter(prev => ({ ...prev, city: value, territory: '' }));
+    } else {
+      setGeoFilter(prev => ({ ...prev, territory: value }));
+    }
+  };
+
+  const clearGeoFilter = () => {
+    setGeoFilter({ state: '', city: '', territory: '' });
+  };
+
+  useEffect(() => {
+    if (isEditMode && targets.length > 0) {
+      const target = targets.find((t) => t.id === id);
+      if (target) {
+        setFormData({
+          user_id: target.user_id,
+          target_type: target.target_type,
+          target_value: target.target_value,
+          period: target.period === 'quarterly' ? 'custom' : target.period,
+          start_date: target.start_date,
+          end_date: target.end_date,
+          status: target.status,
+        });
+      }
+    }
+  }, [isEditMode, id, targets]);
  
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault();
@@ -186,26 +239,103 @@
            </div>
  
            {/* Form Fields */}
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div className="md:col-span-2">
-               <label className="block text-sm font-medium text-foreground mb-2">
-                 Select Employee *
-               </label>
-               <select
-                 value={formData.user_id}
-                 onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
-                 className="input-field"
-                 required
-               >
-                 <option value="">Select an employee</option>
-                 {users.map((user) => (
-                   <option key={user.id} value={user.id}>
-                     {user.name} ({user.email})
-                   </option>
-                 ))}
-               </select>
-             </div>
- 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Location Filter Section */}
+              <div className="md:col-span-2 bg-muted/30 rounded-lg p-4 border border-border">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin size={16} className="text-primary" />
+                    <span className="text-sm font-medium text-foreground">Filter by Location</span>
+                  </div>
+                  {(geoFilter.state || geoFilter.city || geoFilter.territory) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearGeoFilter}
+                      className="h-7 text-xs"
+                    >
+                      <X size={14} className="mr-1" />
+                      Clear Filter
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* State Filter */}
+                  <Select
+                    value={geoFilter.state || "__all__"}
+                    onValueChange={(v) => handleGeoFilterChange('state', v === "__all__" ? "" : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All States" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">All States</SelectItem>
+                      {states.map((state) => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* City Filter */}
+                  <Select
+                    value={geoFilter.city || "__all__"}
+                    onValueChange={(v) => handleGeoFilterChange('city', v === "__all__" ? "" : v)}
+                    disabled={!geoFilter.state}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Cities" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">All Cities</SelectItem>
+                      {availableCities.map((city) => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Territory Filter */}
+                  <Select
+                    value={geoFilter.territory || "__all__"}
+                    onValueChange={(v) => handleGeoFilterChange('territory', v === "__all__" ? "" : v)}
+                    disabled={!geoFilter.state}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Territories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">All Territories</SelectItem>
+                      {availableTerritories.map((territory) => (
+                        <SelectItem key={territory} value={territory}>{territory}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Select Employee * {filteredUsers.length !== users.length && (
+                    <span className="text-muted-foreground font-normal">
+                      ({filteredUsers.length} of {users.length} employees)
+                    </span>
+                  )}
+                </label>
+                <select
+                  value={formData.user_id}
+                  onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
+                  className="input-field"
+                  required
+                >
+                  <option value="">Select an employee</option>
+                  {filteredUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.email}){user.city ? ` • ${user.city}` : ''}{user.territory ? ` • ${user.territory}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
              <div>
                <label className="block text-sm font-medium text-foreground mb-2">
                  Target Type *
