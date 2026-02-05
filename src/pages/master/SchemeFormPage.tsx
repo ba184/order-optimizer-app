@@ -70,115 +70,149 @@
    value_max_discount: number;
  }
  
- interface Outlet {
-   id: string;
-   name: string;
-   code: string;
-   type: 'distributor' | 'retailer';
- }
- 
- const schemeTypes: { value: SchemeType; label: string }[] = [
-   { value: 'slab', label: 'Slab' },
-   { value: 'buy_x_get_y', label: 'Buy X Get Y' },
-   { value: 'combo', label: 'Combo' },
-   { value: 'bill_wise', label: 'Bill Wise' },
-   { value: 'value_wise', label: 'Value Wise' },
- ];
- 
- const statusOptions = [
-   { value: 'active', label: 'Active' },
-   { value: 'inactive', label: 'Inactive' },
-   { value: 'pending', label: 'Pending' },
- ];
- 
- const applicabilityOptions = [
-   { value: 'all_outlets', label: 'All Outlets' },
-   { value: 'selected_outlets', label: 'Selected Outlets' },
- ];
- 
- const benefitTypeOptions = [
-   { value: 'flat', label: 'Flat' },
-   { value: 'percentage', label: 'Percentage' },
- ];
- 
- const createEmptySlab = (): SlabRow => ({
-   id: crypto.randomUUID(),
-   min_order_value: 0,
-   benefit_type: 'flat',
-   benefit_value: 0,
-   max_benefit: 0,
- });
- 
- const initialFormData: FormData = {
-   name: '',
-   type: 'slab',
-   applicability: '',
-   selected_outlets: [],
-   status: 'pending',
-   start_date: '',
-   end_date: '',
-   description: '',
-   slabs: [createEmptySlab()],
-   bxgy_buy_product: '',
-   bxgy_get_product: '',
-   bxgy_buy_quantity: 1,
-   bxgy_get_quantity: 1,
-   bxgy_min_order_value: 0,
-   combo_name: '',
-   combo_products: [],
-   combo_price: 0,
-   combo_discount_type: 'flat',
-   combo_discount_value: 0,
-   combo_max_per_order: 1,
-   bill_value_from: 0,
-   bill_value_to: 0,
-   bill_discount_type: 'flat',
-   bill_discount_value: 0,
-   bill_max_discount: 0,
-   value_discount_type: 'flat',
-   value_discount_value: 0,
-   value_min_order_value: 0,
-   value_max_discount: 0,
- };
- 
- // Hook to fetch all outlets
- function useOutlets() {
-   return useQuery({
-     queryKey: ['all-outlets'],
-     queryFn: async () => {
-       const [distributorsRes, retailersRes] = await Promise.all([
-         supabase.from('distributors').select('id, firm_name, code').order('firm_name'),
-         supabase.from('retailers').select('id, shop_name, code').order('shop_name'),
-       ]);
- 
-       const outlets: Outlet[] = [];
-       
-       if (distributorsRes.data) {
-         distributorsRes.data.forEach(d => {
-           outlets.push({
-             id: d.id,
-             name: d.firm_name,
-             code: d.code,
-             type: 'distributor',
-           });
-         });
-       }
-       
-       if (retailersRes.data) {
-         retailersRes.data.forEach(r => {
-           outlets.push({
-             id: r.id,
-             name: r.shop_name,
-             code: r.code,
-             type: 'retailer',
-           });
-         });
-       }
- 
-       return outlets;
-     },
-   });
- }
+interface Outlet {
+  id: string;
+  name: string;
+  code: string;
+  type: 'distributor' | 'retailer';
+  state?: string;
+  city?: string;
+  zone?: string;
+}
+
+interface GeoFilterState {
+  state: string;
+  city: string;
+  zone: string;
+}
+
+const schemeTypes: { value: SchemeType; label: string }[] = [
+  { value: 'slab', label: 'Slab' },
+  { value: 'buy_x_get_y', label: 'Buy X Get Y' },
+  { value: 'combo', label: 'Combo' },
+  { value: 'bill_wise', label: 'Bill Wise' },
+  { value: 'value_wise', label: 'Value Wise' },
+];
+
+const statusOptions = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'pending', label: 'Pending' },
+];
+
+const applicabilityOptions = [
+  { value: 'all_outlets', label: 'All Outlets' },
+  { value: 'selected_outlets', label: 'Selected Outlets' },
+];
+
+const benefitTypeOptions = [
+  { value: 'flat', label: 'Flat' },
+  { value: 'percentage', label: 'Percentage' },
+];
+
+const createEmptySlab = (): SlabRow => ({
+  id: crypto.randomUUID(),
+  min_order_value: 0,
+  benefit_type: 'flat',
+  benefit_value: 0,
+  max_benefit: 0,
+});
+
+const initialFormData: FormData = {
+  name: '',
+  type: 'slab',
+  applicability: '',
+  selected_outlets: [],
+  status: 'pending',
+  start_date: '',
+  end_date: '',
+  description: '',
+  slabs: [createEmptySlab()],
+  bxgy_buy_product: '',
+  bxgy_get_product: '',
+  bxgy_buy_quantity: 1,
+  bxgy_get_quantity: 1,
+  bxgy_min_order_value: 0,
+  combo_name: '',
+  combo_products: [],
+  combo_price: 0,
+  combo_discount_type: 'flat',
+  combo_discount_value: 0,
+  combo_max_per_order: 1,
+  bill_value_from: 0,
+  bill_value_to: 0,
+  bill_discount_type: 'flat',
+  bill_discount_value: 0,
+  bill_max_discount: 0,
+  value_discount_type: 'flat',
+  value_discount_value: 0,
+  value_min_order_value: 0,
+  value_max_discount: 0,
+};
+
+// Hook to fetch all outlets with location data
+function useOutlets() {
+  return useQuery({
+    queryKey: ['all-outlets-with-location'],
+    queryFn: async () => {
+      const [distributorsRes, retailersRes] = await Promise.all([
+        supabase.from('distributors').select('id, firm_name, code, state, city, zone').order('firm_name'),
+        supabase.from('retailers').select('id, shop_name, code, state, city, zone').order('shop_name'),
+      ]);
+
+      const outlets: Outlet[] = [];
+      
+      if (distributorsRes.data) {
+        distributorsRes.data.forEach(d => {
+          outlets.push({
+            id: d.id,
+            name: d.firm_name,
+            code: d.code,
+            type: 'distributor',
+            state: d.state || undefined,
+            city: d.city || undefined,
+            zone: d.zone || undefined,
+          });
+        });
+      }
+      
+      if (retailersRes.data) {
+        retailersRes.data.forEach(r => {
+          outlets.push({
+            id: r.id,
+            name: r.shop_name,
+            code: r.code,
+            type: 'retailer',
+            state: r.state || undefined,
+            city: r.city || undefined,
+            zone: r.zone || undefined,
+          });
+        });
+      }
+
+      return outlets;
+    },
+  });
+}
+
+// Hook to get unique location values from outlets
+function useOutletLocations(outlets: Outlet[]) {
+  const states = [...new Set(outlets.map(o => o.state).filter(Boolean))] as string[];
+  
+  const getCities = (state: string) => {
+    if (!state) return [];
+    return [...new Set(outlets.filter(o => o.state === state).map(o => o.city).filter(Boolean))] as string[];
+  };
+  
+  const getZones = (state: string, city: string) => {
+    let filtered = outlets;
+    if (state) filtered = filtered.filter(o => o.state === state);
+    if (city) filtered = filtered.filter(o => o.city === city);
+    return [...new Set(filtered.map(o => o.zone).filter(Boolean))] as string[];
+  };
+  
+  return { states, getCities, getZones };
+}
  
  export default function SchemeFormPage() {
    const navigate = useNavigate();
@@ -191,9 +225,13 @@
    const createScheme = useCreateScheme();
    const updateScheme = useUpdateScheme();
  
-   const [formData, setFormData] = useState<FormData>(initialFormData);
-   const [errors, setErrors] = useState<Record<string, string>>({});
-   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Geo filter state for outlet selection
+  const [geoFilter, setGeoFilter] = useState<GeoFilterState>({ state: '', city: '', zone: '' });
+  const { states, getCities, getZones } = useOutletLocations(outlets);
  
    useEffect(() => {
      if (isEditing && schemes.length > 0) {
@@ -759,8 +797,46 @@
      }
    };
  
-   const distributors = outlets.filter(o => o.type === 'distributor');
-   const retailers = outlets.filter(o => o.type === 'retailer');
+  // Filter outlets based on geo filter - hierarchical filtering
+  const filterOutletsByGeo = (outletList: Outlet[]) => {
+    return outletList.filter(outlet => {
+      // If no filter selected, show all
+      if (!geoFilter.state && !geoFilter.city && !geoFilter.zone) return true;
+      
+      // State level filter
+      if (geoFilter.state && outlet.state !== geoFilter.state) return false;
+      
+      // City level filter (only if city is selected)
+      if (geoFilter.city && outlet.city !== geoFilter.city) return false;
+      
+      // Zone/Territory level filter (only if zone is selected)
+      if (geoFilter.zone && outlet.zone !== geoFilter.zone) return false;
+      
+      return true;
+    });
+  };
+
+  const handleGeoFilterChange = (field: keyof GeoFilterState, value: string) => {
+    if (field === 'state') {
+      // Reset city and zone when state changes
+      setGeoFilter({ state: value, city: '', zone: '' });
+    } else if (field === 'city') {
+      // Reset zone when city changes
+      setGeoFilter(prev => ({ ...prev, city: value, zone: '' }));
+    } else {
+      setGeoFilter(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const clearGeoFilter = () => {
+    setGeoFilter({ state: '', city: '', zone: '' });
+  };
+
+  const distributors = filterOutletsByGeo(outlets.filter(o => o.type === 'distributor'));
+  const retailers = filterOutletsByGeo(outlets.filter(o => o.type === 'retailer'));
+  
+  const availableCities = geoFilter.state ? getCities(geoFilter.state) : [];
+  const availableZones = getZones(geoFilter.state, geoFilter.city);
  
    return (
      <div className="min-h-screen bg-background flex flex-col">
@@ -893,75 +969,162 @@
              </CardContent>
            </Card>
  
-           {/* Selected Outlets Section - Only show when Selected Outlets is chosen */}
-           {formData.applicability === 'selected_outlets' && (
-             <Card>
-               <CardHeader className="pb-4">
-                 <CardTitle className="text-base font-semibold">Select Outlets</CardTitle>
-               </CardHeader>
-               <CardContent className="space-y-6">
-                 {/* Distributors Section */}
-                 <div className="space-y-3">
-                   <Label className="text-sm font-medium text-foreground">Distributors</Label>
-                   <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
-                     {distributors.length > 0 ? (
-                       distributors.map((outlet) => (
-                         <div key={outlet.id} className="flex items-center space-x-3">
-                           <Checkbox
-                             id={`outlet-${outlet.id}`}
-                             checked={formData.selected_outlets.includes(outlet.id)}
-                             onCheckedChange={() => toggleOutletSelection(outlet.id)}
-                           />
-                           <label
-                             htmlFor={`outlet-${outlet.id}`}
-                             className="text-sm cursor-pointer flex-1"
-                           >
-                             <span className="font-medium">{outlet.name}</span>
-                             <span className="text-muted-foreground ml-2">({outlet.code})</span>
-                           </label>
-                         </div>
-                       ))
-                     ) : (
-                       <p className="text-sm text-muted-foreground">No distributors available</p>
-                     )}
-                   </div>
-                 </div>
- 
-                 {/* Retailers Section */}
-                 <div className="space-y-3">
-                   <Label className="text-sm font-medium text-foreground">Retailers</Label>
-                   <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
-                     {retailers.length > 0 ? (
-                       retailers.map((outlet) => (
-                         <div key={outlet.id} className="flex items-center space-x-3">
-                           <Checkbox
-                             id={`outlet-${outlet.id}`}
-                             checked={formData.selected_outlets.includes(outlet.id)}
-                             onCheckedChange={() => toggleOutletSelection(outlet.id)}
-                           />
-                           <label
-                             htmlFor={`outlet-${outlet.id}`}
-                             className="text-sm cursor-pointer flex-1"
-                           >
-                             <span className="font-medium">{outlet.name}</span>
-                             <span className="text-muted-foreground ml-2">({outlet.code})</span>
-                           </label>
-                         </div>
-                       ))
-                     ) : (
-                       <p className="text-sm text-muted-foreground">No retailers available</p>
-                     )}
-                   </div>
-                 </div>
- 
-                 {formData.selected_outlets.length > 0 && (
-                   <p className="text-sm text-muted-foreground">
-                     {formData.selected_outlets.length} outlet(s) selected
-                   </p>
-                 )}
-               </CardContent>
-             </Card>
-           )}
+            {/* Selected Outlets Section - Only show when Selected Outlets is chosen */}
+            {formData.applicability === 'selected_outlets' && (
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base font-semibold">Select Outlets</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Hierarchical Location Filter */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium text-foreground">Filter by Location</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      {/* State Filter */}
+                      <Select
+                        value={geoFilter.state}
+                        onValueChange={(v) => handleGeoFilterChange('state', v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="All States" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All States</SelectItem>
+                          {states.map((state) => (
+                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* City Filter */}
+                      <Select
+                        value={geoFilter.city}
+                        onValueChange={(v) => handleGeoFilterChange('city', v)}
+                        disabled={!geoFilter.state}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="All Cities" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All Cities</SelectItem>
+                          {availableCities.map((city) => (
+                            <SelectItem key={city} value={city}>{city}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Territory/Zone Filter */}
+                      <Select
+                        value={geoFilter.zone}
+                        onValueChange={(v) => handleGeoFilterChange('zone', v)}
+                        disabled={!geoFilter.state}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="All Territories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All Territories</SelectItem>
+                          {availableZones.map((zone) => (
+                            <SelectItem key={zone} value={zone}>{zone}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Clear Filter Button */}
+                      {(geoFilter.state || geoFilter.city || geoFilter.zone) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearGeoFilter}
+                          className="h-10"
+                        >
+                          Clear Filter
+                        </Button>
+                      )}
+                    </div>
+                    {(geoFilter.state || geoFilter.city || geoFilter.zone) && (
+                      <p className="text-xs text-muted-foreground">
+                        Showing outlets in: {[geoFilter.state, geoFilter.city, geoFilter.zone].filter(Boolean).join(' → ')}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Distributors Section */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium text-foreground">
+                      Distributors {distributors.length > 0 && `(${distributors.length})`}
+                    </Label>
+                    <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
+                      {distributors.length > 0 ? (
+                        distributors.map((outlet) => (
+                          <div key={outlet.id} className="flex items-center space-x-3">
+                            <Checkbox
+                              id={`outlet-${outlet.id}`}
+                              checked={formData.selected_outlets.includes(outlet.id)}
+                              onCheckedChange={() => toggleOutletSelection(outlet.id)}
+                            />
+                            <label
+                              htmlFor={`outlet-${outlet.id}`}
+                              className="text-sm cursor-pointer flex-1"
+                            >
+                              <span className="font-medium">{outlet.name}</span>
+                              <span className="text-muted-foreground ml-2">({outlet.code})</span>
+                              {outlet.city && (
+                                <span className="text-muted-foreground text-xs ml-2">• {outlet.city}</span>
+                              )}
+                            </label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {geoFilter.state ? 'No distributors found for selected location' : 'No distributors available'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Retailers Section */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium text-foreground">
+                      Retailers {retailers.length > 0 && `(${retailers.length})`}
+                    </Label>
+                    <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
+                      {retailers.length > 0 ? (
+                        retailers.map((outlet) => (
+                          <div key={outlet.id} className="flex items-center space-x-3">
+                            <Checkbox
+                              id={`outlet-${outlet.id}`}
+                              checked={formData.selected_outlets.includes(outlet.id)}
+                              onCheckedChange={() => toggleOutletSelection(outlet.id)}
+                            />
+                            <label
+                              htmlFor={`outlet-${outlet.id}`}
+                              className="text-sm cursor-pointer flex-1"
+                            >
+                              <span className="font-medium">{outlet.name}</span>
+                              <span className="text-muted-foreground ml-2">({outlet.code})</span>
+                              {outlet.city && (
+                                <span className="text-muted-foreground text-xs ml-2">• {outlet.city}</span>
+                              )}
+                            </label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {geoFilter.state ? 'No retailers found for selected location' : 'No retailers available'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {formData.selected_outlets.length > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {formData.selected_outlets.length} outlet(s) selected
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
  
            {/* Dynamic Fields Based on Scheme Type */}
            {renderDynamicFields()}
