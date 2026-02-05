@@ -1,9 +1,9 @@
 import { useState } from 'react';
+ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
-import { useTargets, useCreateTarget, useUpdateTarget, useDeleteTarget, useUsers, Target } from '@/hooks/useTargetsData';
-import TargetFormModal, { TargetFormData } from '@/components/targets/TargetFormModal';
-import TargetViewModal from '@/components/targets/TargetViewModal';
+ import { useTargets, useDeleteTarget, Target } from '@/hooks/useTargetsData';
+ import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import {
   Plus,
   Target as TargetIcon,
@@ -48,6 +48,7 @@ const periodLabels: Record<string, string> = {
 };
 
 export default function TargetManagementPage() {
+   const navigate = useNavigate();
   const [targetTypeFilter, setTargetTypeFilter] = useState<string>('all');
   const [periodFilter, setPeriodFilter] = useState<string>('all');
 
@@ -55,61 +56,33 @@ export default function TargetManagementPage() {
     targetType: targetTypeFilter,
     period: periodFilter,
   });
-  const { data: users = [] } = useUsers();
-  const createTarget = useCreateTarget();
-  const updateTarget = useUpdateTarget();
   const deleteTarget = useDeleteTarget();
 
-  const [showFormModal, setShowFormModal] = useState(false);
-  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
-  const [selectedTarget, setSelectedTarget] = useState<Target | null>(null);
-  const [showViewModal, setShowViewModal] = useState<Target | null>(null);
+   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+   const [targetToDelete, setTargetToDelete] = useState<string | null>(null);
 
   const handleCreate = () => {
-    setFormMode('create');
-    setSelectedTarget(null);
-    setShowFormModal(true);
+     navigate('/master/targets/new');
   };
 
   const handleEdit = (target: Target) => {
-    setFormMode('edit');
-    setSelectedTarget(target);
-    setShowFormModal(true);
+     navigate(`/master/targets/edit/${target.id}`);
   };
 
-  const handleFormSubmit = async (data: TargetFormData) => {
-    try {
-      if (formMode === 'create') {
-        await createTarget.mutateAsync({
-          user_id: data.user_id,
-          target_type: data.target_type,
-          target_value: data.target_value,
-          period: data.period,
-          start_date: data.start_date,
-          end_date: data.end_date,
-        });
-      } else if (selectedTarget) {
-        await updateTarget.mutateAsync({
-          id: selectedTarget.id,
-          user_id: data.user_id,
-          target_type: data.target_type as any,
-          target_value: data.target_value,
-          period: data.period as any,
-          start_date: data.start_date,
-          end_date: data.end_date,
-          status: data.status as any,
-        });
-      }
-      setShowFormModal(false);
-    } catch (error) {
-      // Error handled by mutation
-    }
+   const handleView = (target: Target) => {
+     navigate(`/master/targets/view/${target.id}`);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this target?')) {
-      await deleteTarget.mutateAsync(id);
-    }
+   const handleDeleteClick = (id: string) => {
+     setTargetToDelete(id);
+     setDeleteModalOpen(true);
+   };
+ 
+   const handleDeleteConfirm = async () => {
+     if (targetToDelete) {
+       await deleteTarget.mutateAsync(targetToDelete);
+       setTargetToDelete(null);
+     }
   };
 
   const getProgressPercentage = (achieved: number, target: number) => {
@@ -258,7 +231,7 @@ export default function TargetManagementPage() {
       render: (item: Target) => (
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setShowViewModal(item)}
+             onClick={() => handleView(item)}
             className="p-2 hover:bg-muted rounded-lg transition-colors"
             title="View"
           >
@@ -272,7 +245,7 @@ export default function TargetManagementPage() {
             <Edit size={16} className="text-muted-foreground" />
           </button>
           <button
-            onClick={() => handleDelete(item.id)}
+             onClick={() => handleDeleteClick(item.id)}
             className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
             title="Delete"
           >
@@ -379,19 +352,14 @@ export default function TargetManagementPage() {
         emptyMessage="No targets found. Set your first target to get started."
       />
 
-      {/* Form Modal */}
-      <TargetFormModal
-        isOpen={showFormModal}
-        onClose={() => setShowFormModal(false)}
-        onSubmit={handleFormSubmit}
-        users={users}
-        initialData={selectedTarget}
-        isLoading={createTarget.isPending || updateTarget.isPending}
-        mode={formMode}
+       {/* Delete Confirmation Modal */}
+       <DeleteConfirmModal
+         isOpen={deleteModalOpen}
+         onClose={() => setDeleteModalOpen(false)}
+         onConfirm={handleDeleteConfirm}
+         title="Delete Target"
+         message="Are you sure you want to delete this target? This action cannot be undone."
       />
-
-      {/* View Modal */}
-      <TargetViewModal target={showViewModal} onClose={() => setShowViewModal(null)} />
     </div>
   );
 }

@@ -53,6 +53,8 @@ import EmployeeFormPage from "./pages/master/EmployeeFormPage";
 import EmployeeViewPage from "./pages/master/EmployeeViewPage";
 import RolesPermissionsPage from "./pages/master/RolesPermissionsPage";
 import TargetManagementPage from "./pages/master/TargetManagementPage";
+ import TargetFormPage from "./pages/master/TargetFormPage";
+ import TargetViewPage from "./pages/master/TargetViewPage";
 import CountryMasterPage from "./pages/master/CountryMasterPage";
 import CountryFormPage from "./pages/master/CountryFormPage";
 import CountryViewPage from "./pages/master/CountryViewPage";
@@ -223,6 +225,9 @@ function AppRoutes() {
       <Route path="/master/employees/:id/edit" element={<ProtectedRoute><EmployeeFormPage /></ProtectedRoute>} />
       <Route path="/master/roles" element={<ProtectedRoute><RolesPermissionsPage /></ProtectedRoute>} />
       <Route path="/master/targets" element={<ProtectedRoute><TargetManagementPage /></ProtectedRoute>} />
+       <Route path="/master/targets/new" element={<ProtectedRoute><TargetFormPage /></ProtectedRoute>} />
+       <Route path="/master/targets/view/:id" element={<ProtectedRoute><TargetViewPage /></ProtectedRoute>} />
+       <Route path="/master/targets/edit/:id" element={<ProtectedRoute><TargetFormPage /></ProtectedRoute>} />
       <Route path="/master/presentations" element={<ProtectedRoute><PresentationsPage /></ProtectedRoute>} />
       <Route path="/master/presentations/new" element={<ProtectedRoute><PresentationFormPage /></ProtectedRoute>} />
       <Route path="/master/presentations/view/:id" element={<ProtectedRoute><PresentationViewPage /></ProtectedRoute>} />
