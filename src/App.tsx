@@ -30,6 +30,8 @@ import OrdersListPage from "./pages/orders/OrdersListPage";
 import OrderViewPage from "./pages/orders/OrderViewPage";
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
 import AdvancedSchemesPage from "./pages/AdvancedSchemesPage";
+import SchemeFormPage from "./pages/master/SchemeFormPage";
+import SchemeViewPage from "./pages/master/SchemeViewPage";
 import ReportsLayout from "./pages/reports/ReportsLayout";
 import ReportsDashboard from "./pages/reports/ReportsDashboard";
 import DailySalesReport from "./pages/reports/sales/DailySalesReport";
@@ -199,6 +201,9 @@ function AppRoutes() {
       <Route path="/master/warehouses/:id" element={<ProtectedRoute><WarehouseViewPage /></ProtectedRoute>} />
       <Route path="/master/warehouses/:id/edit" element={<ProtectedRoute><WarehouseFormPage /></ProtectedRoute>} />
       <Route path="/master/schemes" element={<ProtectedRoute><AdvancedSchemesPage /></ProtectedRoute>} />
+      <Route path="/master/schemes/new" element={<ProtectedRoute><SchemeFormPage /></ProtectedRoute>} />
+      <Route path="/master/schemes/view/:id" element={<ProtectedRoute><SchemeViewPage /></ProtectedRoute>} />
+      <Route path="/master/schemes/edit/:id" element={<ProtectedRoute><SchemeFormPage /></ProtectedRoute>} />
       <Route path="/master/countries" element={<ProtectedRoute><CountryMasterPage /></ProtectedRoute>} />
       <Route path="/master/countries/new" element={<ProtectedRoute><CountryFormPage /></ProtectedRoute>} />
       <Route path="/master/countries/:id" element={<ProtectedRoute><CountryViewPage /></ProtectedRoute>} />
