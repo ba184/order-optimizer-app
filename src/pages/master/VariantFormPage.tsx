@@ -6,12 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import {
   useCategories,
   useCreateCategory,
   useUpdateCategory,
   Category,
 } from '@/hooks/useCategoriesData';
+
+// Generate variant code like VAR-1738123456-A1B2
+const generateVariantCode = () => {
+  const timestamp = Date.now().toString().slice(-10);
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `VAR-${timestamp}-${random}`;
+};
 
 export default function VariantFormPage() {
   const navigate = useNavigate();
@@ -24,8 +32,9 @@ export default function VariantFormPage() {
 
   const [formData, setFormData] = useState({
     name: '',
-    code: '',
+    code: generateVariantCode(),
     description: '',
+    status: 'active' as 'active' | 'inactive',
   });
 
   useEffect(() => {
@@ -36,6 +45,7 @@ export default function VariantFormPage() {
           name: category.name,
           code: category.code,
           description: category.description || '',
+          status: (category.status as 'active' | 'inactive') || 'active',
         });
       }
     }
@@ -50,13 +60,14 @@ export default function VariantFormPage() {
         name: formData.name,
         code: formData.code,
         description: formData.description || null,
+        status: formData.status,
       });
     } else {
       await createCategory.mutateAsync({
         name: formData.name,
         code: formData.code,
         description: formData.description || undefined,
-        status: 'active',
+        status: formData.status,
       });
     }
 
@@ -99,14 +110,14 @@ export default function VariantFormPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="code">Variant Code *</Label>
+                <Label htmlFor="code">Variant Code</Label>
                 <Input
                   id="code"
                   value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  placeholder="e.g., VAR-001"
-                  required
+                  readOnly
+                  className="bg-muted cursor-not-allowed"
                 />
+                <p className="text-xs text-muted-foreground">System generated</p>
               </div>
             </div>
             <div className="space-y-2">
@@ -117,6 +128,21 @@ export default function VariantFormPage() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Optional description"
                 rows={3}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="status">Status</Label>
+                <p className="text-sm text-muted-foreground">
+                  {formData.status === 'active' ? 'Variant is active and visible' : 'Variant is inactive and hidden'}
+                </p>
+              </div>
+              <Switch
+                id="status"
+                checked={formData.status === 'active'}
+                onCheckedChange={(checked) => 
+                  setFormData({ ...formData, status: checked ? 'active' : 'inactive' })
+                }
               />
             </div>
           </CardContent>

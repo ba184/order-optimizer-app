@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Download, Eye, Edit2, Layers, Package } from 'lucide-react';
+import { Plus, Search, Download, Eye, Edit2, Layers, Package, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/StatCard';
 import { DataTable } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useCategoriesWithProductCount, Category } from '@/hooks/useCategoriesData';
-import { Loader2 } from 'lucide-react';
 
 export default function VariantMasterPage() {
   const navigate = useNavigate();
@@ -42,13 +42,17 @@ export default function VariantMasterPage() {
 
   const columns = [
     {
-      key: 'name',
-      header: 'Variant',
+      key: 'code',
+      header: 'Variant Code',
       render: (item: Category) => (
-        <div>
-          <p className="font-medium text-foreground">{item.name}</p>
-          <p className="text-xs text-muted-foreground">{item.code}</p>
-        </div>
+        <span className="font-mono text-sm text-muted-foreground">{item.code}</span>
+      ),
+    },
+    {
+      key: 'name',
+      header: 'Variant Name',
+      render: (item: Category) => (
+        <p className="font-medium text-foreground">{item.name}</p>
       ),
     },
     {
@@ -68,6 +72,13 @@ export default function VariantMasterPage() {
           <Package className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">{item.product_count || 0}</span>
         </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (item: Category) => (
+        <StatusBadge status={item.status === 'active' ? 'active' : 'inactive'} />
       ),
     },
     {
