@@ -32,8 +32,7 @@
  
  const statusOptions = [
    { value: 'active', label: 'Active' },
-   { value: 'completed', label: 'Completed' },
-   { value: 'expired', label: 'Expired' },
+   { value: 'inactive', label: 'Inactive' },
  ];
  
  export default function TargetFormPage() {
