@@ -982,14 +982,14 @@ function useOutletLocations(outlets: Outlet[]) {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       {/* State Filter */}
                       <Select
-                        value={geoFilter.state}
-                        onValueChange={(v) => handleGeoFilterChange('state', v)}
+                        value={geoFilter.state || "__all__"}
+                        onValueChange={(v) => handleGeoFilterChange('state', v === "__all__" ? "" : v)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="All States" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All States</SelectItem>
+                          <SelectItem value="__all__">All States</SelectItem>
                           {states.map((state) => (
                             <SelectItem key={state} value={state}>{state}</SelectItem>
                           ))}
@@ -998,15 +998,15 @@ function useOutletLocations(outlets: Outlet[]) {
 
                       {/* City Filter */}
                       <Select
-                        value={geoFilter.city}
-                        onValueChange={(v) => handleGeoFilterChange('city', v)}
+                        value={geoFilter.city || "__all__"}
+                        onValueChange={(v) => handleGeoFilterChange('city', v === "__all__" ? "" : v)}
                         disabled={!geoFilter.state}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="All Cities" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Cities</SelectItem>
+                          <SelectItem value="__all__">All Cities</SelectItem>
                           {availableCities.map((city) => (
                             <SelectItem key={city} value={city}>{city}</SelectItem>
                           ))}
@@ -1015,15 +1015,15 @@ function useOutletLocations(outlets: Outlet[]) {
 
                       {/* Territory/Zone Filter */}
                       <Select
-                        value={geoFilter.zone}
-                        onValueChange={(v) => handleGeoFilterChange('zone', v)}
+                        value={geoFilter.zone || "__all__"}
+                        onValueChange={(v) => handleGeoFilterChange('zone', v === "__all__" ? "" : v)}
                         disabled={!geoFilter.state}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="All Territories" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Territories</SelectItem>
+                          <SelectItem value="__all__">All Territories</SelectItem>
                           {availableZones.map((zone) => (
                             <SelectItem key={zone} value={zone}>{zone}</SelectItem>
                           ))}
