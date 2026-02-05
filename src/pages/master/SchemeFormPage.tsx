@@ -1,12 +1,14 @@
  import { useState, useEffect } from 'react';
  import { useNavigate, useParams } from 'react-router-dom';
- import { ArrowLeft, RotateCcw, Loader2 } from 'lucide-react';
+ import { ArrowLeft, RotateCcw, Loader2, Plus, Trash2 } from 'lucide-react';
  import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
  import { Input } from '@/components/ui/input';
  import { Label } from '@/components/ui/label';
  import { Button } from '@/components/ui/button';
  import { Textarea } from '@/components/ui/textarea';
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+ import { Checkbox } from '@/components/ui/checkbox';
+ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
  import { cn } from '@/lib/utils';
  import { toast } from 'sonner';
  import { 
@@ -15,27 +17,33 @@
    useUpdateScheme,
    SchemeType,
    SchemeStatus,
-   Applicability,
+  Applicability,
  } from '@/hooks/useSchemesData';
  import { useProducts } from '@/hooks/useProductsData';
+ import { supabase } from '@/integrations/supabase/client';
+ import { useQuery } from '@tanstack/react-query';
  
  type BenefitTypeOption = 'flat' | 'percentage';
  
+ interface SlabRow {
+   id: string;
+   min_order_value: number;
+   benefit_type: BenefitTypeOption;
+   benefit_value: number;
+   max_benefit: number;
+ }
+ 
  interface FormData {
-   // Default fields
    name: string;
-   code: string;
    type: SchemeType;
-   applicability: Applicability;
+   applicability: string;
+   selected_outlets: string[];
    status: 'active' | 'pending' | 'inactive';
    start_date: string;
    end_date: string;
    description: string;
-   // Slab fields
-   slab_min_order_value: number;
-   slab_benefit_type: BenefitTypeOption;
-   slab_benefit_value: number;
-   slab_max_benefit: number;
+   // Slab fields - now using array
+   slabs: SlabRow[];
    // Buy X Get Y fields
    bxgy_buy_product: string;
    bxgy_get_product: string;
@@ -62,6 +70,13 @@
    value_max_discount: number;
  }
  
+ interface Outlet {
+   id: string;
+   name: string;
+   code: string;
+   type: 'distributor' | 'retailer';
+ }
+ 
  const schemeTypes: { value: SchemeType; label: string }[] = [
    { value: 'slab', label: 'Slab' },
    { value: 'buy_x_get_y', label: 'Buy X Get Y' },
@@ -76,9 +91,9 @@
    { value: 'pending', label: 'Pending' },
  ];
  
- const applicabilityOptions: { value: Applicability; label: string }[] = [
+ const applicabilityOptions = [
    { value: 'all_outlets', label: 'All Outlets' },
-   { value: 'segment', label: 'Selected Outlets' },
+   { value: 'selected_outlets', label: 'Selected Outlets' },
  ];
  
  const benefitTypeOptions = [
@@ -86,19 +101,24 @@
    { value: 'percentage', label: 'Percentage' },
  ];
  
+ const createEmptySlab = (): SlabRow => ({
+   id: crypto.randomUUID(),
+   min_order_value: 0,
+   benefit_type: 'flat',
+   benefit_value: 0,
+   max_benefit: 0,
+ });
+ 
  const initialFormData: FormData = {
    name: '',
-   code: '',
    type: 'slab',
-   applicability: 'all_outlets',
+   applicability: '',
+   selected_outlets: [],
    status: 'pending',
    start_date: '',
    end_date: '',
    description: '',
-   slab_min_order_value: 0,
-   slab_benefit_type: 'flat',
-   slab_benefit_value: 0,
-   slab_max_benefit: 0,
+   slabs: [createEmptySlab()],
    bxgy_buy_product: '',
    bxgy_get_product: '',
    bxgy_buy_quantity: 1,
@@ -121,6 +141,45 @@
    value_max_discount: 0,
  };
  
+ // Hook to fetch all outlets
+ function useOutlets() {
+   return useQuery({
+     queryKey: ['all-outlets'],
+     queryFn: async () => {
+       const [distributorsRes, retailersRes] = await Promise.all([
+         supabase.from('distributors').select('id, firm_name, code').order('firm_name'),
+         supabase.from('retailers').select('id, shop_name, code').order('shop_name'),
+       ]);
+ 
+       const outlets: Outlet[] = [];
+       
+       if (distributorsRes.data) {
+         distributorsRes.data.forEach(d => {
+           outlets.push({
+             id: d.id,
+             name: d.firm_name,
+             code: d.code,
+             type: 'distributor',
+           });
+         });
+       }
+       
+       if (retailersRes.data) {
+         retailersRes.data.forEach(r => {
+           outlets.push({
+             id: r.id,
+             name: r.shop_name,
+             code: r.code,
+             type: 'retailer',
+           });
+         });
+       }
+ 
+       return outlets;
+     },
+   });
+ }
+ 
  export default function SchemeFormPage() {
    const navigate = useNavigate();
    const { id } = useParams();
@@ -128,6 +187,7 @@
  
    const { data: schemes = [] } = useSchemes();
    const { data: products = [] } = useProducts();
+   const { data: outlets = [] } = useOutlets();
    const createScheme = useCreateScheme();
    const updateScheme = useUpdateScheme();
  
@@ -142,15 +202,22 @@
          setFormData(prev => ({
            ...prev,
            name: scheme.name,
-           code: scheme.code || '',
            type: scheme.type,
            status: scheme.status === 'draft' ? 'pending' : scheme.status as 'active' | 'pending' | 'inactive',
            description: scheme.description || '',
            start_date: scheme.start_date || '',
            end_date: scheme.end_date || '',
-           applicability: scheme.applicability,
-           slab_min_order_value: scheme.min_order_value || 0,
-           slab_max_benefit: scheme.max_benefit || 0,
+           applicability: scheme.applicability === 'all_outlets' ? 'all_outlets' : 
+                          scheme.applicability === 'segment' ? 'selected_outlets' : scheme.applicability || '',
+           slabs: scheme.slab_config?.length > 0 
+             ? scheme.slab_config.map((s: any) => ({
+                 id: crypto.randomUUID(),
+                 min_order_value: s.min_qty || 0,
+                 benefit_type: 'flat' as BenefitTypeOption,
+                 benefit_value: s.benefit_value || 0,
+                 max_benefit: 0,
+               }))
+             : [createEmptySlab()],
          }));
        }
      }
@@ -163,10 +230,40 @@
      }
    };
  
+   const toggleOutletSelection = (outletId: string) => {
+     setFormData(prev => ({
+       ...prev,
+       selected_outlets: prev.selected_outlets.includes(outletId)
+         ? prev.selected_outlets.filter(id => id !== outletId)
+         : [...prev.selected_outlets, outletId],
+     }));
+   };
+ 
+   const addSlab = () => {
+     setFormData(prev => ({
+       ...prev,
+       slabs: [...prev.slabs, createEmptySlab()],
+     }));
+   };
+ 
+   const removeSlab = (slabId: string) => {
+     if (formData.slabs.length <= 1) return;
+     setFormData(prev => ({
+       ...prev,
+       slabs: prev.slabs.filter(s => s.id !== slabId),
+     }));
+   };
+ 
+   const updateSlab = (slabId: string, field: keyof SlabRow, value: any) => {
+     setFormData(prev => ({
+       ...prev,
+       slabs: prev.slabs.map(s => s.id === slabId ? { ...s, [field]: value } : s),
+     }));
+   };
+ 
    const validateForm = (): boolean => {
      const newErrors: Record<string, string> = {};
      if (!formData.name.trim()) newErrors.name = 'Scheme name is required';
-     if (!formData.code.trim()) newErrors.code = 'Scheme code is required';
      if (!formData.start_date) newErrors.start_date = 'Start date is required';
      if (!formData.end_date) newErrors.end_date = 'End date is required';
      if (formData.start_date && formData.end_date && formData.end_date <= formData.start_date) {
@@ -179,11 +276,16 @@
    const isFormValid = (): boolean => {
      return !!(
        formData.name.trim() &&
-       formData.code.trim() &&
        formData.start_date &&
        formData.end_date &&
        formData.end_date > formData.start_date
      );
+   };
+ 
+   const generateSchemeCode = () => {
+     const prefix = formData.type.toUpperCase().substring(0, 3);
+     const timestamp = Date.now().toString().slice(-6);
+     return `${prefix}-${timestamp}`;
    };
  
    const handleSubmit = async () => {
@@ -195,20 +297,28 @@
      try {
        const schemeData = {
          name: formData.name,
-         code: formData.code,
+         code: generateSchemeCode(),
          type: formData.type,
          description: formData.description || null,
          start_date: formData.start_date,
          end_date: formData.end_date,
          status: formData.status === 'inactive' ? 'cancelled' : formData.status as SchemeStatus,
-         applicability: formData.applicability,
-         min_order_value: formData.type === 'slab' ? formData.slab_min_order_value : 
+        applicability: (formData.applicability === 'selected_outlets' ? 'segment' : formData.applicability || 'all_outlets') as Applicability,
+         min_order_value: formData.type === 'slab' && formData.slabs.length > 0 ? formData.slabs[0].min_order_value : 
                           formData.type === 'buy_x_get_y' ? formData.bxgy_min_order_value :
                           formData.type === 'value_wise' ? formData.value_min_order_value : 0,
-         max_benefit: formData.type === 'slab' && formData.slab_benefit_type === 'percentage' ? formData.slab_max_benefit :
+         max_benefit: formData.type === 'slab' ? Math.max(...formData.slabs.map(s => s.max_benefit)) :
                       formData.type === 'bill_wise' ? formData.bill_max_discount :
                       formData.type === 'value_wise' ? formData.value_max_discount : 0,
-         slab_config: [],
+         slab_config: formData.type === 'slab' 
+           ? formData.slabs.map(s => ({
+               min_qty: s.min_order_value,
+               max_qty: s.min_order_value + 100,
+               benefit_value: s.benefit_value,
+               benefit_type: s.benefit_type,
+               max_benefit: s.max_benefit,
+             }))
+           : [],
        };
        if (isEditing) {
          await updateScheme.mutateAsync({ id, ...schemeData });
@@ -231,61 +341,106 @@
    const renderSlabFields = () => (
      <Card>
        <CardHeader className="pb-4">
-         <CardTitle className="text-base font-semibold">Slab Configuration</CardTitle>
+         <div className="flex items-center justify-between">
+           <CardTitle className="text-base font-semibold">Slab Configuration</CardTitle>
+           <Button variant="outline" size="sm" onClick={addSlab}>
+             <Plus className="h-4 w-4 mr-1" />
+             Add Slab
+           </Button>
+         </div>
        </CardHeader>
-       <CardContent className="space-y-4">
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <div className="space-y-2">
-             <Label htmlFor="slab_min_order_value">Slab Min Order Value</Label>
-             <Input
-               id="slab_min_order_value"
-               type="number"
-               min={0}
-               placeholder="Enter minimum order value"
-               value={formData.slab_min_order_value || ''}
-               onChange={(e) => updateField('slab_min_order_value', Number(e.target.value))}
-             />
-           </div>
-           <div className="space-y-2">
-             <Label htmlFor="slab_benefit_type">Benefit Type</Label>
-             <Select
-               value={formData.slab_benefit_type}
-               onValueChange={(v: BenefitTypeOption) => updateField('slab_benefit_type', v)}
-             >
-               <SelectTrigger id="slab_benefit_type">
-                 <SelectValue placeholder="Select benefit type" />
-               </SelectTrigger>
-               <SelectContent>
-                 {benefitTypeOptions.map((opt) => (
-                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                 ))}
-               </SelectContent>
-             </Select>
-           </div>
-           <div className="space-y-2">
-             <Label htmlFor="slab_benefit_value">Benefit Value</Label>
-             <Input
-               id="slab_benefit_value"
-               type="number"
-               min={0}
-               placeholder={formData.slab_benefit_type === 'percentage' ? 'Enter percentage' : 'Enter amount'}
-               value={formData.slab_benefit_value || ''}
-               onChange={(e) => updateField('slab_benefit_value', Number(e.target.value))}
-             />
-           </div>
-           {formData.slab_benefit_type === 'percentage' && (
-             <div className="space-y-2">
-               <Label htmlFor="slab_max_benefit">Slab Max Benefit</Label>
-               <Input
-                 id="slab_max_benefit"
-                 type="number"
-                 min={0}
-                 placeholder="Enter maximum benefit"
-                 value={formData.slab_max_benefit || ''}
-                 onChange={(e) => updateField('slab_max_benefit', Number(e.target.value))}
-               />
-             </div>
-           )}
+       <CardContent>
+         <div className="border rounded-lg overflow-hidden">
+           <Table>
+             <TableHeader>
+               <TableRow className="bg-muted/50">
+                 <TableHead className="font-medium">Slab Min Order Value</TableHead>
+                 <TableHead className="font-medium">Benefit Type</TableHead>
+                 <TableHead className="font-medium">Benefit Value</TableHead>
+                 <TableHead className="font-medium">Slab Max Benefit</TableHead>
+                 <TableHead className="w-[60px]"></TableHead>
+               </TableRow>
+             </TableHeader>
+             <TableBody>
+               {formData.slabs.map((slab) => (
+                 <TableRow key={slab.id}>
+                   <TableCell>
+                     <Input
+                       type="number"
+                       min={0}
+                       placeholder="Min order value"
+                       value={slab.min_order_value || ''}
+                       onChange={(e) => updateSlab(slab.id, 'min_order_value', Number(e.target.value))}
+                       className="w-full"
+                     />
+                   </TableCell>
+                   <TableCell>
+                     <Select
+                       value={slab.benefit_type}
+                       onValueChange={(v: BenefitTypeOption) => updateSlab(slab.id, 'benefit_type', v)}
+                     >
+                       <SelectTrigger className="w-full">
+                         <SelectValue placeholder="Select type" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         {benefitTypeOptions.map((opt) => (
+                           <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                   </TableCell>
+                   <TableCell>
+                     {slab.benefit_type === 'flat' && (
+                       <Input
+                         type="number"
+                         min={0}
+                         placeholder="Amount (₹)"
+                         value={slab.benefit_value || ''}
+                         onChange={(e) => updateSlab(slab.id, 'benefit_value', Number(e.target.value))}
+                         className="w-full"
+                       />
+                     )}
+                     {slab.benefit_type === 'percentage' && (
+                       <Input
+                         type="number"
+                         min={0}
+                         max={100}
+                         placeholder="Percentage (%)"
+                         value={slab.benefit_value || ''}
+                         onChange={(e) => updateSlab(slab.id, 'benefit_value', Number(e.target.value))}
+                         className="w-full"
+                       />
+                     )}
+                   </TableCell>
+                   <TableCell>
+                     {slab.benefit_type === 'percentage' ? (
+                       <Input
+                         type="number"
+                         min={0}
+                         placeholder="Max benefit (₹)"
+                         value={slab.max_benefit || ''}
+                         onChange={(e) => updateSlab(slab.id, 'max_benefit', Number(e.target.value))}
+                         className="w-full"
+                       />
+                     ) : (
+                       <span className="text-muted-foreground text-sm">N/A</span>
+                     )}
+                   </TableCell>
+                   <TableCell>
+                     <Button
+                       variant="ghost"
+                       size="icon"
+                       onClick={() => removeSlab(slab.id)}
+                       disabled={formData.slabs.length <= 1}
+                       className="h-8 w-8"
+                     >
+                       <Trash2 className="h-4 w-4 text-destructive" />
+                     </Button>
+                   </TableCell>
+                 </TableRow>
+               ))}
+             </TableBody>
+           </Table>
          </div>
        </CardContent>
      </Card>
@@ -604,6 +759,9 @@
      }
    };
  
+   const distributors = outlets.filter(o => o.type === 'distributor');
+   const retailers = outlets.filter(o => o.type === 'retailer');
+ 
    return (
      <div className="min-h-screen bg-background flex flex-col">
        {/* Header */}
@@ -668,10 +826,10 @@
                    </Select>
                  </div>
                  <div className="space-y-2">
-                   <Label htmlFor="applicability">Applicability <span className="text-destructive">*</span></Label>
+                   <Label htmlFor="applicability">Applicability</Label>
                    <Select
                      value={formData.applicability}
-                     onValueChange={(v: Applicability) => updateField('applicability', v)}
+                     onValueChange={(v: string) => updateField('applicability', v)}
                    >
                      <SelectTrigger id="applicability">
                        <SelectValue placeholder="Select applicability" />
@@ -731,20 +889,79 @@
                      rows={3}
                    />
                  </div>
-                 <div className="space-y-2">
-                   <Label htmlFor="code">Scheme Code <span className="text-destructive">*</span></Label>
-                   <Input
-                     id="code"
-                     placeholder="Enter unique scheme code"
-                     value={formData.code}
-                     onChange={(e) => updateField('code', e.target.value.toUpperCase())}
-                     className={cn(errors.code && 'border-destructive')}
-                   />
-                   {errors.code && <p className="text-sm text-destructive">{errors.code}</p>}
-                 </div>
                </div>
              </CardContent>
            </Card>
+ 
+           {/* Selected Outlets Section - Only show when Selected Outlets is chosen */}
+           {formData.applicability === 'selected_outlets' && (
+             <Card>
+               <CardHeader className="pb-4">
+                 <CardTitle className="text-base font-semibold">Select Outlets</CardTitle>
+               </CardHeader>
+               <CardContent className="space-y-6">
+                 {/* Distributors Section */}
+                 <div className="space-y-3">
+                   <Label className="text-sm font-medium text-foreground">Distributors</Label>
+                   <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
+                     {distributors.length > 0 ? (
+                       distributors.map((outlet) => (
+                         <div key={outlet.id} className="flex items-center space-x-3">
+                           <Checkbox
+                             id={`outlet-${outlet.id}`}
+                             checked={formData.selected_outlets.includes(outlet.id)}
+                             onCheckedChange={() => toggleOutletSelection(outlet.id)}
+                           />
+                           <label
+                             htmlFor={`outlet-${outlet.id}`}
+                             className="text-sm cursor-pointer flex-1"
+                           >
+                             <span className="font-medium">{outlet.name}</span>
+                             <span className="text-muted-foreground ml-2">({outlet.code})</span>
+                           </label>
+                         </div>
+                       ))
+                     ) : (
+                       <p className="text-sm text-muted-foreground">No distributors available</p>
+                     )}
+                   </div>
+                 </div>
+ 
+                 {/* Retailers Section */}
+                 <div className="space-y-3">
+                   <Label className="text-sm font-medium text-foreground">Retailers</Label>
+                   <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
+                     {retailers.length > 0 ? (
+                       retailers.map((outlet) => (
+                         <div key={outlet.id} className="flex items-center space-x-3">
+                           <Checkbox
+                             id={`outlet-${outlet.id}`}
+                             checked={formData.selected_outlets.includes(outlet.id)}
+                             onCheckedChange={() => toggleOutletSelection(outlet.id)}
+                           />
+                           <label
+                             htmlFor={`outlet-${outlet.id}`}
+                             className="text-sm cursor-pointer flex-1"
+                           >
+                             <span className="font-medium">{outlet.name}</span>
+                             <span className="text-muted-foreground ml-2">({outlet.code})</span>
+                           </label>
+                         </div>
+                       ))
+                     ) : (
+                       <p className="text-sm text-muted-foreground">No retailers available</p>
+                     )}
+                   </div>
+                 </div>
+ 
+                 {formData.selected_outlets.length > 0 && (
+                   <p className="text-sm text-muted-foreground">
+                     {formData.selected_outlets.length} outlet(s) selected
+                   </p>
+                 )}
+               </CardContent>
+             </Card>
+           )}
  
            {/* Dynamic Fields Based on Scheme Type */}
            {renderDynamicFields()}

@@ -9,9 +9,6 @@ import {
   Calendar,
   Eye,
   Edit,
-  Copy,
-  CheckCircle,
-  IndianRupee,
   Layers,
   Trash2,
   Loader2,
@@ -29,7 +26,6 @@ const schemeTypeColors: Record<string, string> = {
   combo: 'bg-secondary/10 text-secondary',
   bill_wise: 'bg-info/10 text-info',
   value_wise: 'bg-warning/10 text-warning',
-  display: 'bg-destructive/10 text-destructive',
 };
 
 const schemeTypeLabels: Record<string, string> = {
@@ -38,7 +34,13 @@ const schemeTypeLabels: Record<string, string> = {
   combo: 'Combo',
   bill_wise: 'Bill-wise',
   value_wise: 'Value-wise',
-  display: 'Display',
+};
+
+const applicabilityLabels: Record<string, string> = {
+  all_outlets: 'All Outlets',
+  selected_outlets: 'Selected Outlets',
+  'All Outlets': 'All Outlets',
+  'Selected Outlets': 'Selected Outlets',
 };
 
 export default function AdvancedSchemesPage() {
@@ -54,9 +56,8 @@ export default function AdvancedSchemesPage() {
 
   const stats = {
     activeSchemes: schemes.filter(s => s.status === 'active').length,
-    totalClaims: schemes.reduce((sum, s) => sum + s.claims_generated, 0),
-    approvedClaims: schemes.reduce((sum, s) => sum + s.claims_approved, 0),
-    totalPayout: schemes.reduce((sum, s) => sum + Number(s.total_payout), 0),
+    totalSchemes: schemes.length,
+    pendingSchemes: schemes.filter(s => s.status === 'pending').length,
   };
 
   const handleDelete = async (id: string) => {
@@ -92,12 +93,20 @@ export default function AdvancedSchemesPage() {
     },
     {
       key: 'description',
-      header: 'Benefit',
+      header: 'Description',
       render: (item: AdvancedScheme) => (
         <div className="max-w-[200px]">
           <p className="text-sm truncate">{item.description || '-'}</p>
-          <p className="text-xs text-muted-foreground">{item.applicability}</p>
         </div>
+      ),
+    },
+    {
+      key: 'applicability',
+      header: 'Applicability',
+      render: (item: AdvancedScheme) => (
+        <span className="text-sm">
+          {applicabilityLabels[item.applicability || ''] || item.applicability || '-'}
+        </span>
       ),
     },
     {
@@ -110,26 +119,6 @@ export default function AdvancedSchemesPage() {
             {format(new Date(item.start_date), 'dd MMM')} - {format(new Date(item.end_date), 'dd MMM yyyy')}
           </span>
         </div>
-      ),
-    },
-    {
-      key: 'claims',
-      header: 'Claims',
-      render: (item: AdvancedScheme) => (
-        <div className="text-sm">
-          <p className="flex items-center gap-1">
-            <CheckCircle size={12} className="text-success" />
-            {item.claims_approved} approved
-          </p>
-          <p className="text-xs text-muted-foreground">{item.claims_generated} generated</p>
-        </div>
-      ),
-    },
-    {
-      key: 'totalPayout',
-      header: 'Payout',
-      render: (item: AdvancedScheme) => (
-        <span className="font-semibold text-primary">₹{(Number(item.total_payout) / 1000).toFixed(1)}K</span>
       ),
     },
     {
@@ -147,9 +136,6 @@ export default function AdvancedSchemesPage() {
           </button>
           <button onClick={() => navigate(`/master/schemes/edit/${item.id}`)} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <Edit size={16} className="text-muted-foreground" />
-          </button>
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-            <Copy size={16} className="text-muted-foreground" />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
@@ -188,12 +174,12 @@ export default function AdvancedSchemesPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-info/10">
-              <Layers size={24} className="text-info" />
+            <div className="p-3 rounded-xl bg-primary/10">
+              <Layers size={24} className="text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalClaims}</p>
-              <p className="text-sm text-muted-foreground">Claims Generated</p>
+              <p className="text-2xl font-bold text-foreground">{stats.totalSchemes}</p>
+              <p className="text-sm text-muted-foreground">Total Schemes</p>
             </div>
           </div>
         </motion.div>
@@ -201,23 +187,23 @@ export default function AdvancedSchemesPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-success/10">
-              <CheckCircle size={24} className="text-success" />
+              <Gift size={24} className="text-success" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.approvedClaims}</p>
-              <p className="text-sm text-muted-foreground">Approved</p>
+              <p className="text-2xl font-bold text-foreground">{stats.activeSchemes}</p>
+              <p className="text-sm text-muted-foreground">Active Schemes</p>
             </div>
           </div>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-secondary/10">
-              <IndianRupee size={24} className="text-secondary" />
+            <div className="p-3 rounded-xl bg-warning/10">
+              <Calendar size={24} className="text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">₹{(stats.totalPayout / 100000).toFixed(1)}L</p>
-              <p className="text-sm text-muted-foreground">Total Payout</p>
+              <p className="text-2xl font-bold text-foreground">{stats.pendingSchemes}</p>
+              <p className="text-sm text-muted-foreground">Pending Schemes</p>
             </div>
           </div>
         </motion.div>
