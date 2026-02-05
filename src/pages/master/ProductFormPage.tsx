@@ -35,10 +35,8 @@ const skuSizeOptions = [
 ];
 
 const packSizeOptions = [
-  { value: '2nos', label: '2 nos' },
-  { value: '4nos', label: '4 nos' },
   { value: '5nos', label: '5 nos' },
-  { value: '20nos', label: '20 nos' },
+  { value: '10nos', label: '10 nos' },
 ];
 
 const statusOptions = [
@@ -94,12 +92,15 @@ export default function ProductFormPage() {
   // Sample SKU info
   const [sampleSKU, setSampleSKU] = useState<SampleSKU>({
     skuSize: '2g',
-    packSize: '2nos',
+    packSize: '5nos',
   });
+
+  // Common GST % for all SKU entries
+  const [gstPercent, setGstPercent] = useState<string>('18');
 
   // SKU Entries for products
   const [skuEntries, setSkuEntries] = useState<SKUEntry[]>([
-    { id: crypto.randomUUID(), skuSize: '2g', packSize: '2nos', unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0, imageUrl: '' }
+    { id: crypto.randomUUID(), skuSize: '2g', packSize: '5nos', unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0, imageUrl: '' }
   ]);
 
   // Validation errors
@@ -146,7 +147,7 @@ export default function ProductFormPage() {
     setSkuEntries([...skuEntries, {
       id: crypto.randomUUID(),
       skuSize: '2g',
-      packSize: '2nos',
+      packSize: '5nos',
       unitMRP: '',
       unitPTR: '',
       unitPTS: '',
@@ -232,7 +233,23 @@ export default function ProductFormPage() {
     return match ? parseInt(match[1], 10) : 1;
   };
 
+  // Calculate box prices with GST
+  const calculateBoxPrices = (entry: SKUEntry, gst: number) => {
+    const multiplier = getPackSizeMultiplier(entry.packSize);
+    const unitMRP = parseFloat(String(entry.unitMRP)) || 0;
+    const unitPTR = parseFloat(String(entry.unitPTR)) || 0;
+    const unitPTS = parseFloat(String(entry.unitPTS)) || 0;
+    const gstMultiplier = 1 + (gst / 100);
+    
+    return {
+      boxMRP: Math.round((unitMRP * multiplier * gstMultiplier) * 100) / 100,
+      boxPTR: Math.round((unitPTR * multiplier * gstMultiplier) * 100) / 100,
+      boxPTS: Math.round((unitPTS * multiplier * gstMultiplier) * 100) / 100,
+    };
+  };
+
   const updateSKUEntry = (id: string, field: keyof SKUEntry, value: string | number) => {
+    const gst = parseFloat(gstPercent) || 0;
     setSkuEntries(skuEntries.map(entry => {
       if (entry.id !== id) return entry;
       
@@ -240,17 +257,23 @@ export default function ProductFormPage() {
       
       // Auto-calculate box values when unit prices or pack size change
       if (field === 'unitMRP' || field === 'unitPTR' || field === 'unitPTS' || field === 'packSize') {
-        const multiplier = getPackSizeMultiplier(updated.packSize);
-        const unitMRP = parseFloat(String(updated.unitMRP)) || 0;
-        const unitPTR = parseFloat(String(updated.unitPTR)) || 0;
-        const unitPTS = parseFloat(String(updated.unitPTS)) || 0;
-        
-        updated.boxMRP = unitMRP * multiplier;
-        updated.boxPTR = unitPTR * multiplier;
-        updated.boxPTS = unitPTS * multiplier;
+        const boxPrices = calculateBoxPrices(updated, gst);
+        updated.boxMRP = boxPrices.boxMRP;
+        updated.boxPTR = boxPrices.boxPTR;
+        updated.boxPTS = boxPrices.boxPTS;
       }
       
       return updated;
+    }));
+  };
+
+  // Update all box prices when GST changes
+  const handleGstChange = (newGst: string) => {
+    setGstPercent(newGst);
+    const gst = parseFloat(newGst) || 0;
+    setSkuEntries(entries => entries.map(entry => {
+      const boxPrices = calculateBoxPrices(entry, gst);
+      return { ...entry, ...boxPrices };
     }));
   };
 
@@ -325,7 +348,7 @@ export default function ProductFormPage() {
             mrp: sku.boxMRP,
             ptr: sku.boxPTR,
             pts: sku.boxPTS,
-            gst: 18,
+            gst: parseFloat(gstPercent) || 18,
             status: productInfo.status,
           });
         }
@@ -550,13 +573,29 @@ export default function ProductFormPage() {
                       SKU Unit Pricing
                     </CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Enter unit prices. Box value = Unit Price × Pack Size. Validation: MRP ≥ PTR ≥ PTS
+                      Enter unit prices. Box value = (Unit Price × Pack Size) + GST%. Validation: MRP ≥ PTR ≥ PTS
                     </p>
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={addSKUEntry}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Pack
-                  </Button>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="gstPercent" className="text-sm font-medium whitespace-nowrap">GST %</Label>
+                      <Input
+                        id="gstPercent"
+                        type="number"
+                        value={gstPercent}
+                        onChange={(e) => handleGstChange(e.target.value)}
+                        placeholder="18"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        className="w-20 text-sm"
+                      />
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={addSKUEntry}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Pack
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
