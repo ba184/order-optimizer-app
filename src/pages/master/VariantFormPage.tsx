@@ -6,7 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   useCategories,
   useCreateCategory,
@@ -32,7 +38,7 @@ export default function VariantFormPage() {
 
   const [formData, setFormData] = useState({
     name: '',
-    code: generateVariantCode(),
+    code: '', // Blank on new creation
     description: '',
     status: 'active' as 'active' | 'inactive',
   });
@@ -54,6 +60,9 @@ export default function VariantFormPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Generate code on submit for new variants
+    const codeToUse = isEdit ? formData.code : generateVariantCode();
+
     if (isEdit && id) {
       await updateCategory.mutateAsync({
         id,
@@ -65,7 +74,7 @@ export default function VariantFormPage() {
     } else {
       await createCategory.mutateAsync({
         name: formData.name,
-        code: formData.code,
+        code: codeToUse,
         description: formData.description || undefined,
         status: formData.status,
       });
@@ -130,20 +139,22 @@ export default function VariantFormPage() {
                 rows={3}
               />
             </div>
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="status">Status</Label>
-                <p className="text-sm text-muted-foreground">
-                  {formData.status === 'active' ? 'Variant is active and visible' : 'Variant is inactive and hidden'}
-                </p>
-              </div>
-              <Switch
-                id="status"
-                checked={formData.status === 'active'}
-                onCheckedChange={(checked) => 
-                  setFormData({ ...formData, status: checked ? 'active' : 'inactive' })
+            <div className="space-y-2">
+              <Label htmlFor="status">Status *</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value: 'active' | 'inactive') =>
+                  setFormData({ ...formData, status: value })
                 }
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
