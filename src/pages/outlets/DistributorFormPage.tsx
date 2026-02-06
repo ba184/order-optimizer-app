@@ -1935,7 +1935,17 @@ export default function DistributorFormPage() {
                             className="input-field"
                           />
                         </div>
+                      </div>
+                      <div className="mt-2 text-right">
+                        <span className="text-sm text-muted-foreground">Line Value: </span>
+                        <span className="font-medium text-foreground">₹{lineValue.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
+            </div>
 
             {formData.preorders.length > 0 && (
               <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
@@ -1945,7 +1955,6 @@ export default function DistributorFormPage() {
                 </div>
               </div>
             )}
-            </div>
           </div>
         );
 
