@@ -4,11 +4,14 @@ import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useLeaves, useCreateLeave, useUpdateLeave, useProfiles } from '@/hooks/useSalesTeamData';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, differenceInDays, parseISO, isAfter, isBefore, isEqual } from 'date-fns';
+import { format, differenceInDays, parseISO, isAfter, isBefore, isEqual, startOfDay, endOfDay } from 'date-fns';
 import { toast } from 'sonner';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import {
   Plus,
-  Calendar,
+  Calendar as CalendarIcon,
   Clock,
   CheckCircle,
   XCircle,
@@ -18,13 +21,14 @@ import {
   ThumbsDown,
   Loader2,
   X,
+  Filter,
 } from 'lucide-react';
 
 interface LeaveRequest {
   id: string;
   user_id: string;
   userName: string;
-  leave_type: 'casual' | 'sick' | 'earned' | 'compensatory';
+  leave_type: 'casual' | 'sick' | 'privilege' | 'lwp';
   duration_type: 'full' | 'half' | 'partial';
   start_date: string;
   end_date: string;
@@ -40,25 +44,25 @@ interface LeaveRequest {
 }
 
 const leaveTypeLabels: Record<string, string> = {
-  casual: 'Casual Leave',
-  sick: 'Sick Leave',
-  earned: 'Earned Leave',
-  compensatory: 'Comp Off',
+  casual: 'Casual Leave (CL)',
+  sick: 'Sick Leave (SL)',
+  privilege: 'Privilege Leave (PL)',
+  lwp: 'Leave Without Pay (LWP)',
 };
 
 const leaveTypeColors: Record<string, string> = {
   casual: 'bg-info/10 text-info',
   sick: 'bg-destructive/10 text-destructive',
-  earned: 'bg-success/10 text-success',
-  compensatory: 'bg-warning/10 text-warning',
+  privilege: 'bg-success/10 text-success',
+  lwp: 'bg-warning/10 text-warning',
 };
 
-// Mock leave balance data (would come from leave_balances table)
-const mockLeaveBalance: Record<string, number> = {
-  casual: 12,
-  sick: 10,
-  earned: 15,
-  compensatory: 5,
+// Leave balance configuration
+const leaveBalanceConfig: Record<string, { total: number; unlimited: boolean }> = {
+  casual: { total: 7, unlimited: false },
+  sick: { total: 7, unlimited: false },
+  privilege: { total: 18, unlimited: false },
+  lwp: { total: 0, unlimited: true },
 };
 
 export default function LeaveManagementPage() {
@@ -67,12 +71,16 @@ export default function LeaveManagementPage() {
   const [showViewModal, setShowViewModal] = useState<LeaveRequest | null>(null);
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
   const [newLeave, setNewLeave] = useState({
     employee_id: '',
     leave_type: 'casual',
     duration_type: 'full',
     start_date: '',
     end_date: '',
+    partial_date: '',
+    partial_from_time: '',
+    partial_to_time: '',
     reason: '',
   });
 
@@ -87,10 +95,22 @@ export default function LeaveManagementPage() {
     duration_type: leave.duration_type || 'full',
   }));
 
+  // Filter leaves by date
+  const filteredLeaveRequests = useMemo(() => {
+    if (!filterDate) return leaveRequests;
+    const filterDateStr = format(filterDate, 'yyyy-MM-dd');
+    return leaveRequests.filter(leave => {
+      const start = leave.start_date;
+      const end = leave.end_date;
+      return start <= filterDateStr && end >= filterDateStr;
+    });
+  }, [leaveRequests, filterDate]);
+
   const calculateDays = (start: string, end: string, durationType: string) => {
     if (!start || !end) return 0;
     const totalDays = differenceInDays(new Date(end), new Date(start)) + 1;
     if (durationType === 'half') return totalDays * 0.5;
+    if (durationType === 'partial') return 0.5; // Partial is always for one day
     return totalDays;
   };
 
@@ -120,15 +140,26 @@ export default function LeaveManagementPage() {
   };
 
   const getAvailableBalance = (leaveType: string, userId: string) => {
-    const total = mockLeaveBalance[leaveType] || 0;
+    const config = leaveBalanceConfig[leaveType];
+    if (!config) return 0;
+    if (config.unlimited) return Infinity;
     const used = getUsedBalance(leaveType, userId);
-    return Math.max(0, total - used);
+    return Math.max(0, config.total - used);
   };
 
   const handleApplyLeave = async () => {
-    if (!newLeave.start_date || !newLeave.end_date || !newLeave.reason) {
-      toast.error('Please fill all required fields');
-      return;
+    const isPartial = newLeave.duration_type === 'partial';
+    
+    if (isPartial) {
+      if (!newLeave.partial_date || !newLeave.partial_from_time || !newLeave.partial_to_time || !newLeave.reason) {
+        toast.error('Please fill all required fields');
+        return;
+      }
+    } else {
+      if (!newLeave.start_date || !newLeave.end_date || !newLeave.reason) {
+        toast.error('Please fill all required fields');
+        return;
+      }
     }
 
     const userId = newLeave.employee_id || user?.id;
@@ -137,33 +168,53 @@ export default function LeaveManagementPage() {
       return;
     }
 
-    const days = calculateDays(newLeave.start_date, newLeave.end_date, newLeave.duration_type);
+    const startDate = isPartial ? newLeave.partial_date : newLeave.start_date;
+    const endDate = isPartial ? newLeave.partial_date : newLeave.end_date;
+    const days = calculateDays(startDate, endDate, newLeave.duration_type);
     
     // Check for overlapping leaves
-    if (hasOverlappingLeave(newLeave.start_date, newLeave.end_date, userId)) {
+    if (hasOverlappingLeave(startDate, endDate, userId)) {
       toast.error('Leave dates overlap with existing leave');
       return;
     }
 
-    // Check balance
-    const available = getAvailableBalance(newLeave.leave_type, userId);
-    if (days > available) {
-      toast.error(`Insufficient balance. Available: ${available} days`);
-      return;
+    // Check balance (skip for LWP)
+    if (newLeave.leave_type !== 'lwp') {
+      const available = getAvailableBalance(newLeave.leave_type, userId);
+      if (days > available) {
+        toast.error(`Insufficient balance. Available: ${available} days`);
+        return;
+      }
     }
 
     await createLeave.mutateAsync({
       leave_type: newLeave.leave_type,
-      start_date: newLeave.start_date,
-      end_date: newLeave.end_date,
+      start_date: startDate,
+      end_date: endDate,
       days,
-      reason: newLeave.reason,
+      reason: isPartial 
+        ? `${newLeave.reason} (${newLeave.partial_from_time} - ${newLeave.partial_to_time})`
+        : newLeave.reason,
       duration_type: newLeave.duration_type,
       user_id: userId,
       applied_by: user?.id,
     });
     setShowApplyModal(false);
-    setNewLeave({ employee_id: '', leave_type: 'casual', duration_type: 'full', start_date: '', end_date: '', reason: '' });
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setNewLeave({ 
+      employee_id: '', 
+      leave_type: 'casual', 
+      duration_type: 'full', 
+      start_date: '', 
+      end_date: '', 
+      partial_date: '',
+      partial_from_time: '',
+      partial_to_time: '',
+      reason: '' 
+    });
   };
 
   const handleApprove = async (id: string) => {
@@ -241,7 +292,7 @@ export default function LeaveManagementPage() {
       header: 'From – To',
       render: (item: LeaveRequest) => (
         <div className="flex items-center gap-2">
-          <Calendar size={14} className="text-muted-foreground" />
+          <CalendarIcon size={14} className="text-muted-foreground" />
           <span className="text-sm">{item.start_date} – {item.end_date}</span>
         </div>
       ),
@@ -300,21 +351,38 @@ export default function LeaveManagementPage() {
     },
   ];
 
-  const stats = {
-    pending: leaveRequests.filter(l => l.status === 'pending').length,
-    approved: leaveRequests.filter(l => l.status === 'approved').length,
-    rejected: leaveRequests.filter(l => l.status === 'rejected').length,
-  };
+  // Date-filtered stats
+  const stats = useMemo(() => ({
+    pending: filteredLeaveRequests.filter(l => l.status === 'pending').length,
+    approved: filteredLeaveRequests.filter(l => l.status === 'approved').length,
+    rejected: filteredLeaveRequests.filter(l => l.status === 'rejected').length,
+  }), [filteredLeaveRequests]);
 
   const leaveDaysCount = useMemo(() => {
-    return calculateDays(newLeave.start_date, newLeave.end_date, newLeave.duration_type);
-  }, [newLeave.start_date, newLeave.end_date, newLeave.duration_type]);
+    const isPartial = newLeave.duration_type === 'partial';
+    const startDate = isPartial ? newLeave.partial_date : newLeave.start_date;
+    const endDate = isPartial ? newLeave.partial_date : newLeave.end_date;
+    return calculateDays(startDate, endDate, newLeave.duration_type);
+  }, [newLeave.start_date, newLeave.end_date, newLeave.partial_date, newLeave.duration_type]);
 
   const availableBalance = useMemo(() => {
     const userId = newLeave.employee_id || user?.id;
     if (!userId) return 0;
     return getAvailableBalance(newLeave.leave_type, userId);
   }, [newLeave.leave_type, newLeave.employee_id, user?.id, leaveRequests]);
+
+  // Get all leave balances for display
+  const getAllBalances = (userId: string) => {
+    return {
+      casual: getAvailableBalance('casual', userId),
+      sick: getAvailableBalance('sick', userId),
+      privilege: getAvailableBalance('privilege', userId),
+      lwp: Infinity,
+    };
+  };
+
+  const currentUserId = newLeave.employee_id || user?.id || '';
+  const allBalances = getAllBalances(currentUserId);
 
   if (isLoading) {
     return (
@@ -338,6 +406,39 @@ export default function LeaveManagementPage() {
         </button>
       </div>
 
+      {/* Date Filter */}
+      <div className="flex items-center gap-4">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={cn(
+              "flex items-center gap-2 px-4 py-2 border border-border rounded-lg bg-card hover:bg-muted transition-colors",
+              filterDate && "border-primary"
+            )}>
+              <Filter size={16} className="text-muted-foreground" />
+              <span className="text-sm">
+                {filterDate ? format(filterDate, 'PPP') : 'Filter by Date'}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={filterDate}
+              onSelect={setFilterDate}
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+        {filterDate && (
+          <button 
+            onClick={() => setFilterDate(undefined)}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Clear filter
+          </button>
+        )}
+      </div>
+
       {/* Request Stats */}
       <div className="grid grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
@@ -347,7 +448,7 @@ export default function LeaveManagementPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.pending}</p>
-              <p className="text-sm text-muted-foreground">Pending</p>
+              <p className="text-sm text-muted-foreground">Pending {filterDate && `(${format(filterDate, 'MMM d')})`}</p>
             </div>
           </div>
         </motion.div>
@@ -359,7 +460,7 @@ export default function LeaveManagementPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.approved}</p>
-              <p className="text-sm text-muted-foreground">Approved</p>
+              <p className="text-sm text-muted-foreground">Approved {filterDate && `(${format(filterDate, 'MMM d')})`}</p>
             </div>
           </div>
         </motion.div>
@@ -371,7 +472,7 @@ export default function LeaveManagementPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.rejected}</p>
-              <p className="text-sm text-muted-foreground">Rejected</p>
+              <p className="text-sm text-muted-foreground">Rejected {filterDate && `(${format(filterDate, 'MMM d')})`}</p>
             </div>
           </div>
         </motion.div>
@@ -379,7 +480,7 @@ export default function LeaveManagementPage() {
 
       {/* Leave Requests Table */}
       <DataTable
-        data={leaveRequests}
+        data={filteredLeaveRequests}
         columns={columns}
         searchPlaceholder="Search by employee name..."
         emptyMessage="No leave requests found"
@@ -391,11 +492,11 @@ export default function LeaveManagementPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md"
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">Apply for Leave</h2>
-              <button onClick={() => setShowApplyModal(false)} className="p-2 hover:bg-muted rounded-lg">
+              <button onClick={() => { setShowApplyModal(false); resetForm(); }} className="p-2 hover:bg-muted rounded-lg">
                 <X size={18} />
               </button>
             </div>
@@ -415,6 +516,29 @@ export default function LeaveManagementPage() {
                 </select>
               </div>
 
+              {/* Available Balance Display */}
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-2 font-medium">Available Leave Balance</p>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="p-2 bg-info/10 rounded-lg">
+                    <p className="text-lg font-bold text-info">{allBalances.casual}</p>
+                    <p className="text-xs text-muted-foreground">CL</p>
+                  </div>
+                  <div className="p-2 bg-success/10 rounded-lg">
+                    <p className="text-lg font-bold text-success">{allBalances.privilege}</p>
+                    <p className="text-xs text-muted-foreground">PL</p>
+                  </div>
+                  <div className="p-2 bg-destructive/10 rounded-lg">
+                    <p className="text-lg font-bold text-destructive">{allBalances.sick}</p>
+                    <p className="text-xs text-muted-foreground">SL</p>
+                  </div>
+                  <div className="p-2 bg-warning/10 rounded-lg">
+                    <p className="text-lg font-bold text-warning">∞</p>
+                    <p className="text-xs text-muted-foreground">LWP</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Leave Type *</label>
@@ -423,10 +547,10 @@ export default function LeaveManagementPage() {
                     onChange={e => setNewLeave({ ...newLeave, leave_type: e.target.value })}
                     className="input-field"
                   >
-                    <option value="casual">Casual Leave</option>
-                    <option value="sick">Sick Leave</option>
-                    <option value="earned">Earned Leave</option>
-                    <option value="compensatory">Compensatory Off</option>
+                    <option value="casual">Casual Leave (CL)</option>
+                    <option value="sick">Sick Leave (SL)</option>
+                    <option value="privilege">Privilege Leave (PL)</option>
+                    <option value="lwp">Leave Without Pay (LWP)</option>
                   </select>
                 </div>
                 <div>
@@ -443,36 +567,73 @@ export default function LeaveManagementPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">From Date *</label>
-                  <input
-                    type="date"
-                    value={newLeave.start_date}
-                    onChange={e => setNewLeave({ ...newLeave, start_date: e.target.value })}
-                    className="input-field"
-                  />
+              {/* Conditional Date Fields based on Duration Type */}
+              {newLeave.duration_type === 'partial' ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Date *</label>
+                    <input
+                      type="date"
+                      value={newLeave.partial_date}
+                      onChange={e => setNewLeave({ ...newLeave, partial_date: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">From Time *</label>
+                      <input
+                        type="time"
+                        value={newLeave.partial_from_time}
+                        onChange={e => setNewLeave({ ...newLeave, partial_from_time: e.target.value })}
+                        className="input-field"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">To Time *</label>
+                      <input
+                        type="time"
+                        value={newLeave.partial_to_time}
+                        onChange={e => setNewLeave({ ...newLeave, partial_to_time: e.target.value })}
+                        className="input-field"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">From Date *</label>
+                    <input
+                      type="date"
+                      value={newLeave.start_date}
+                      onChange={e => setNewLeave({ ...newLeave, start_date: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">To Date *</label>
+                    <input
+                      type="date"
+                      value={newLeave.end_date}
+                      onChange={e => setNewLeave({ ...newLeave, end_date: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">To Date *</label>
-                  <input
-                    type="date"
-                    value={newLeave.end_date}
-                    onChange={e => setNewLeave({ ...newLeave, end_date: e.target.value })}
-                    className="input-field"
-                  />
-                </div>
-              </div>
+              )}
 
               {/* Readonly Info */}
               <div className="grid grid-cols-2 gap-4 p-3 bg-muted/30 rounded-lg">
                 <div>
-                  <p className="text-xs text-muted-foreground">Available Balance</p>
-                  <p className="text-lg font-semibold text-foreground">{availableBalance} days</p>
+                  <p className="text-xs text-muted-foreground">Selected Type Balance</p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {newLeave.leave_type === 'lwp' ? '∞ (Unlimited)' : `${availableBalance} days`}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Leave Days Count</p>
-                  <p className={`text-lg font-semibold ${leaveDaysCount > availableBalance ? 'text-destructive' : 'text-foreground'}`}>
+                  <p className={`text-lg font-semibold ${newLeave.leave_type !== 'lwp' && leaveDaysCount > availableBalance ? 'text-destructive' : 'text-foreground'}`}>
                     {leaveDaysCount} day(s)
                   </p>
                 </div>
@@ -490,10 +651,10 @@ export default function LeaveManagementPage() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 mt-6">
-              <button onClick={() => setShowApplyModal(false)} className="btn-outline">Cancel</button>
+              <button onClick={() => { setShowApplyModal(false); resetForm(); }} className="btn-outline">Cancel</button>
               <button 
                 onClick={handleApplyLeave} 
-                disabled={createLeave.isPending || leaveDaysCount > availableBalance}
+                disabled={createLeave.isPending || (newLeave.leave_type !== 'lwp' && leaveDaysCount > availableBalance)}
                 className="btn-primary"
               >
                 {createLeave.isPending ? 'Submitting...' : 'Submit'}
