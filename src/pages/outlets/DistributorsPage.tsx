@@ -209,18 +209,6 @@ export default function DistributorsPage() {
       ),
     },
     {
-      key: 'kyc_status',
-      header: 'KYC Status',
-      render: (item: Distributor) => {
-        const status = item.kyc_status || 'pending';
-        return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${kycStatusStyles[status] || kycStatusStyles.pending}`}>
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </span>
-        );
-      },
-    },
-    {
       key: 'created_by',
       header: 'Created By',
       render: (item: Distributor) => (
@@ -228,13 +216,19 @@ export default function DistributorsPage() {
       ),
     },
     {
-      key: 'approval_status',
-      header: 'Approval Status',
+      key: 'status',
+      header: 'Status',
       render: (item: Distributor) => {
-        const status = item.approval_status || item.status || 'pending';
+        const status = item.status || 'pending';
+        const statusLabel = status === 'active' ? 'Active' : status === 'inactive' ? 'Inactive' : 'Pending';
+        const statusStyle = status === 'active' 
+          ? 'bg-success/10 text-success border-success/20' 
+          : status === 'inactive' 
+            ? 'bg-muted text-muted-foreground border-muted-foreground/20'
+            : 'bg-warning/10 text-warning border-warning/20';
         return (
-          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${approvalStatusStyles[status] || approvalStatusStyles.pending}`}>
-            {status === 'pending' ? 'Pending Approval' : status.charAt(0).toUpperCase() + status.slice(1)}
+          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusStyle}`}>
+            {statusLabel}
           </span>
         );
       },
