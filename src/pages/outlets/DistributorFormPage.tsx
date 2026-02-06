@@ -845,13 +845,26 @@ export default function DistributorFormPage() {
             </div>
 
             {/* Assigned Salesperson - Edit Mode Only */}
-            {isEdit && formData.assignedSe && (
+            {isEdit && (
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-4">1.2 Assigned Salesperson</h3>
                 <div className="bg-muted/30 rounded-xl p-4 border border-border">
                   {(() => {
+                    if (!formData.assignedSe) {
+                      return (
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                            <Users size={20} className="text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-muted-foreground">Not Assigned</p>
+                            <p className="text-sm text-muted-foreground">No salesperson assigned to this distributor</p>
+                          </div>
+                        </div>
+                      );
+                    }
                     const assignedUser = salesExecutives?.find(u => u.id === formData.assignedSe);
-                    if (!assignedUser) return <p className="text-muted-foreground">No salesperson assigned</p>;
+                    if (!assignedUser) return <p className="text-muted-foreground">Salesperson not found</p>;
                     return (
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
