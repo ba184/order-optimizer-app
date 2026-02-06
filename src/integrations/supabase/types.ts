@@ -1396,6 +1396,7 @@ export type Database = {
           follow_up_date: string | null
           id: string
           interested_products: string[] | null
+          lead_code: string | null
           lead_type: string | null
           name: string
           notes: string | null
@@ -1426,6 +1427,7 @@ export type Database = {
           follow_up_date?: string | null
           id?: string
           interested_products?: string[] | null
+          lead_code?: string | null
           lead_type?: string | null
           name: string
           notes?: string | null
@@ -1456,6 +1458,7 @@ export type Database = {
           follow_up_date?: string | null
           id?: string
           interested_products?: string[] | null
+          lead_code?: string | null
           lead_type?: string | null
           name?: string
           notes?: string | null
