@@ -143,8 +143,7 @@ export default function DistributorsPage() {
   const stats = {
     total: filteredData.length,
     active: filteredData.filter(d => d.status === 'active').length,
-    pending: filteredData.filter(d => (d.approval_status || d.status) === 'pending').length,
-    rejected: filteredData.filter(d => (d.approval_status || d.status) === 'rejected').length,
+    inactive: filteredData.filter(d => d.status === 'inactive' || d.status === 'pending' || d.status === 'rejected').length,
   };
 
   const columns = [
@@ -323,7 +322,7 @@ export default function DistributorsPage() {
         <GeoFilter value={geoFilter} onChange={setGeoFilter} showArea={false} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-primary/10"><Building2 size={24} className="text-primary" /></div>
@@ -344,19 +343,10 @@ export default function DistributorsPage() {
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-warning/10"><FileText size={24} className="text-warning" /></div>
+            <div className="p-3 rounded-xl bg-muted/50"><XCircle size={24} className="text-muted-foreground" /></div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.pending}</p>
-              <p className="text-sm text-muted-foreground">Pending</p>
-            </div>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-destructive/10"><XCircle size={24} className="text-destructive" /></div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.rejected}</p>
-              <p className="text-sm text-muted-foreground">Rejected</p>
+              <p className="text-2xl font-bold text-foreground">{stats.inactive}</p>
+              <p className="text-sm text-muted-foreground">Inactive</p>
             </div>
           </div>
         </motion.div>

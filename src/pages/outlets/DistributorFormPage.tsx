@@ -27,7 +27,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDistributor, useCreateDistributor, useUpdateDistributor } from '@/hooks/useOutletsData';
 import { useProducts } from '@/hooks/useProductsData';
 import { useSchemes } from '@/hooks/useSchemesData';
-import { useCountries, useStates, useCities, useZones } from '@/hooks/useGeoMasterData';
+import { useCountries, useStates, useCities } from '@/hooks/useGeoMasterData';
+import { useTerritories } from '@/hooks/useTerritoriesData';
+import { useUsersData } from '@/hooks/useUsersData';
 import {
   useDistributorProducts,
   useDistributorSchemes,
@@ -41,6 +43,9 @@ import {
   uploadDistributorFile,
 } from '@/hooks/useDistributorExtendedData';
 import { supabase } from '@/integrations/supabase/client';
+import { MultiImageUpload } from '@/components/ui/MultiImageUpload';
+import { GPSLocationPicker } from '@/components/ui/GPSLocationPicker';
+import { KYCDocumentUpload } from '@/components/ui/KYCDocumentUpload';
 
 type Step = {
   id: string;
@@ -61,7 +66,6 @@ const distributorCategories = [
   { value: 'super_stockist', label: 'Super Stockist' },
   { value: 'stockist', label: 'Stockist' },
   { value: 'wholesale', label: 'Wholesale' },
-  { value: 'retail', label: 'Retail' },
   { value: 'standard', label: 'Standard' },
 ];
 
@@ -97,7 +101,8 @@ export default function DistributorFormPage() {
   const { data: countries } = useCountries();
   const { data: states } = useStates();
   const { data: cities } = useCities();
-  const { data: zones } = useZones();
+  const { data: territories } = useTerritories();
+  const { users: salesExecutives } = useUsersData();
   const { data: existingProducts } = useDistributorProducts(id);
   const { data: existingSchemes } = useDistributorSchemes(id);
   const { data: existingCounters } = useDistributorSecondaryCounters(id);
@@ -123,7 +128,6 @@ export default function DistributorFormPage() {
   const [formData, setFormData] = useState({
     // Step 1 - Basic Details
     firmName: '',
-    gstNumber: '',
     category: 'standard',
     contactName: '',
     phone: '',
@@ -132,9 +136,10 @@ export default function DistributorFormPage() {
     country: 'India',
     state: '',
     city: '',
-    zone: '',
+    territory: '',
     pincode: '',
     address: '',
+    assignedSe: '',
     
     // Step 2 - Product & Commercial
     selectedProducts: [] as string[],
@@ -144,6 +149,7 @@ export default function DistributorFormPage() {
     
     // Step 3 - KYC Details
     panNumber: '',
+    gstNumber: '',
     tanNumber: '',
     msmeRegistered: false,
     msmeType: '',
@@ -155,6 +161,7 @@ export default function DistributorFormPage() {
     agreementSigned: false,
     agreementFileUrl: '',
     kycStatus: 'pending',
+    kycDocuments: [] as { id: string; name: string; url: string; type: 'image' | 'pdf' }[],
     
     // Step 4 - Secondary Counters, Warehouse & Vehicles
     secondaryCounters: [] as { name: string; contactPerson: string; phone: string; address: string }[],
@@ -162,11 +169,13 @@ export default function DistributorFormPage() {
     vehicles: [] as { vehicleNumber: string; vehicleType: string; capacity: string; driverName: string; driverContact: string; status: string; photos: string[] }[],
     
     // Step 5 - Images & Documents
-    images: [] as { type: string; url: string; gpsLat: number | null; gpsLng: number | null }[],
+    distributorFrontImages: [] as string[],
+    distributorInsideImages: [] as string[],
+    additionalImages: [] as string[],
     gpsLocation: null as { lat: number; lng: number } | null,
     
     // Step 6 - Pre-Order & Staff Details
-    preorders: [] as { productId: string; quantity: number; expectedDelivery: string }[],
+    preorders: [] as { productId: string; quantity: number; advanceAmount: number; remarks: string }[],
     staff: [] as { name: string; role: string; phone: string; email: string; status: string }[],
   });
 
@@ -185,9 +194,10 @@ export default function DistributorFormPage() {
         country: (distributor as any).country || 'India',
         state: distributor.state || '',
         city: distributor.city || '',
-        zone: (distributor as any).zone || '',
+        territory: (distributor as any).territory || '',
         pincode: (distributor as any).pincode || '',
         address: distributor.address || '',
+        assignedSe: (distributor as any).assigned_se || '',
         paymentTerms: distributor.payment_terms || 'net_30',
         creditLimit: Number(distributor.credit_limit) || 500000,
         panNumber: (distributor as any).pan_number || '',
@@ -201,6 +211,7 @@ export default function DistributorFormPage() {
         ifscCode: (distributor as any).ifsc_code || '',
         agreementSigned: (distributor as any).agreement_signed || false,
         kycStatus: (distributor as any).kyc_status || 'pending',
+        kycDocuments: (distributor as any).kyc_documents || [],
       }));
     }
   }, [isEdit, distributor]);
@@ -260,7 +271,8 @@ export default function DistributorFormPage() {
         preorders: existingPreorders.map(p => ({
           productId: p.product_id || '',
           quantity: p.quantity,
-          expectedDelivery: p.expected_delivery || '',
+          advanceAmount: (p as any).advance_amount || 0,
+          remarks: (p as any).remarks || '',
         })),
       }));
     }
@@ -300,14 +312,17 @@ export default function DistributorFormPage() {
 
   useEffect(() => {
     if (existingImages?.length) {
+      const frontImages = existingImages.filter(i => i.image_type === 'distributor_front').map(i => i.image_url);
+      const insideImages = existingImages.filter(i => i.image_type === 'distributor_inside').map(i => i.image_url);
+      const additionalImgs = existingImages.filter(i => i.image_type === 'additional').map(i => i.image_url);
+      const gpsImage = existingImages.find(i => i.gps_latitude && i.gps_longitude);
+      
       setFormData(prev => ({
         ...prev,
-        images: existingImages.map(i => ({
-          type: i.image_type,
-          url: i.image_url,
-          gpsLat: i.gps_latitude,
-          gpsLng: i.gps_longitude,
-        })),
+        distributorFrontImages: frontImages,
+        distributorInsideImages: insideImages,
+        additionalImages: additionalImgs,
+        gpsLocation: gpsImage ? { lat: gpsImage.gps_latitude!, lng: gpsImage.gps_longitude! } : null,
       }));
     }
   }, [existingImages]);
@@ -331,7 +346,7 @@ export default function DistributorFormPage() {
         // No required fields
         break;
       case 3: // Images & Documents
-        const hasFrontImage = formData.images.some(img => img.type === 'distributor_front');
+        const hasFrontImage = formData.distributorFrontImages.length > 0;
         if (!hasFrontImage) {
           toast.error('Distributor Front Image is mandatory');
           return false;
@@ -371,41 +386,7 @@ export default function DistributorFormPage() {
     });
   };
 
-  const handleDistributorImageUpload = async (imageType: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setUploadingPhotos(prev => ({ ...prev, [imageType]: true }));
-    try {
-      const tempId = id || `temp-${Date.now()}`;
-      const url = await uploadDistributorFile(file, tempId, `images/${imageType}`);
-      
-      // Auto-capture GPS on upload
-      const gps = await captureGPS();
-      
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, { 
-          type: imageType, 
-          url, 
-          gpsLat: gps?.lat || null, 
-          gpsLng: gps?.lng || null 
-        }],
-      }));
-      toast.success('Image uploaded successfully');
-    } catch (error: any) {
-      toast.error('Failed to upload image: ' + error.message);
-    } finally {
-      setUploadingPhotos(prev => ({ ...prev, [imageType]: false }));
-    }
-  };
-
-  const removeDistributorImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
-  };
+  // Removed old image upload handler - now using MultiImageUpload component
 
   const handleProductToggle = (productId: string) => {
     setFormData(prev => ({
@@ -484,7 +465,7 @@ export default function DistributorFormPage() {
   const addPreorder = () => {
     setFormData(prev => ({
       ...prev,
-      preorders: [...prev.preorders, { productId: '', quantity: 0, expectedDelivery: '' }],
+      preorders: [...prev.preorders, { productId: '', quantity: 0, advanceAmount: 0, remarks: '' }],
     }));
   };
 
@@ -671,7 +652,7 @@ export default function DistributorFormPage() {
         country: formData.country,
         state: formData.state || undefined,
         city: formData.city || undefined,
-        zone: formData.zone || undefined,
+        territory: formData.territory || undefined,
         pincode: formData.pincode || undefined,
         address: formData.address || undefined,
         category: formData.category,
@@ -690,9 +671,11 @@ export default function DistributorFormPage() {
         agreement_signed: formData.agreementSigned,
         agreement_file_url: formData.agreementFileUrl || undefined,
         kyc_status: formData.kycStatus,
+        kyc_documents: formData.kycDocuments,
         approval_status: approvalStatus,
         status: approvalStatus === 'approved' ? 'active' : 'pending',
         created_by: isEdit ? undefined : user?.id,
+        assigned_se: isEdit ? formData.assignedSe || undefined : user?.id, // Auto-assign creator as SE
         approved_by: approvalStatus === 'approved' ? user?.id : undefined,
         approved_at: approvalStatus === 'approved' ? new Date().toISOString() : undefined,
       };
@@ -708,6 +691,13 @@ export default function DistributorFormPage() {
 
       // Save extended data
       if (distributorId) {
+        // Prepare images data from the new multi-image structure
+        const allImages = [
+          ...formData.distributorFrontImages.map(url => ({ type: 'distributor_front', url, gpsLat: formData.gpsLocation?.lat, gpsLng: formData.gpsLocation?.lng })),
+          ...formData.distributorInsideImages.map(url => ({ type: 'distributor_inside', url, gpsLat: null, gpsLng: null })),
+          ...formData.additionalImages.map(url => ({ type: 'additional', url, gpsLat: null, gpsLng: null })),
+        ];
+
         await saveExtendedData.mutateAsync({
           distributorId,
           products: formData.selectedProducts.map(productId => ({
@@ -739,7 +729,8 @@ export default function DistributorFormPage() {
             .map(p => ({
               product_id: p.productId,
               quantity: p.quantity,
-              expected_delivery: p.expectedDelivery || undefined,
+              advance_amount: p.advanceAmount || 0,
+              remarks: p.remarks || undefined,
               preorder_value: (() => {
                 const product = products?.find(pr => pr.id === p.productId);
                 return product ? Number(product.ptr) * p.quantity : 0;
@@ -765,7 +756,7 @@ export default function DistributorFormPage() {
               email: s.email || undefined,
               status: s.status || 'active',
             })),
-          images: formData.images
+          images: allImages
             .filter(i => i.url)
             .map(i => ({
               image_type: i.type,
@@ -929,15 +920,15 @@ export default function DistributorFormPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Zone</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Territory</label>
                   <select
-                    value={formData.zone}
-                    onChange={e => setFormData({ ...formData, zone: e.target.value })}
+                    value={formData.territory}
+                    onChange={e => setFormData({ ...formData, territory: e.target.value })}
                     className="input-field"
                   >
-                    <option value="">Select Zone</option>
-                    {zones?.map(z => (
-                      <option key={z.id} value={z.name}>{z.name}</option>
+                    <option value="">Select Territory</option>
+                    {territories?.map(t => (
+                      <option key={t.id} value={t.name}>{t.name}</option>
                     ))}
                   </select>
                 </div>
@@ -1288,124 +1279,50 @@ export default function DistributorFormPage() {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-foreground mb-4">Distributor Images & Documents</h3>
-              <p className="text-sm text-muted-foreground mb-4">Upload distributor images for verification. GPS location is auto-captured on upload.</p>
+              <p className="text-sm text-muted-foreground mb-4">Upload distributor images (max 5 each, 10MB). GPS location can be captured separately.</p>
             </div>
 
             <div className="space-y-6">
-              {/* Distributor Front Image - Mandatory */}
-              <div className="p-4 border-2 border-dashed border-border rounded-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="font-medium text-foreground">Distributor Front Image *</h4>
-                    <p className="text-sm text-muted-foreground">Mandatory - Main office/warehouse facade</p>
-                  </div>
-                  {!formData.images.some(img => img.type === 'distributor_front') && (
-                    <label className="btn-outline text-sm flex items-center gap-1 cursor-pointer">
-                      {uploadingPhotos['distributor_front'] ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : (
-                        <Camera size={14} />
-                      )}
-                      Upload
-                      <input type="file" accept="image/*" onChange={(e) => handleDistributorImageUpload('distributor_front', e)} className="hidden" />
-                    </label>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {formData.images.filter(img => img.type === 'distributor_front').map((img, idx) => (
-                    <div key={idx} className="relative">
-                      <img src={img.url} alt="Distributor Front" className="w-40 h-32 object-cover rounded-lg" />
-                      <button
-                        onClick={() => removeDistributorImage(formData.images.findIndex(i => i.url === img.url))}
-                        className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full"
-                      >
-                        <X size={12} />
-                      </button>
-                      {img.gpsLat && img.gpsLng && (
-                        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded flex items-center gap-1">
-                          <MapPin size={10} /> GPS
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* Distributor Front Images - Mandatory */}
+              <MultiImageUpload
+                bucket="distributor-files"
+                folder="images/front"
+                images={formData.distributorFrontImages}
+                onChange={(images) => setFormData({ ...formData, distributorFrontImages: images })}
+                maxImages={5}
+                maxSizeMB={10}
+                label="Distributor Front Images *"
+                required
+              />
 
-              {/* Distributor Inside Image - Optional */}
-              <div className="p-4 border-2 border-dashed border-border rounded-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="font-medium text-foreground">Distributor Inside Image</h4>
-                    <p className="text-sm text-muted-foreground">Optional - Interior view</p>
-                  </div>
-                  <label className="btn-outline text-sm flex items-center gap-1 cursor-pointer">
-                    {uploadingPhotos['distributor_inside'] ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Camera size={14} />
-                    )}
-                    Upload
-                    <input type="file" accept="image/*" onChange={(e) => handleDistributorImageUpload('distributor_inside', e)} className="hidden" />
-                  </label>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {formData.images.filter(img => img.type === 'distributor_inside').map((img, idx) => (
-                    <div key={idx} className="relative">
-                      <img src={img.url} alt="Distributor Inside" className="w-32 h-24 object-cover rounded-lg" />
-                      <button
-                        onClick={() => removeDistributorImage(formData.images.findIndex(i => i.url === img.url))}
-                        className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full"
-                      >
-                        <X size={12} />
-                      </button>
-                      {img.gpsLat && img.gpsLng && (
-                        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded flex items-center gap-1">
-                          <MapPin size={10} /> GPS
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* Distributor Inside Images */}
+              <MultiImageUpload
+                bucket="distributor-files"
+                folder="images/inside"
+                images={formData.distributorInsideImages}
+                onChange={(images) => setFormData({ ...formData, distributorInsideImages: images })}
+                maxImages={5}
+                maxSizeMB={10}
+                label="Distributor Inside Images"
+              />
 
               {/* Additional Images */}
-              <div className="p-4 border-2 border-dashed border-border rounded-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="font-medium text-foreground">Additional Images</h4>
-                    <p className="text-sm text-muted-foreground">Optional - Other relevant images</p>
-                  </div>
-                  <label className="btn-outline text-sm flex items-center gap-1 cursor-pointer">
-                    {uploadingPhotos['additional'] ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Plus size={14} />
-                    )}
-                    Add Image
-                    <input type="file" accept="image/*" onChange={(e) => handleDistributorImageUpload('additional', e)} className="hidden" />
-                  </label>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {formData.images.filter(img => img.type === 'additional').map((img, idx) => (
-                    <div key={idx} className="relative">
-                      <img src={img.url} alt="Additional" className="w-32 h-24 object-cover rounded-lg" />
-                      <button
-                        onClick={() => removeDistributorImage(formData.images.findIndex(i => i.url === img.url))}
-                        className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full"
-                      >
-                        <X size={12} />
-                      </button>
-                      {img.gpsLat && img.gpsLng && (
-                        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded flex items-center gap-1">
-                          <MapPin size={10} /> GPS
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <MultiImageUpload
+                bucket="distributor-files"
+                folder="images/additional"
+                images={formData.additionalImages}
+                onChange={(images) => setFormData({ ...formData, additionalImages: images })}
+                maxImages={5}
+                maxSizeMB={10}
+                label="Additional Images"
+              />
 
-              {/* GPS Location Info */}
+              {/* GPS Location Picker */}
+              <GPSLocationPicker
+                value={formData.gpsLocation}
+                onChange={(location) => setFormData({ ...formData, gpsLocation: location })}
+                label="GPS Location Tag"
+              />
               <div className="p-4 bg-muted/30 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1991,27 +1908,33 @@ export default function DistributorFormPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-muted-foreground mb-1">Expected Delivery</label>
+                          <label className="block text-xs text-muted-foreground mb-1">Advance Amount (₹)</label>
                           <input
-                            type="date"
-                            value={preorder.expectedDelivery}
+                            type="number"
+                            value={preorder.advanceAmount}
                             onChange={e => {
                               const preorders = [...formData.preorders];
-                              preorders[index].expectedDelivery = e.target.value;
+                              preorders[index].advanceAmount = Number(e.target.value);
                               setFormData({ ...formData, preorders });
                             }}
+                            min="0"
                             className="input-field"
                           />
                         </div>
-                      </div>
-                      <div className="mt-2 text-right">
-                        <span className="text-sm text-muted-foreground">Line Value: </span>
-                        <span className="font-medium text-foreground">₹{lineValue.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs text-muted-foreground mb-1">Remarks</label>
+                          <input
+                            type="text"
+                            value={preorder.remarks}
+                            onChange={e => {
+                              const preorders = [...formData.preorders];
+                              preorders[index].remarks = e.target.value;
+                              setFormData({ ...formData, preorders });
+                            }}
+                            placeholder="Additional notes"
+                            className="input-field"
+                          />
+                        </div>
             )}
 
             {formData.preorders.length > 0 && (
