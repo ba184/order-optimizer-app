@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import { useLeads, useCreateLead, useUpdateLead, useProfiles } from '@/hooks/useSalesTeamData';
 import { useProducts } from '@/hooks/useProductsData';
-import { useCountries, useStates, useCities, useZones } from '@/hooks/useGeoMasterData';
+import { useCountries, useStates, useCities } from '@/hooks/useGeoMasterData';
+import { useTerritories } from '@/hooks/useTerritoriesData';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   UserPlus,
@@ -13,13 +14,11 @@ import {
   Building2,
   User,
   Eye,
+  Edit,
   CheckCircle,
   Clock,
-  TrendingUp,
   Loader2,
   X,
-  Plus,
-  Trash2,
   ShieldCheck,
 } from 'lucide-react';
 
@@ -53,33 +52,29 @@ interface Lead {
   profiles?: { name: string };
 }
 
-const competitorOptions = [
-  'Competitor A',
-  'Competitor B',
-  'Competitor C',
-  'Competitor D',
-  'Other',
-];
+const initialFormData = {
+  name: '',
+  phone: '',
+  shop_name: '',
+  lead_type: 'retailer',
+  country: '',
+  state: '',
+  city: '',
+  territory: '',
+  pincode: '',
+  address: '',
+  interested_products: [] as string[],
+  expected_conversion_date: '',
+  source: 'online',
+  status: 'new',
+};
 
 export default function LeadsPage() {
   const { user } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState<Lead | null>(null);
   const [showViewModal, setShowViewModal] = useState<Lead | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    shop_name: '',
-    lead_type: 'retailer',
-    country: '',
-    state: '',
-    city: '',
-    zone: '',
-    pincode: '',
-    address: '',
-    interested_products: [] as string[],
-    expected_conversion_date: '',
-    source: 'online',
-  });
+  const [formData, setFormData] = useState(initialFormData);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
 
   const { data: leadsData, isLoading } = useLeads();
@@ -87,10 +82,31 @@ export default function LeadsPage() {
   const { data: countriesData } = useCountries();
   const { data: statesData } = useStates();
   const { data: citiesData } = useCities();
-  const { data: zonesData } = useZones();
+  const { data: territoriesData } = useTerritories();
   const { data: profilesData } = useProfiles();
   const createLead = useCreateLead();
   const updateLead = useUpdateLead();
+
+  // Filter states by selected country
+  const filteredStates = statesData?.filter(s => {
+    if (!formData.country) return true;
+    const country = countriesData?.find(c => c.name === formData.country);
+    return country ? s.country_id === country.id : true;
+  });
+
+  // Filter cities by selected state
+  const filteredCities = citiesData?.filter(c => {
+    if (!formData.state) return true;
+    const state = statesData?.find(s => s.name === formData.state);
+    return state ? c.state_id === state.id : true;
+  });
+
+  // Filter territories by selected city
+  const filteredTerritories = territoriesData?.filter(t => {
+    if (!formData.city) return true;
+    const city = citiesData?.find(c => c.name === formData.city);
+    return city ? t.city_id === city.id : true;
+  });
 
   const leads: Lead[] = (leadsData || []).map((l: any) => ({
     ...l,
@@ -100,6 +116,29 @@ export default function LeadsPage() {
     competitors: l.competitors || [],
     interested_products: l.interested_products || [],
   }));
+
+  // Populate form data when editing
+  useEffect(() => {
+    if (showEditModal) {
+      setFormData({
+        name: showEditModal.name || '',
+        phone: showEditModal.phone || '',
+        shop_name: showEditModal.shop_name || '',
+        lead_type: showEditModal.lead_type || 'retailer',
+        country: showEditModal.country || '',
+        state: showEditModal.state || '',
+        city: showEditModal.city || '',
+        territory: showEditModal.zone || '',
+        pincode: showEditModal.pincode || '',
+        address: showEditModal.address || '',
+        interested_products: showEditModal.interested_products || [],
+        expected_conversion_date: showEditModal.expected_conversion_date || '',
+        source: showEditModal.source || 'online',
+        status: showEditModal.status || 'new',
+      });
+      setCompetitors(showEditModal.competitors || []);
+    }
+  }, [showEditModal]);
 
   const handleCreate = async () => {
     if (!formData.name || !formData.shop_name || !formData.phone) {
@@ -113,7 +152,7 @@ export default function LeadsPage() {
       country: formData.country,
       state: formData.state,
       city: formData.city,
-      zone: formData.zone || undefined,
+      zone: formData.territory || undefined,
       pincode: formData.pincode,
       address: formData.address,
       interested_products: formData.interested_products,
@@ -125,22 +164,34 @@ export default function LeadsPage() {
     resetForm();
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      phone: '',
-      shop_name: '',
-      lead_type: 'retailer',
-      country: '',
-      state: '',
-      city: '',
-      zone: '',
-      pincode: '',
-      address: '',
-      interested_products: [],
-      expected_conversion_date: '',
-      source: 'online',
+  const handleUpdate = async () => {
+    if (!showEditModal || !formData.name || !formData.shop_name || !formData.phone) {
+      return;
+    }
+    await updateLead.mutateAsync({
+      id: showEditModal.id,
+      name: formData.name,
+      phone: formData.phone,
+      shop_name: formData.shop_name,
+      lead_type: formData.lead_type,
+      country: formData.country,
+      state: formData.state,
+      city: formData.city,
+      zone: formData.territory || undefined,
+      pincode: formData.pincode,
+      address: formData.address,
+      interested_products: formData.interested_products,
+      expected_conversion_date: formData.expected_conversion_date || undefined,
+      source: formData.source,
+      status: formData.status,
+      competitors: competitors,
     });
+    setShowEditModal(null);
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setFormData(initialFormData);
     setCompetitors([]);
   };
 
@@ -154,20 +205,6 @@ export default function LeadsPage() {
       status: 'converted',
       converted_to: lead.lead_type 
     });
-  };
-
-  const addCompetitor = () => {
-    setCompetitors([...competitors, { name: '', price: '', strategy: '' }]);
-  };
-
-  const removeCompetitor = (index: number) => {
-    setCompetitors(competitors.filter((_, i) => i !== index));
-  };
-
-  const updateCompetitor = (index: number, field: keyof Competitor, value: string) => {
-    const updated = [...competitors];
-    updated[index][field] = value;
-    setCompetitors(updated);
   };
 
   const toggleProduct = (productId: string) => {
@@ -320,6 +357,13 @@ export default function LeadsPage() {
             </button>
           )}
           <button 
+            onClick={() => setShowEditModal(item)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+            title="Edit"
+          >
+            <Edit size={16} className="text-muted-foreground" />
+          </button>
+          <button 
             onClick={() => setShowViewModal(item)}
             className="p-2 hover:bg-muted rounded-lg transition-colors"
             title="View"
@@ -335,7 +379,6 @@ export default function LeadsPage() {
     total: leads.length,
     new: leads.filter(l => l.status === 'new').length,
     converted: leads.filter(l => l.status === 'converted').length,
-    conversionRate: leads.length > 0 ? ((leads.filter(l => l.status === 'converted').length / leads.length) * 100).toFixed(0) : '0',
   };
 
   if (isLoading) {
@@ -346,8 +389,206 @@ export default function LeadsPage() {
     );
   }
 
+  const renderForm = (isEdit: boolean) => (
+    <div className="space-y-4">
+      {/* Basic Info */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Contact Name *</label>
+          <input 
+            type="text" 
+            placeholder="Enter name" 
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="input-field" 
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Phone Number *</label>
+          <input 
+            type="tel" 
+            placeholder="+91 98765 43210" 
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9+\s]/g, '') })}
+            className="input-field" 
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Business/Firm Name *</label>
+          <input 
+            type="text" 
+            placeholder="Enter firm name" 
+            value={formData.shop_name}
+            onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
+            className="input-field" 
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Lead Type</label>
+          <select 
+            value={formData.lead_type}
+            onChange={(e) => setFormData({ ...formData, lead_type: e.target.value })}
+            className="input-field"
+          >
+            <option value="retailer">Retailer</option>
+            <option value="distributor">Distributor</option>
+            <option value="individual">Individual</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Lead Status - only in edit mode */}
+      {isEdit && (
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Lead Status</label>
+          <select 
+            value={formData.status}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            className="input-field"
+          >
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="interested">Interested</option>
+            <option value="converted">Converted</option>
+            <option value="lost">Lost</option>
+          </select>
+        </div>
+      )}
+
+      {/* Location */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Country</label>
+          <select 
+            value={formData.country}
+            onChange={(e) => setFormData({ ...formData, country: e.target.value, state: '', city: '', territory: '' })}
+            className="input-field"
+          >
+            <option value="">Select Country</option>
+            {countriesData?.map(c => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">State</label>
+          <select 
+            value={formData.state}
+            onChange={(e) => setFormData({ ...formData, state: e.target.value, city: '', territory: '' })}
+            className="input-field"
+          >
+            <option value="">Select State</option>
+            {filteredStates?.map(s => (
+              <option key={s.id} value={s.name}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">City</label>
+          <select 
+            value={formData.city}
+            onChange={(e) => setFormData({ ...formData, city: e.target.value, territory: '' })}
+            className="input-field"
+          >
+            <option value="">Select City</option>
+            {filteredCities?.map(c => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Territory</label>
+          <select 
+            value={formData.territory}
+            onChange={(e) => setFormData({ ...formData, territory: e.target.value })}
+            className="input-field"
+          >
+            <option value="">Select Territory</option>
+            {filteredTerritories?.map(t => (
+              <option key={t.id} value={t.name}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Pincode</label>
+          <input 
+            type="text" 
+            placeholder="Enter pincode" 
+            value={formData.pincode}
+            onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+            className="input-field" 
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">Address</label>
+        <textarea 
+          placeholder="Enter address" 
+          rows={2} 
+          value={formData.address}
+          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          className="input-field resize-none" 
+        />
+      </div>
+
+      {/* Products & Source */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">Interested Products (Multi-select)</label>
+        <div className="flex flex-wrap gap-2 p-3 border border-border rounded-lg bg-muted/30">
+          {productsData?.slice(0, 12).map(product => (
+            <button
+              key={product.id}
+              type="button"
+              onClick={() => toggleProduct(product.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                formData.interested_products.includes(product.id)
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {product.name}
+            </button>
+          ))}
+          {(!productsData || productsData.length === 0) && (
+            <span className="text-sm text-muted-foreground">No products available</span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Expected Conversion Date</label>
+          <input 
+            type="date" 
+            value={formData.expected_conversion_date}
+            onChange={(e) => setFormData({ ...formData, expected_conversion_date: e.target.value })}
+            className="input-field" 
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Lead Source</label>
+          <select 
+            value={formData.source}
+            onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+            className="input-field"
+          >
+            <option value="online">Online</option>
+            <option value="reference">Reference</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 h-full">
       {/* Header */}
       <div className="module-header">
         <div>
@@ -360,8 +601,8 @@ export default function LeadsPage() {
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats - Removed conversion rate */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-primary/10">
@@ -397,35 +638,25 @@ export default function LeadsPage() {
             </div>
           </div>
         </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-secondary/10">
-              <TrendingUp size={24} className="text-secondary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.conversionRate}%</p>
-              <p className="text-sm text-muted-foreground">Conversion Rate</p>
-            </div>
-          </div>
-        </motion.div>
       </div>
 
-      {/* Leads Table */}
-      <DataTable 
-        data={leads} 
-        columns={columns} 
-        searchPlaceholder="Search leads..." 
-        emptyMessage="No leads found. Add your first lead!"
-      />
+      {/* Leads Table - Full width */}
+      <div className="flex-1">
+        <DataTable 
+          data={leads} 
+          columns={columns} 
+          searchPlaceholder="Search leads..." 
+          emptyMessage="No leads found. Add your first lead!"
+        />
+      </div>
 
       {/* Add Lead Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl my-8"
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-4xl my-8"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">Add New Lead</h2>
@@ -433,182 +664,8 @@ export default function LeadsPage() {
                 <X size={18} />
               </button>
             </div>
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-              {/* Basic Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Contact Name *</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter name" 
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="input-field" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Phone Number *</label>
-                  <input 
-                    type="tel" 
-                    placeholder="+91 98765 43210" 
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9+\s]/g, '') })}
-                    className="input-field" 
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Business/Firm Name *</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter firm name" 
-                    value={formData.shop_name}
-                    onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
-                    className="input-field" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Lead Type</label>
-                  <select 
-                    value={formData.lead_type}
-                    onChange={(e) => setFormData({ ...formData, lead_type: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="retailer">Retailer</option>
-                    <option value="distributor">Distributor</option>
-                    <option value="individual">Individual</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Location */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Country</label>
-                  <select 
-                    value={formData.country}
-                    onChange={(e) => setFormData({ ...formData, country: e.target.value, state: '', city: '' })}
-                    className="input-field"
-                  >
-                    <option value="">Select Country</option>
-                    {countriesData?.map(c => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">State</label>
-                  <select 
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value, city: '' })}
-                    className="input-field"
-                  >
-                    <option value="">Select State</option>
-                    {statesData?.map(s => (
-                      <option key={s.id} value={s.name}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">City</label>
-                  <select 
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="">Select City</option>
-                    {citiesData?.map(c => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Zone (Optional)</label>
-                  <select 
-                    value={formData.zone}
-                    onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="">Select Zone</option>
-                    {zonesData?.map(z => (
-                      <option key={z.id} value={z.name}>{z.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Pincode</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter pincode" 
-                    value={formData.pincode}
-                    onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                    className="input-field" 
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Address</label>
-                <textarea 
-                  placeholder="Enter address" 
-                  rows={2} 
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="input-field resize-none" 
-                />
-              </div>
-
-              {/* Products & Source */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Interested Products (Multi-select)</label>
-                <div className="flex flex-wrap gap-2 p-3 border border-border rounded-lg bg-muted/30">
-                  {productsData?.slice(0, 12).map(product => (
-                    <button
-                      key={product.id}
-                      type="button"
-                      onClick={() => toggleProduct(product.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                        formData.interested_products.includes(product.id)
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                      }`}
-                    >
-                      {product.name}
-                    </button>
-                  ))}
-                  {(!productsData || productsData.length === 0) && (
-                    <span className="text-sm text-muted-foreground">No products available</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Expected Conversion Date</label>
-                  <input 
-                    type="date" 
-                    value={formData.expected_conversion_date}
-                    onChange={(e) => setFormData({ ...formData, expected_conversion_date: e.target.value })}
-                    className="input-field" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Lead Source</label>
-                  <select 
-                    value={formData.source}
-                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="online">Online</option>
-                    <option value="reference">Reference</option>
-                  </select>
-                </div>
-              </div>
+            <div className="max-h-[75vh] overflow-y-auto pr-2">
+              {renderForm(false)}
             </div>
             <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
               <button onClick={() => { setShowAddModal(false); resetForm(); }} className="btn-outline">Cancel</button>
@@ -624,13 +681,44 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {/* View Lead Modal */}
-      {showViewModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      {/* Edit Lead Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-2xl my-8"
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-4xl my-8"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Edit Lead</h2>
+              <button onClick={() => { setShowEditModal(null); resetForm(); }} className="p-2 hover:bg-muted rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="max-h-[75vh] overflow-y-auto pr-2">
+              {renderForm(true)}
+            </div>
+            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
+              <button onClick={() => { setShowEditModal(null); resetForm(); }} className="btn-outline">Cancel</button>
+              <button 
+                onClick={handleUpdate} 
+                disabled={updateLead.isPending}
+                className="btn-primary"
+              >
+                {updateLead.isPending ? 'Updating...' : 'Update Lead'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* View Lead Modal */}
+      {showViewModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-4xl my-8"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">Lead Details</h2>
@@ -638,7 +726,7 @@ export default function LeadsPage() {
                 <X size={18} />
               </button>
             </div>
-            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+            <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
               {/* Lead Header */}
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
@@ -705,7 +793,7 @@ export default function LeadsPage() {
                     <p className="font-medium">{showViewModal.city || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Zone</p>
+                    <p className="text-muted-foreground">Territory</p>
                     <p className="font-medium">{showViewModal.zone || 'N/A'}</p>
                   </div>
                   <div>
@@ -767,8 +855,18 @@ export default function LeadsPage() {
                 )}
               </div>
             </div>
-            <div className="flex items-center justify-end mt-6 pt-4 border-t border-border">
-              <button onClick={() => setShowViewModal(null)} className="btn-outline">Close</button>
+            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
+              <button 
+                onClick={() => {
+                  setShowViewModal(null);
+                  setShowEditModal(showViewModal);
+                }} 
+                className="btn-outline flex items-center gap-2"
+              >
+                <Edit size={16} />
+                Edit
+              </button>
+              <button onClick={() => setShowViewModal(null)} className="btn-primary">Close</button>
             </div>
           </motion.div>
         </div>
