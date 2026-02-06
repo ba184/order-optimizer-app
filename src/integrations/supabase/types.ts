@@ -607,6 +607,7 @@ export type Database = {
       }
       distributor_preorders: {
         Row: {
+          advance_amount: number | null
           created_at: string | null
           distributor_id: string
           expected_delivery: string | null
@@ -614,8 +615,10 @@ export type Database = {
           preorder_value: number | null
           product_id: string | null
           quantity: number
+          remarks: string | null
         }
         Insert: {
+          advance_amount?: number | null
           created_at?: string | null
           distributor_id: string
           expected_delivery?: string | null
@@ -623,8 +626,10 @@ export type Database = {
           preorder_value?: number | null
           product_id?: string | null
           quantity?: number
+          remarks?: string | null
         }
         Update: {
+          advance_amount?: number | null
           created_at?: string | null
           distributor_id?: string
           expected_delivery?: string | null
@@ -632,6 +637,7 @@ export type Database = {
           preorder_value?: number | null
           product_id?: string | null
           quantity?: number
+          remarks?: string | null
         }
         Relationships: [
           {
@@ -939,6 +945,7 @@ export type Database = {
           approval_status: string | null
           approved_at: string | null
           approved_by: string | null
+          assigned_se: string | null
           bank_name: string | null
           category: string | null
           city: string | null
@@ -955,6 +962,7 @@ export type Database = {
           id: string
           ifsc_code: string | null
           interested_products: string[] | null
+          kyc_documents: Json | null
           kyc_status: string | null
           last_order_date: string | null
           minimum_order_value: number | null
@@ -973,6 +981,7 @@ export type Database = {
           state: string | null
           status: string | null
           tan_number: string | null
+          territory: string | null
           territory_exclusive: boolean | null
           updated_at: string | null
           zone: string | null
@@ -988,6 +997,7 @@ export type Database = {
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          assigned_se?: string | null
           bank_name?: string | null
           category?: string | null
           city?: string | null
@@ -1004,6 +1014,7 @@ export type Database = {
           id?: string
           ifsc_code?: string | null
           interested_products?: string[] | null
+          kyc_documents?: Json | null
           kyc_status?: string | null
           last_order_date?: string | null
           minimum_order_value?: number | null
@@ -1022,6 +1033,7 @@ export type Database = {
           state?: string | null
           status?: string | null
           tan_number?: string | null
+          territory?: string | null
           territory_exclusive?: boolean | null
           updated_at?: string | null
           zone?: string | null
@@ -1037,6 +1049,7 @@ export type Database = {
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          assigned_se?: string | null
           bank_name?: string | null
           category?: string | null
           city?: string | null
@@ -1053,6 +1066,7 @@ export type Database = {
           id?: string
           ifsc_code?: string | null
           interested_products?: string[] | null
+          kyc_documents?: Json | null
           kyc_status?: string | null
           last_order_date?: string | null
           minimum_order_value?: number | null
@@ -1071,11 +1085,20 @@ export type Database = {
           state?: string | null
           status?: string | null
           tan_number?: string | null
+          territory?: string | null
           territory_exclusive?: boolean | null
           updated_at?: string | null
           zone?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "distributors_assigned_se_fkey"
+            columns: ["assigned_se"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employee_locations: {
         Row: {
