@@ -30,6 +30,7 @@ interface Competitor {
 
 interface Lead {
   id: string;
+  lead_code: string | null;
   name: string;
   shop_name: string | null;
   phone: string | null;
@@ -231,14 +232,14 @@ export default function LeadsPage() {
 
   const columns = [
     {
-      key: 'id',
-      header: 'Lead ID',
+      key: 'lead_code',
+      header: 'Lead Code',
       render: (item: Lead) => (
         <button 
           onClick={() => setShowViewModal(item)}
           className="text-primary hover:underline font-medium"
         >
-          {item.id.slice(0, 8).toUpperCase()}
+          {item.lead_code || item.id.slice(0, 8).toUpperCase()}
         </button>
       ),
     },
@@ -389,8 +390,22 @@ export default function LeadsPage() {
     );
   }
 
-  const renderForm = (isEdit: boolean) => (
+  const renderForm = (isEdit: boolean, leadCode?: string | null) => (
     <div className="space-y-4">
+      {/* Lead Code - System Generated */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Lead Code</label>
+          <input 
+            type="text" 
+            value={isEdit ? (leadCode || 'System Generated') : ''}
+            placeholder="Auto-generated"
+            disabled
+            className="input-field bg-muted/50 cursor-not-allowed" 
+          />
+        </div>
+      </div>
+
       {/* Basic Info */}
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -665,7 +680,7 @@ export default function LeadsPage() {
               </button>
             </div>
             <div className="max-h-[75vh] overflow-y-auto pr-2">
-              {renderForm(false)}
+              {renderForm(false, null)}
             </div>
             <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
               <button onClick={() => { setShowAddModal(false); resetForm(); }} className="btn-outline">Cancel</button>
@@ -696,7 +711,7 @@ export default function LeadsPage() {
               </button>
             </div>
             <div className="max-h-[75vh] overflow-y-auto pr-2">
-              {renderForm(true)}
+              {renderForm(true, showEditModal.lead_code)}
             </div>
             <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
               <button onClick={() => { setShowEditModal(null); resetForm(); }} className="btn-outline">Cancel</button>
@@ -751,8 +766,8 @@ export default function LeadsPage() {
               {/* Basic Info */}
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Lead ID</p>
-                  <p className="font-medium">{showViewModal.id.slice(0, 8).toUpperCase()}</p>
+                  <p className="text-muted-foreground">Lead Code</p>
+                  <p className="font-medium">{showViewModal.lead_code || showViewModal.id.slice(0, 8).toUpperCase()}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Phone</p>
