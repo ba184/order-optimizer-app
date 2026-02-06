@@ -129,6 +129,7 @@ export default function DistributorFormPage() {
     // Step 1 - Basic Details
     firmName: '',
     category: 'standard',
+    status: 'draft',
     contactName: '',
     phone: '',
     email: '',
@@ -187,6 +188,7 @@ export default function DistributorFormPage() {
         firmName: distributor.firm_name || '',
         gstNumber: distributor.gstin || '',
         category: (distributor as any).category || 'standard',
+        status: distributor.status || 'draft',
         contactName: (distributor as any).contact_name || distributor.owner_name || '',
         phone: distributor.phone || '',
         email: distributor.email || '',
@@ -656,6 +658,7 @@ export default function DistributorFormPage() {
         pincode: formData.pincode || undefined,
         address: formData.address || undefined,
         category: formData.category,
+        status: formData.status,
         credit_limit: formData.creditLimit,
         payment_terms: formData.paymentTerms,
         interested_products: formData.selectedProducts,
@@ -673,7 +676,6 @@ export default function DistributorFormPage() {
         kyc_status: formData.kycStatus,
         kyc_documents: formData.kycDocuments,
         approval_status: approvalStatus,
-        status: approvalStatus === 'approved' ? 'active' : 'pending',
         created_by: isEdit ? undefined : user?.id,
         assigned_se: isEdit ? formData.assignedSe || undefined : user?.id, // Auto-assign creator as SE
         approved_by: approvalStatus === 'approved' ? user?.id : undefined,
@@ -827,12 +829,48 @@ export default function DistributorFormPage() {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={e => setFormData({ ...formData, status: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
               </div>
             </div>
 
+            {/* Assigned Salesperson - Edit Mode Only */}
+            {isEdit && formData.assignedSe && (
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-4">1.2 Assigned Salesperson</h3>
+                <div className="bg-muted/30 rounded-xl p-4 border border-border">
+                  {(() => {
+                    const assignedUser = salesExecutives?.find(u => u.id === formData.assignedSe);
+                    if (!assignedUser) return <p className="text-muted-foreground">No salesperson assigned</p>;
+                    return (
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Users size={20} className="text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{assignedUser.name || 'N/A'}</p>
+                          <p className="text-sm text-muted-foreground">{assignedUser.phone || 'No phone available'}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
             {/* Contact Details */}
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-4">1.2 Contact Details</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4">{isEdit && formData.assignedSe ? '1.3' : '1.2'} Contact Details</h3>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Contact Name *</label>

@@ -260,10 +260,6 @@ export default function DistributorDetailPage() {
                   <span className="text-muted-foreground">Sales Executive</span>
                   <span className="font-medium text-foreground">{mockDistributor.assignedSE}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Area Sales Manager</span>
-                  <span className="font-medium text-foreground">{mockDistributor.assignedASM}</span>
-                </div>
               </div>
             </motion.div>
 
