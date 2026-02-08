@@ -249,10 +249,10 @@ export default function LeadsPage() {
       render: (item: Lead) => (
         <div className="flex items-center gap-3">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            item.lead_type === 'retailer' ? 'bg-secondary/10' : 'bg-info/10'
+            item.lead_type === 'retailer' ? 'bg-secondary/10' : 'bg-primary/10'
           }`}>
             {item.lead_type === 'retailer' ? <Store size={16} className="text-secondary" /> : 
-             <User size={16} className="text-info" />}
+             <Building2 size={16} className="text-primary" />}
           </div>
           <span className="font-medium text-foreground">{item.name}</span>
         </div>
@@ -278,7 +278,7 @@ export default function LeadsPage() {
       header: 'Lead Type',
       render: (item: Lead) => (
         <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${
-          item.lead_type === 'retailer' ? 'bg-secondary/10 text-secondary' : 'bg-info/10 text-info'
+          item.lead_type === 'retailer' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'
         }`}>
           {item.lead_type}
         </span>
@@ -445,7 +445,7 @@ export default function LeadsPage() {
             className="input-field"
           >
             <option value="retailer">Retailer</option>
-            <option value="individual">Individual</option>
+            <option value="distributor">Distributor</option>
           </select>
         </div>
       </div>
@@ -740,10 +740,10 @@ export default function LeadsPage() {
               {/* Lead Header */}
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                  showViewModal.lead_type === 'retailer' ? 'bg-secondary/10' : 'bg-info/10'
+                  showViewModal.lead_type === 'retailer' ? 'bg-secondary/10' : 'bg-primary/10'
                 }`}>
                   {showViewModal.lead_type === 'retailer' ? <Store size={24} className="text-secondary" /> : 
-                   <User size={24} className="text-info" />}
+                   <Building2 size={24} className="text-primary" />}
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-foreground">{showViewModal.shop_name}</p>
