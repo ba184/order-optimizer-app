@@ -142,7 +142,7 @@ export default function LeadsPage() {
   }, [showEditModal]);
 
   const handleCreate = async () => {
-    if (!formData.name || !formData.shop_name || !formData.phone) {
+    if (!formData.name || !formData.phone) {
       return;
     }
     await createLead.mutateAsync({
@@ -166,7 +166,7 @@ export default function LeadsPage() {
   };
 
   const handleUpdate = async () => {
-    if (!showEditModal || !formData.name || !formData.shop_name || !formData.phone) {
+    if (!showEditModal || !formData.name || !formData.phone) {
       return;
     }
     await updateLead.mutateAsync({
@@ -249,11 +249,9 @@ export default function LeadsPage() {
       render: (item: Lead) => (
         <div className="flex items-center gap-3">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            item.lead_type === 'retailer' ? 'bg-secondary/10' : 
-            item.lead_type === 'distributor' ? 'bg-primary/10' : 'bg-info/10'
+            item.lead_type === 'retailer' ? 'bg-secondary/10' : 'bg-info/10'
           }`}>
             {item.lead_type === 'retailer' ? <Store size={16} className="text-secondary" /> : 
-             item.lead_type === 'distributor' ? <Building2 size={16} className="text-primary" /> :
              <User size={16} className="text-info" />}
           </div>
           <span className="font-medium text-foreground">{item.name}</span>
@@ -280,9 +278,7 @@ export default function LeadsPage() {
       header: 'Lead Type',
       render: (item: Lead) => (
         <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${
-          item.lead_type === 'retailer' ? 'bg-secondary/10 text-secondary' : 
-          item.lead_type === 'distributor' ? 'bg-primary/10 text-primary' :
-          'bg-info/10 text-info'
+          item.lead_type === 'retailer' ? 'bg-secondary/10 text-secondary' : 'bg-info/10 text-info'
         }`}>
           {item.lead_type}
         </span>
@@ -432,10 +428,10 @@ export default function LeadsPage() {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">Business/Firm Name *</label>
+          <label className="block text-sm font-medium text-foreground mb-2">Business/Firm Name</label>
           <input 
             type="text" 
-            placeholder="Enter firm name" 
+            placeholder="Enter firm name (optional)" 
             value={formData.shop_name}
             onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
             className="input-field" 
@@ -449,7 +445,6 @@ export default function LeadsPage() {
             className="input-field"
           >
             <option value="retailer">Retailer</option>
-            <option value="distributor">Distributor</option>
             <option value="individual">Individual</option>
           </select>
         </div>
@@ -745,11 +740,9 @@ export default function LeadsPage() {
               {/* Lead Header */}
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                  showViewModal.lead_type === 'retailer' ? 'bg-secondary/10' : 
-                  showViewModal.lead_type === 'distributor' ? 'bg-primary/10' : 'bg-info/10'
+                  showViewModal.lead_type === 'retailer' ? 'bg-secondary/10' : 'bg-info/10'
                 }`}>
                   {showViewModal.lead_type === 'retailer' ? <Store size={24} className="text-secondary" /> : 
-                   showViewModal.lead_type === 'distributor' ? <Building2 size={24} className="text-primary" /> :
                    <User size={24} className="text-info" />}
                 </div>
                 <div className="flex-1">
