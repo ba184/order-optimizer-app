@@ -33,15 +33,6 @@ export default function PresentationsPage() {
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedPresentation, setSelectedPresentation] = useState<Presentation | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-
-  // Filter presentations
-  const filteredPresentations = presentations.filter(p => {
-    if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-    if (typeFilter !== 'all' && p.type !== typeFilter) return false;
-    return true;
-  });
 
   // KPIs
   const totalPresentations = presentations.length;
@@ -177,7 +168,7 @@ export default function PresentationsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {kpiCards.map((kpi, index) => (
           <motion.div
             key={kpi.title}
@@ -197,36 +188,11 @@ export default function PresentationsPage() {
             </div>
           </motion.div>
         ))}
-
-        <div className="stat-card flex items-center">
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="input-field"
-          >
-            <option value="all">All Types</option>
-            <option value="ppt">PPTX</option>
-            <option value="pdf">PDF</option>
-            <option value="video">Video</option>
-          </select>
-        </div>
-
-        <div className="stat-card flex items-center">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="input-field"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
       </div>
 
       {/* Table */}
       <DataTable
-        data={filteredPresentations}
+        data={presentations}
         columns={columns}
         searchPlaceholder="Search presentations..."
         emptyMessage={isLoading ? 'Loading presentations...' : 'No presentations found'}

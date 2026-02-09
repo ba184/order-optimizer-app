@@ -29,14 +29,9 @@ export default function ProductsPage() {
 
   const [deleteModal, setDeleteModal] = useState<Product | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Filter products (exclude samples from products table)
-  const filteredProducts = products.filter(p => {
-    if (p.product_type === 'sample') return false;
-    if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-    return true;
-  });
+  const filteredProducts = products.filter(p => p.product_type !== 'sample');
   
   // Combined data based on filter
   const displayData = typeFilter === 'samples' 
@@ -329,7 +324,7 @@ export default function ProductsPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 items-center flex-wrap">
+      <div className="flex gap-2">
         <button
           onClick={() => setTypeFilter('all')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -351,17 +346,6 @@ export default function ProductsPage() {
           <FlaskConical size={16} />
           Samples
         </button>
-        <div className="ml-auto">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="input-field w-auto"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
       </div>
 
       {/* Products Table */}

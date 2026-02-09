@@ -30,20 +30,15 @@ export default function EmployeesPage() {
   const navigate = useNavigate();
   const { users, isLoading, deleteUser, resetPassword } = useUsersData();
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<UserWithRole | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const filteredUsers = users.filter(u => {
-    if (statusFilter !== 'all' && u.status !== statusFilter) return false;
-    if (roleFilter !== 'all' && u.role_code !== roleFilter) return false;
-    return true;
+    if (statusFilter === 'all') return true;
+    return u.status === statusFilter;
   });
-
-  // Get unique roles for the filter
-  const uniqueRoles = Array.from(new Set(users.map(u => u.role_code).filter(Boolean)));
 
   const handleDelete = (user: UserWithRole) => {
     if (confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
@@ -203,7 +198,8 @@ export default function EmployeesPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-5 gap-4">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
         {[
           { key: 'all', label: 'Total Employees', count: stats.total, icon: Users, color: 'bg-primary/10 text-primary' },
           { key: 'active', label: 'Active', count: stats.active, icon: UserCheck, color: 'bg-success/10 text-success' },
@@ -228,33 +224,6 @@ export default function EmployeesPage() {
             </div>
           </motion.div>
         ))}
-
-        <div className="stat-card flex items-center">
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="input-field"
-          >
-            <option value="all">All Roles</option>
-            {uniqueRoles.map(role => (
-              <option key={role} value={role}>
-                {roleColors[role || ''] ? role?.replace('_', ' ').toUpperCase() : role}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="stat-card flex items-center">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="input-field"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
       </div>
 
       {/* Employees Table */}

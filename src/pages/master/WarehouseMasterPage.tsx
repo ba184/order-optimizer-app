@@ -42,7 +42,6 @@ export default function WarehouseMasterPage() {
   const [selectedItem, setSelectedItem] = useState<WarehouseType | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const handleCreate = () => {
     navigate('/master/warehouses/new');
@@ -85,13 +84,9 @@ export default function WarehouseMasterPage() {
     if (typeFilter !== 'all') {
       data = data.filter(w => w.location_type === typeFilter);
     }
-
-    if (statusFilter !== 'all') {
-      data = data.filter(w => w.status === statusFilter);
-    }
     
     return data;
-  }, [warehouses, searchQuery, typeFilter, statusFilter]);
+  }, [warehouses, searchQuery, typeFilter]);
 
   const stats = useMemo(() => {
     const data = warehouses || [];
@@ -259,16 +254,6 @@ export default function WarehouseMasterPage() {
                     {type.charAt(0).toUpperCase() + type.slice(1)}
                   </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline">

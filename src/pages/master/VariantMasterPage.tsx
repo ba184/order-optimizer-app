@@ -7,13 +7,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/StatCard';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useCategoriesWithProductCount, Category } from '@/hooks/useCategoriesData';
 
 export default function VariantMasterPage() {
@@ -21,7 +14,6 @@ export default function VariantMasterPage() {
   const { data: categories, isLoading } = useCategoriesWithProductCount();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const filteredData = useMemo(() => {
     let data = categories || [];
@@ -36,12 +28,8 @@ export default function VariantMasterPage() {
       );
     }
 
-    if (statusFilter !== 'all') {
-      data = data.filter(c => c.status === statusFilter);
-    }
-
     return data;
-  }, [categories, searchQuery, statusFilter]);
+  }, [categories, searchQuery]);
 
   const stats = useMemo(() => {
     const data = categories || [];
@@ -146,6 +134,7 @@ export default function VariantMasterPage() {
         <StatCard title="Total Products" value={stats.totalProducts} icon={Package} />
       </div>
 
+      {/* Filters */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-4">
@@ -160,16 +149,6 @@ export default function VariantMasterPage() {
                 />
               </div>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
             <Button variant="outline">
               <Download className="h-4 w-4 mr-2" />
               Export

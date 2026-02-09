@@ -13,11 +13,6 @@ export default function CountryMasterPage() {
   const deleteCountry = useDeleteCountry();
 
   const [deleteModal, setDeleteModal] = useState<Country | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-
-  const filteredData = statusFilter === 'all' 
-    ? countries 
-    : countries.filter(c => c.status === statusFilter);
 
   const handleDelete = async () => {
     if (deleteModal) {
@@ -92,7 +87,7 @@ export default function CountryMasterPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-primary/10">
@@ -128,22 +123,10 @@ export default function CountryMasterPage() {
             </div>
           </div>
         </motion.div>
-
-        <div className="stat-card flex items-center">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="input-field"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
       </div>
 
       <DataTable 
-        data={filteredData} 
+        data={countries} 
         columns={columns} 
         searchPlaceholder="Search countries..."
         emptyMessage="No countries found. Add your first country to get started."
