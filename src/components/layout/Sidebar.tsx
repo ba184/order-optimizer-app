@@ -119,7 +119,7 @@ const navigationItems: NavItem[] = [
     roles: ['asm', 'rsm', 'admin'],
   },
   {
-    label: 'Samples & Gifts',
+    label: 'Gifts',
     icon: Gift,
     path: '/samples',
     roles: ['sales_executive', 'asm', 'rsm', 'admin'],

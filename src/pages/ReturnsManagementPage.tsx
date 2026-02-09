@@ -639,7 +639,7 @@ export default function ReturnsManagementPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">Return Type *</label>
                   <select
                     value={formData.return_type}
-                    onChange={(e) => setFormData({ ...formData, return_type: e.target.value as ReturnType })}
+                    onChange={(e) => setFormData({ ...formData, return_type: e.target.value as ReturnType, reason: '' })}
                     className="input-field"
                   >
                     <option value="sales_return">Sales Return</option>
@@ -651,20 +651,41 @@ export default function ReturnsManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Reason</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Reason *</label>
                 <select
                   value={formData.reason}
                   onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                   className="input-field"
                 >
                   <option value="">Select Reason</option>
-                  <option value="Quality Issue">Quality Issue</option>
-                  <option value="Wrong Product">Wrong Product</option>
-                  <option value="Damaged in Transit">Damaged in Transit</option>
-                  <option value="Near Expiry">Near Expiry</option>
-                  <option value="Expired">Expired</option>
-                  <option value="Packaging Defect">Packaging Defect</option>
-                  <option value="Customer Return">Customer Return</option>
+                  {formData.return_type === 'sales_return' && (
+                    <>
+                      <option value="Customer Return">Customer Return</option>
+                      <option value="Wrong Product Supplied">Wrong Product Supplied</option>
+                      <option value="Excess Supply">Excess Supply</option>
+                      <option value="Order Cancelled">Order Cancelled</option>
+                    </>
+                  )}
+                  {formData.return_type === 'damage' && (
+                    <>
+                      <option value="Damaged in Transit">Damaged in Transit</option>
+                      <option value="Packaging Defect">Packaging Defect</option>
+                      <option value="Physical Damage">Physical Damage</option>
+                    </>
+                  )}
+                  {formData.return_type === 'leakage' && (
+                    <>
+                      <option value="Container Leakage">Container Leakage</option>
+                      <option value="Seal Damage">Seal Damage</option>
+                      <option value="Transit Damage">Transit Damage</option>
+                    </>
+                  )}
+                  {formData.return_type === 'expiry' && (
+                    <>
+                      <option value="Near Expiry">Near Expiry</option>
+                      <option value="Expired">Expired</option>
+                    </>
+                  )}
                 </select>
               </div>
 
