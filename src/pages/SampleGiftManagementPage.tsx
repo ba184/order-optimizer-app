@@ -5,11 +5,8 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   Plus,
   Gift,
-  Users,
-  TrendingUp,
   Eye,
   Edit,
-  AlertTriangle,
   Check,
   X,
   Loader2,
@@ -18,7 +15,6 @@ import { format } from 'date-fns';
 import {
   useSamples,
   useSampleIssues,
-  useCurrentBudget,
   useCreateSample,
   useIssueSample,
   useApproveSampleIssue,
@@ -60,7 +56,6 @@ export default function SampleGiftManagementPage() {
 
   const { data: allItems = [], isLoading: loadingItems } = useSamples();
   const { data: issues = [], isLoading: loadingIssues } = useSampleIssues(statusFilter);
-  const { data: budget } = useCurrentBudget();
   const { data: employees = [] } = useEmployeesForSamples();
   const { data: warehouses = [] } = useWarehouses();
   
@@ -164,16 +159,6 @@ export default function SampleGiftManagementPage() {
       ),
     },
     {
-      key: 'cost_price',
-      header: 'Cost Price',
-      render: (item: Sample) => <span>₹{Number(item.cost_price).toLocaleString()}</span>,
-    },
-    {
-      key: 'issued_this_month',
-      header: 'Issued (MTD)',
-      render: (item: Sample) => <span>{item.issued_this_month || 0}</span>,
-    },
-    {
       key: 'status',
       header: 'Status',
       render: (item: Sample) => <StatusBadge status={item.status as any} />,
@@ -267,22 +252,6 @@ export default function SampleGiftManagementPage() {
     },
   ];
 
-  const stats = {
-    totalGifts: gifts.length,
-    totalStock: gifts.reduce((sum, g) => sum + g.stock, 0),
-    issuedThisMonth: gifts.reduce((sum, g) => sum + (g.issued_this_month || 0), 0),
-    conversionRate:
-      gifts.reduce((sum, g) => sum + (g.issued_this_month || 0), 0) > 0
-        ? (
-            (gifts.reduce((sum, g) => sum + (g.conversions || 0), 0) /
-              gifts.reduce((sum, g) => sum + (g.issued_this_month || 0), 0)) *
-            100
-          ).toFixed(0)
-        : 0,
-  };
-
-  const executiveBudget = budget || { monthly_budget: 5000, used_amount: 0 };
-  const budgetRemaining = Number(executiveBudget.monthly_budget) - Number(executiveBudget.used_amount);
 
   if (loadingItems || loadingIssues) {
     return (
@@ -311,98 +280,6 @@ export default function SampleGiftManagementPage() {
           </button>
         </div>
       </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-secondary/10">
-              <Gift size={24} className="text-secondary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalGifts}</p>
-              <p className="text-sm text-muted-foreground">Gift Types</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <Gift size={24} className="text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalStock}</p>
-              <p className="text-sm text-muted-foreground">Total Stock</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-info/10">
-              <Users size={24} className="text-info" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.issuedThisMonth}</p>
-              <p className="text-sm text-muted-foreground">Issued (MTD)</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-success/10">
-              <TrendingUp size={24} className="text-success" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.conversionRate}%</p>
-              <p className="text-sm text-muted-foreground">Conversion Rate</p>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Budget Card */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl border border-border p-6 shadow-sm">
-        <h3 className="font-semibold text-foreground mb-4">Monthly Budget</h3>
-        <div className="flex items-center gap-6">
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">
-                Used: ₹{Number(executiveBudget.used_amount).toLocaleString()}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                Budget: ₹{Number(executiveBudget.monthly_budget).toLocaleString()}
-              </span>
-            </div>
-            <div className="h-3 bg-muted rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  Number(executiveBudget.used_amount) / Number(executiveBudget.monthly_budget) > 0.8
-                    ? 'bg-warning'
-                    : 'bg-primary'
-                }`}
-                style={{
-                  width: `${Math.min((Number(executiveBudget.used_amount) / Number(executiveBudget.monthly_budget)) * 100, 100)}%`,
-                }}
-              />
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-foreground">₹{budgetRemaining.toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Remaining</p>
-          </div>
-        </div>
-        {budgetRemaining < 1000 && (
-          <div className="mt-4 p-3 bg-warning/10 rounded-lg">
-            <p className="text-sm text-warning flex items-center gap-2">
-              <AlertTriangle size={16} />
-              Low budget warning. Further issuance requires approval.
-            </p>
-          </div>
-        )}
-      </motion.div>
 
       {/* Tabs */}
       <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
@@ -508,6 +385,18 @@ export default function SampleGiftManagementPage() {
                   placeholder="Enter quantity"
                   min="1"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Status *</label>
+                <select
+                  value={giftData.status}
+                  onChange={(e) => setGiftData({ ...giftData, status: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
               </div>
 
               <div>
