@@ -287,23 +287,25 @@ export function useCreateOrder() {
 
       // Create order collaterals if any collaterals were selected
       if (orderCollaterals.length > 0) {
-        // Get collateral type labels for display
-        const COLLATERAL_TYPE_LABELS: Record<string, string> = {
-          led_tv: 'LED TV',
-          banner: 'Banner',
-          gift: 'Gift',
-          pos_material: 'POS Material',
-          sample: 'Sample',
-          display_stand: 'Display Stand',
-          signage: 'Signage',
-          brochure: 'Brochure',
-        };
+        // Fetch collateral names from the database
+        const collateralIds = orderCollaterals.map(col => col.type);
+        const { data: collateralData } = await supabase
+          .from('marketing_collaterals' as any)
+          .select('id, name')
+          .in('id', collateralIds);
+
+        const collateralNameMap: Record<string, string> = {};
+        if (collateralData) {
+          (collateralData as unknown as Array<{ id: string; name: string }>).forEach(c => {
+            collateralNameMap[c.id] = c.name;
+          });
+        }
 
         // Create collateral records in the new order_collaterals table
         const collateralRecords = orderCollaterals.map(col => ({
           order_id: orderData.id,
-          type: col.type,
-          name: COLLATERAL_TYPE_LABELS[col.type] || col.type,
+          type: col.type, // This is now the collateral ID
+          name: collateralNameMap[col.type] || 'Unknown Collateral',
           quantity: col.quantity,
           notes: col.notes || null,
           tracking_id: `COL-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,

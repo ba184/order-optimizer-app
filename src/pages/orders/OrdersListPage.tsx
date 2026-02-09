@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge, StatusType } from '@/components/ui/StatusBadge';
 import { useOrders, useAllOrderCollaterals } from '@/hooks/useOrdersData';
+import { ColumnFilterPopover } from '@/components/ui/ColumnFilterPopover';
 import {
   Plus,
   ShoppingCart,
@@ -17,6 +18,8 @@ import {
   MapPin,
   Package2,
   Package,
+  Search,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -26,10 +29,38 @@ const formatCurrency = (value: number) => {
   return `₹${value}`;
 };
 
+// Define all available columns
+const ALL_COLUMNS = [
+  { key: 'order_number', header: 'Order' },
+  { key: 'distributor', header: 'Distributor' },
+  { key: 'items_count', header: 'Items' },
+  { key: 'collaterals', header: 'Marketing Collateral' },
+  { key: 'total_amount', header: 'Amount' },
+  { key: 'status', header: 'Order Status' },
+  { key: 'payment_status', header: 'Payment' },
+  { key: 'tracking', header: 'Tracking IDs' },
+  { key: 'liveTracking', header: 'Track' },
+  { key: 'created_at', header: 'Created' },
+  { key: 'actions', header: 'Actions' },
+];
+
+const DEFAULT_VISIBLE_COLUMNS = [
+  'order_number',
+  'distributor',
+  'items_count',
+  'total_amount',
+  'status',
+  'payment_status',
+  'created_at',
+  'actions',
+];
+
 export default function OrdersListPage() {
   const navigate = useNavigate();
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
   
   const { data: orders = [], isLoading } = useOrders();
   const { data: orderCollaterals = [] } = useAllOrderCollaterals();
@@ -57,7 +88,7 @@ export default function OrdersListPage() {
     totalValue: orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + Number(o.total_amount), 0),
   };
 
-  const columns = [
+  const allColumns = useMemo(() => [
     {
       key: 'order_number',
       header: 'Order',
@@ -139,7 +170,6 @@ export default function OrdersListPage() {
       render: (item: typeof orders[0]) => {
         const collaterals = orderCollateralsMap[item.id] || [];
         const hasCollaterals = collaterals.length > 0;
-        const hasDifferentTracking = collaterals.some(c => c.tracking_status !== item.status);
         
         return (
           <div className="space-y-1">
@@ -224,7 +254,25 @@ export default function OrdersListPage() {
         </div>
       ),
     },
-  ];
+  ], [orderCollateralsMap, navigate]);
+
+  // Filter columns based on visibility
+  const columns = useMemo(() => 
+    allColumns.filter(col => visibleColumns.includes(col.key)),
+    [allColumns, visibleColumns]
+  );
+
+  // Search filtered orders
+  const searchFilteredOrders = useMemo(() => {
+    if (!searchQuery) return filteredOrders;
+    const query = searchQuery.toLowerCase();
+    return filteredOrders.filter(order => 
+      order.order_number.toLowerCase().includes(query) ||
+      order.distributor?.firm_name?.toLowerCase().includes(query) ||
+      order.retailer?.shop_name?.toLowerCase().includes(query) ||
+      order.status.toLowerCase().includes(query)
+    );
+  }, [filteredOrders, searchQuery]);
 
   if (isLoading) {
     return (
@@ -336,36 +384,68 @@ export default function OrdersListPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="filter-bar">
-        <select
-          value={filterType}
-          onChange={e => setFilterType(e.target.value)}
-          className="input-field w-40"
-        >
-          <option value="all">All Types</option>
-          <option value="primary">Primary</option>
-          <option value="secondary">Secondary</option>
-        </select>
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          className="input-field w-40"
-        >
-          <option value="all">All Status</option>
-          <option value="draft">Draft</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="dispatched">Dispatched</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+      <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+            <input
+              type="text"
+              placeholder="Search orders..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="input-field pl-9 text-sm"
+            />
+          </div>
+
+          {/* Type Filter */}
+          <select
+            value={filterType}
+            onChange={e => setFilterType(e.target.value)}
+            className="input-field w-40"
+          >
+            <option value="all">All Types</option>
+            <option value="primary">Primary</option>
+            <option value="secondary">Secondary</option>
+          </select>
+
+          {/* Status Filter */}
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className="input-field w-40"
+          >
+            <option value="all">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="dispatched">Dispatched</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+
+          {/* Column Filter */}
+          <ColumnFilterPopover
+            columns={ALL_COLUMNS}
+            visibleColumns={visibleColumns}
+            onVisibleColumnsChange={setVisibleColumns}
+          />
+
+          {/* Export */}
+          <button className="btn-outline flex items-center gap-2 text-sm">
+            <Download size={16} />
+            Export
+          </button>
+        </div>
       </div>
 
       {/* Data Table */}
       <DataTable
-        data={filteredOrders}
+        data={searchFilteredOrders}
         columns={columns}
-        searchPlaceholder="Search orders..."
+        searchable={false}
+        filterable={false}
+        exportable={false}
       />
     </div>
   );
