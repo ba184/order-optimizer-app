@@ -15,6 +15,7 @@ import {
   FileText,
   Loader2,
   Tag,
+  ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProducts, useCreateOrder, CartItem } from '@/hooks/useOrdersData';
@@ -24,6 +25,7 @@ import { AppliedSchemesDisplay } from '@/components/orders/AppliedSchemesDisplay
 import { ProductSchemesBadge } from '@/components/orders/ProductSchemesBadge';
 import { OrderCollateralSelector, OrderCollateralItem } from '@/components/orders/OrderCollateralSelector';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 export default function CreateOrderPage() {
   const navigate = useNavigate();
@@ -194,6 +196,16 @@ export default function CreateOrderPage() {
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <Button
+        variant="ghost"
+        onClick={() => navigate('/orders/list')}
+        className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft size={18} />
+        Back to Orders
+      </Button>
+
       {/* Header */}
       <div className="module-header">
         <div>

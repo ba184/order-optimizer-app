@@ -1,19 +1,9 @@
 import { useState } from 'react';
-import { Plus, Trash2, Package } from 'lucide-react';
+import { Plus, Trash2, Package, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-
-export const COLLATERAL_TYPE_OPTIONS = [
-  { value: 'led_tv', label: 'LED TV' },
-  { value: 'banner', label: 'Banner' },
-  { value: 'gift', label: 'Gift' },
-  { value: 'pos_material', label: 'POS Material' },
-  { value: 'sample', label: 'Sample' },
-  { value: 'display_stand', label: 'Display Stand' },
-  { value: 'signage', label: 'Signage' },
-  { value: 'brochure', label: 'Brochure' },
-];
+import { useActiveCollaterals } from '@/hooks/useMarketingCollateralsData';
 
 export interface OrderCollateralItem {
   id: string;
@@ -28,6 +18,8 @@ interface OrderCollateralSelectorProps {
 }
 
 export function OrderCollateralSelector({ items, onChange }: OrderCollateralSelectorProps) {
+  const { data: collaterals = [], isLoading } = useActiveCollaterals();
+
   const addItem = () => {
     const newItem: OrderCollateralItem = {
       id: crypto.randomUUID(),
@@ -50,9 +42,18 @@ export function OrderCollateralSelector({ items, onChange }: OrderCollateralSele
     onChange(items.filter(item => item.id !== id));
   };
 
-  const getTypeLabel = (value: string) => {
-    return COLLATERAL_TYPE_OPTIONS.find(opt => opt.value === value)?.label || value;
+  const getCollateralName = (collateralId: string) => {
+    const collateral = collaterals.find(c => c.id === collateralId);
+    return collateral?.name || collateralId;
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -87,19 +88,19 @@ export function OrderCollateralSelector({ items, onChange }: OrderCollateralSele
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Collateral Type *
+                    Collateral Name *
                   </label>
                   <Select
                     value={item.type}
                     onValueChange={(value) => updateItem(item.id, 'type', value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder="Select collateral" />
                     </SelectTrigger>
                     <SelectContent>
-                      {COLLATERAL_TYPE_OPTIONS.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
+                      {collaterals.map(collateral => (
+                        <SelectItem key={collateral.id} value={collateral.id}>
+                          {collateral.name} ({collateral.current_stock} in stock)
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -140,10 +141,17 @@ export function OrderCollateralSelector({ items, onChange }: OrderCollateralSele
         variant="outline"
         onClick={addItem}
         className="w-full"
+        disabled={collaterals.length === 0}
       >
         <Plus size={16} className="mr-2" />
         Add Collateral
       </Button>
+      
+      {collaterals.length === 0 && (
+        <p className="text-xs text-muted-foreground text-center">
+          No active collaterals available. Add collaterals in Marketing Collateral page first.
+        </p>
+      )}
     </div>
   );
 }
