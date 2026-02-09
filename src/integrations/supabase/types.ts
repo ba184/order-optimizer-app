@@ -2807,31 +2807,37 @@ export type Database = {
           code: string
           created_at: string | null
           description: string | null
+          geo_level: string | null
           id: string
           is_system: boolean | null
           level: number
           name: string
           status: string | null
+          zone_type: string | null
         }
         Insert: {
           code: string
           created_at?: string | null
           description?: string | null
+          geo_level?: string | null
           id?: string
           is_system?: boolean | null
           level: number
           name: string
           status?: string | null
+          zone_type?: string | null
         }
         Update: {
           code?: string
           created_at?: string | null
           description?: string | null
+          geo_level?: string | null
           id?: string
           is_system?: boolean | null
           level?: number
           name?: string
           status?: string | null
+          zone_type?: string | null
         }
         Relationships: []
       }
