@@ -27,6 +27,7 @@ import {
   Sample,
   SampleIssue,
 } from '@/hooks/useSamplesData';
+import { useWarehouses } from '@/hooks/useWarehousesData';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SampleGiftManagementPage() {
@@ -52,6 +53,7 @@ export default function SampleGiftManagementPage() {
     name: '',
     cost_price: 0,
     stock: 0,
+    warehouse: '',
     description: '',
     status: 'active',
   });
@@ -60,6 +62,7 @@ export default function SampleGiftManagementPage() {
   const { data: issues = [], isLoading: loadingIssues } = useSampleIssues(statusFilter);
   const { data: budget } = useCurrentBudget();
   const { data: employees = [] } = useEmployeesForSamples();
+  const { data: warehouses = [] } = useWarehouses();
   
   // Filter only gifts
   const gifts = allItems.filter(item => item.type === 'gift');
@@ -98,7 +101,7 @@ export default function SampleGiftManagementPage() {
     }, {
       onSuccess: () => {
         setShowCreateModal(false);
-        setGiftData({ sku: '', name: '', cost_price: 0, stock: 0, description: '', status: 'active' });
+        setGiftData({ sku: '', name: '', cost_price: 0, stock: 0, warehouse: '', description: '', status: 'active' });
       },
     });
   };
@@ -469,7 +472,7 @@ export default function SampleGiftManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">SKU Code *</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Gift Code *</label>
                 <input
                   type="text"
                   value={giftData.sku}
@@ -480,25 +483,19 @@ export default function SampleGiftManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Quantity Available *</label>
-                <input
-                  type="number"
-                  value={giftData.stock || ''}
-                  onChange={(e) => setGiftData({ ...giftData, stock: parseInt(e.target.value) || 0 })}
+                <label className="block text-sm font-medium text-foreground mb-2">Warehouse *</label>
+                <select
+                  value={giftData.warehouse}
+                  onChange={(e) => setGiftData({ ...giftData, warehouse: e.target.value })}
                   className="input-field"
-                  placeholder="Enter quantity"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Cost Price (₹) *</label>
-                <input
-                  type="number"
-                  value={giftData.cost_price || ''}
-                  onChange={(e) => setGiftData({ ...giftData, cost_price: parseFloat(e.target.value) || 0 })}
-                  className="input-field"
-                  placeholder="Enter cost price"
-                />
+                >
+                  <option value="">Select Warehouse</option>
+                  {warehouses.filter(w => w.status === 'active').map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({w.code})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -519,7 +516,7 @@ export default function SampleGiftManagementPage() {
               </button>
               <button
                 onClick={handleCreateGift}
-                disabled={createGiftMutation.isPending || !giftData.name || !giftData.sku}
+                disabled={createGiftMutation.isPending || !giftData.name || !giftData.sku || !giftData.warehouse}
                 className="flex-1 btn-primary disabled:opacity-50"
               >
                 {createGiftMutation.isPending ? 'Creating...' : 'Create Gift'}
