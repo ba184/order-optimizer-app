@@ -627,9 +627,8 @@ export default function ReturnsManagementPage() {
                     onChange={(e) => setFormData({ ...formData, party_type: e.target.value as PartyType })}
                     className="input-field"
                   >
-                    <option value="primary">Primary</option>
-                    <option value="secondary">Secondary</option>
-                    <option value="institutional">Institutional</option>
+                    <option value="primary">Distributor</option>
+                    <option value="secondary">Retailer</option>
                   </select>
                 </div>
                 <div>
