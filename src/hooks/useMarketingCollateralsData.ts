@@ -50,14 +50,11 @@ export interface CollateralIssue {
 }
 
 export const COLLATERAL_TYPES = [
-  { value: 'led_tv', label: 'LED TV' },
-  { value: 'banner', label: 'Banner' },
-  { value: 'gift', label: 'Gift' },
   { value: 'pos_material', label: 'POS Material' },
-  { value: 'sample', label: 'Sample' },
-  { value: 'display', label: 'Display Stand' },
-  { value: 'signage', label: 'Signage' },
-  { value: 'brochure', label: 'Brochure' },
+  { value: 'display_stands', label: 'Display Stands' },
+  { value: 'brochures', label: 'Brochures' },
+  { value: 'flyers', label: 'Flyers' },
+  { value: 'leaflets', label: 'Leaflets' },
 ];
 
 export const ISSUE_STAGES = [
@@ -157,7 +154,18 @@ export function useCreateMarketingCollateral() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (data: Omit<MarketingCollateral, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
+    mutationFn: async (data: {
+      code: string;
+      name: string;
+      type: string;
+      description?: string | null;
+      unit?: string | null;
+      current_stock: number;
+      min_stock_threshold?: number | null;
+      value_per_unit?: number | null;
+      warehouse?: string | null;
+      status?: string | null;
+    }) => {
       const { data: result, error } = await supabase
         .from('marketing_collaterals')
         .insert({
