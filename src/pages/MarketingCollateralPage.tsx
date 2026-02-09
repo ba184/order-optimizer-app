@@ -73,12 +73,10 @@ export default function MarketingCollateralPage() {
   const [collateralForm, setCollateralForm] = useState({
     code: '',
     name: '',
-    type: 'banner',
+    type: 'pos_material',
     description: '',
     unit: 'pcs',
     current_stock: '',
-    min_stock_threshold: '',
-    value_per_unit: '',
     warehouse: '',
     status: 'active',
   });
@@ -121,12 +119,10 @@ export default function MarketingCollateralPage() {
     setCollateralForm({
       code: '',
       name: '',
-      type: 'banner',
+      type: 'pos_material',
       description: '',
       unit: 'pcs',
       current_stock: '',
-      min_stock_threshold: '',
-      value_per_unit: '',
       warehouse: '',
       status: 'active',
     });
@@ -154,8 +150,6 @@ export default function MarketingCollateralPage() {
       description: item.description || '',
       unit: item.unit || 'pcs',
       current_stock: item.current_stock.toString(),
-      min_stock_threshold: item.min_stock_threshold?.toString() || '',
-      value_per_unit: item.value_per_unit?.toString() || '',
       warehouse: item.warehouse || '',
       status: item.status || 'active',
     });
@@ -175,8 +169,6 @@ export default function MarketingCollateralPage() {
       description: collateralForm.description || null,
       unit: collateralForm.unit || 'pcs',
       current_stock: parseInt(collateralForm.current_stock) || 0,
-      min_stock_threshold: parseInt(collateralForm.min_stock_threshold) || 10,
-      value_per_unit: parseFloat(collateralForm.value_per_unit) || 0,
       warehouse: collateralForm.warehouse || null,
       status: collateralForm.status,
     };
@@ -740,37 +732,15 @@ export default function MarketingCollateralPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Current Stock</label>
-                  <input
-                    type="number"
-                    value={collateralForm.current_stock}
-                    onChange={(e) => setCollateralForm({ ...collateralForm, current_stock: e.target.value })}
-                    className="input-field"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Min Threshold</label>
-                  <input
-                    type="number"
-                    value={collateralForm.min_stock_threshold}
-                    onChange={(e) => setCollateralForm({ ...collateralForm, min_stock_threshold: e.target.value })}
-                    className="input-field"
-                    placeholder="10"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Value/Unit</label>
-                  <input
-                    type="number"
-                    value={collateralForm.value_per_unit}
-                    onChange={(e) => setCollateralForm({ ...collateralForm, value_per_unit: e.target.value })}
-                    className="input-field"
-                    placeholder="0"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Add Stock</label>
+                <input
+                  type="number"
+                  value={collateralForm.current_stock}
+                  onChange={(e) => setCollateralForm({ ...collateralForm, current_stock: e.target.value })}
+                  className="input-field"
+                  placeholder="0"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
