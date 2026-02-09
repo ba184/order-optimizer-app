@@ -15,6 +15,7 @@ import {
 } from '@/hooks/useReturnsData';
 import { useProducts } from '@/hooks/useProductsData';
 import { useOrders } from '@/hooks/useOrdersData';
+import { ReturnMediaUpload } from '@/components/ui/ReturnMediaUpload';
 import {
   Package,
   RotateCcw,
@@ -31,7 +32,6 @@ import {
   Loader2,
   Trash2,
   Unlock,
-  Upload,
   FileText,
   Droplets,
 } from 'lucide-react';
@@ -109,6 +109,7 @@ export default function ReturnsManagementPage() {
   const [formItems, setFormItems] = useState<ReturnItemInput[]>([
     { product_id: '', product_name: '', sku: '', quantity: 1, unit_price: 0, reason: '', batch_no: '' }
   ]);
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
 
   const filteredData = returns.filter(item => {
     if (statusFilter !== 'all' && item.status !== statusFilter) return false;
@@ -196,8 +197,9 @@ export default function ReturnsManagementPage() {
 
   const handleCreateReturn = async () => {
     // Validate media for damage/leakage
-    if ((formData.return_type === 'damage' || formData.return_type === 'leakage')) {
-      // In production, check media_urls here
+    if ((formData.return_type === 'damage' || formData.return_type === 'leakage') && mediaUrls.length === 0) {
+      toast.error('Please upload at least one image/video for damage or leakage claims');
+      return;
     }
 
     if (formItems.some(item => !item.product_name)) {
@@ -216,12 +218,14 @@ export default function ReturnsManagementPage() {
       party_type: formData.party_type,
       batch_no: formData.batch_no,
       claim_date: formData.claim_date,
+      media_urls: mediaUrls,
       items: formItems,
     });
 
     setShowCreateModal(false);
     setFormData({ return_type: 'sales_return', order_id: '', party_type: 'primary', reason: '', claim_date: new Date().toISOString().split('T')[0], batch_no: '' });
     setFormItems([{ product_id: '', product_name: '', sku: '', quantity: 1, unit_price: 0, reason: '', batch_no: '' }]);
+    setMediaUrls([]);
   };
 
   const columns = [
@@ -665,14 +669,12 @@ export default function ReturnsManagementPage() {
               </div>
 
               {(formData.return_type === 'damage' || formData.return_type === 'leakage') && (
-                <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-warning mb-2">
-                    <Upload size={16} />
-                    <span className="text-sm font-medium">Media Upload Required</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Upload images/videos for damage or leakage claims</p>
-                  <input type="file" accept="image/*,video/*" multiple className="mt-2 text-sm" />
-                </div>
+                <ReturnMediaUpload
+                  mediaUrls={mediaUrls}
+                  onMediaChange={setMediaUrls}
+                  maxFiles={5}
+                  maxSizeMB={10}
+                />
               )}
 
               <div>
