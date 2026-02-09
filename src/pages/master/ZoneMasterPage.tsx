@@ -18,7 +18,16 @@ export default function ZoneMasterPage() {
   const deleteZone = useDeleteZone();
 
   const [deleteModal, setDeleteModal] = useState<Zone | null>(null);
+  const [zoneTypeFilter, setZoneTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [zoneValues, setZoneValues] = useState<Record<string, string[]>>({});
+
+  // Filter zones
+  const filteredData = zones.filter(z => {
+    if (zoneTypeFilter !== 'all' && (z as any).zone_type !== zoneTypeFilter) return false;
+    if (statusFilter !== 'all' && z.status !== statusFilter) return false;
+    return true;
+  });
 
   // Load zone values (linked states/cities/territories)
   useEffect(() => {
@@ -187,7 +196,7 @@ export default function ZoneMasterPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-warning/10">
@@ -223,10 +232,35 @@ export default function ZoneMasterPage() {
             </div>
           </div>
         </motion.div>
+
+        <div className="stat-card flex items-center">
+          <select
+            value={zoneTypeFilter}
+            onChange={(e) => setZoneTypeFilter(e.target.value)}
+            className="input-field"
+          >
+            <option value="all">All Zone Types</option>
+            <option value="state">State</option>
+            <option value="city">City</option>
+            <option value="territory">Territory</option>
+          </select>
+        </div>
+
+        <div className="stat-card flex items-center">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="input-field"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
       </div>
 
       <DataTable 
-        data={zones} 
+        data={filteredData} 
         columns={columns} 
         searchPlaceholder="Search zones..."
         emptyMessage="No zones found. Add your first zone to get started."

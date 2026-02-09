@@ -26,6 +26,22 @@ export default function TerritoriesPage() {
   const deleteTerritory = useDeleteTerritory();
 
   const [deleteModal, setDeleteModal] = useState<Territory | null>(null);
+  const [stateFilter, setStateFilter] = useState<string>('all');
+  const [cityFilter, setCityFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Filter cities by selected state
+  const filteredCitiesByState = stateFilter !== 'all' 
+    ? cities.filter(c => c.state_id === stateFilter)
+    : cities;
+
+  // Filter territories
+  const filteredData = territories.filter(t => {
+    if (stateFilter !== 'all' && (t as any).state_id !== stateFilter) return false;
+    if (cityFilter !== 'all' && (t as any).city_id !== cityFilter) return false;
+    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+    return true;
+  });
 
   const handleDelete = async () => {
     if (deleteModal) {
@@ -135,7 +151,7 @@ export default function TerritoriesPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-6 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-primary/10">
@@ -171,10 +187,51 @@ export default function TerritoriesPage() {
             </div>
           </div>
         </motion.div>
+
+        <div className="stat-card flex items-center">
+          <select
+            value={stateFilter}
+            onChange={(e) => {
+              setStateFilter(e.target.value);
+              setCityFilter('all');
+            }}
+            className="input-field"
+          >
+            <option value="all">All States</option>
+            {states.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="stat-card flex items-center">
+          <select
+            value={cityFilter}
+            onChange={(e) => setCityFilter(e.target.value)}
+            className="input-field"
+          >
+            <option value="all">All Cities</option>
+            {filteredCitiesByState.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="stat-card flex items-center">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="input-field"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
       </div>
 
       <DataTable 
-        data={territories} 
+        data={filteredData} 
         columns={columns} 
         searchPlaceholder="Search territories..."
         emptyMessage="No territories found. Add your first territory to get started."
