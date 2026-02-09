@@ -93,7 +93,7 @@ export default function EmployeeFormPage() {
   // Get managers/supervisors for reporting to dropdown
   const managers = users.filter(u => 
     u.id !== id && 
-    ['admin', 'rsm', 'asm'].includes(u.role_code || '')
+    ['admin', 'manager'].includes(u.role_code || '')
   );
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -54,7 +54,7 @@ export default function Dashboard() {
     return `₹${value}`;
   };
 
-  const isAdmin = userRole === 'admin' || userRole === 'rsm' || userRole === 'asm';
+  const isAdmin = userRole === 'admin' || userRole === 'manager';
   const isSalesExecutive = userRole === 'sales_executive' || userRole === 'se';
   const userName = profile?.name?.split(' ')[0] || 'User';
 
