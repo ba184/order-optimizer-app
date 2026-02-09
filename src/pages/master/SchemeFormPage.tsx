@@ -50,13 +50,14 @@
    bxgy_buy_quantity: number;
    bxgy_get_quantity: number;
    bxgy_min_order_value: number;
-   // Combo fields
-   combo_name: string;
-   combo_products: string[];
-   combo_price: number;
-   combo_discount_type: BenefitTypeOption;
-   combo_discount_value: number;
-   combo_max_per_order: number;
+  // Combo fields
+  combo_name: string;
+  combo_products: string[];
+  combo_sku_sizes: string[];
+  combo_price: number;
+  combo_discount_type: BenefitTypeOption;
+  combo_discount_value: number;
+  combo_max_per_order: number;
    // Bill Wise fields
    bill_value_from: number;
    bill_value_to: number;
@@ -110,6 +111,13 @@ const benefitTypeOptions = [
   { value: 'percentage', label: 'Percentage' },
 ];
 
+const skuSizeOptions = [
+  { value: '2g', label: '2g' },
+  { value: '4g', label: '4g' },
+  { value: '5g', label: '5g' },
+  { value: '20g', label: '20g' },
+];
+
 const createEmptySlab = (): SlabRow => ({
   id: crypto.randomUUID(),
   min_order_value: 0,
@@ -135,6 +143,7 @@ const initialFormData: FormData = {
   bxgy_min_order_value: 0,
   combo_name: '',
   combo_products: [],
+  combo_sku_sizes: [],
   combo_price: 0,
   combo_discount_type: 'flat',
   combo_discount_value: 0,
@@ -561,91 +570,137 @@ function useOutletLocations(outlets: Outlet[]) {
      </Card>
    );
  
-   const renderComboFields = () => (
-     <Card>
-       <CardHeader className="pb-4">
-         <CardTitle className="text-base font-semibold">Combo Configuration</CardTitle>
-       </CardHeader>
-       <CardContent className="space-y-4">
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <div className="space-y-2">
-             <Label htmlFor="combo_name">Combo Name <span className="text-destructive">*</span></Label>
-             <Input
-               id="combo_name"
-               placeholder="Enter combo name"
-               value={formData.combo_name}
-               onChange={(e) => updateField('combo_name', e.target.value)}
-             />
-           </div>
-           <div className="space-y-2">
-             <Label htmlFor="combo_products">Combo Product</Label>
-             <Select
-               value={formData.combo_products[0] || ''}
-               onValueChange={(v) => updateField('combo_products', [v])}
-             >
-               <SelectTrigger id="combo_products">
-                 <SelectValue placeholder="Select products" />
-               </SelectTrigger>
-               <SelectContent>
-                 {products.map((p) => (
-                   <SelectItem key={p.id} value={p.id}>{p.name} ({p.sku})</SelectItem>
-                 ))}
-               </SelectContent>
-             </Select>
-           </div>
-           <div className="space-y-2">
-             <Label htmlFor="combo_price">Combo Price</Label>
-             <Input
-               id="combo_price"
-               type="number"
-               min={0}
-               placeholder="Enter combo price"
-               value={formData.combo_price || ''}
-               onChange={(e) => updateField('combo_price', Number(e.target.value))}
-             />
-           </div>
-           <div className="space-y-2">
-             <Label htmlFor="combo_discount_type">Combo Discount Type</Label>
-             <Select
-               value={formData.combo_discount_type}
-               onValueChange={(v: BenefitTypeOption) => updateField('combo_discount_type', v)}
-             >
-               <SelectTrigger id="combo_discount_type">
-                 <SelectValue placeholder="Select discount type" />
-               </SelectTrigger>
-               <SelectContent>
-                 {benefitTypeOptions.map((opt) => (
-                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                 ))}
-               </SelectContent>
-             </Select>
-           </div>
-           <div className="space-y-2">
-             <Label htmlFor="combo_discount_value">Combo Discount Value</Label>
-             <Input
-               id="combo_discount_value"
-               type="number"
-               min={0}
-               placeholder="Enter discount value"
-               value={formData.combo_discount_value || ''}
-               onChange={(e) => updateField('combo_discount_value', Number(e.target.value))}
-             />
-           </div>
-           <div className="space-y-2">
-             <Label htmlFor="combo_max_per_order">Max Combos Per Order</Label>
-             <Input
-               id="combo_max_per_order"
-               type="number"
-               min={1}
-               placeholder="Enter max combos"
-               value={formData.combo_max_per_order || ''}
-               onChange={(e) => updateField('combo_max_per_order', Number(e.target.value))}
-             />
-           </div>
-         </div>
-       </CardContent>
-     </Card>
-   );
+  const toggleComboSkuSize = (size: string) => {
+    setFormData(prev => ({
+      ...prev,
+      combo_sku_sizes: prev.combo_sku_sizes.includes(size)
+        ? prev.combo_sku_sizes.filter(s => s !== size)
+        : [...prev.combo_sku_sizes, size],
+    }));
+  };
+
+  const renderComboFields = () => (
+    <Card>
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base font-semibold">Combo Configuration</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="combo_name">Combo Name <span className="text-destructive">*</span></Label>
+            <Input
+              id="combo_name"
+              placeholder="Enter combo name"
+              value={formData.combo_name}
+              onChange={(e) => updateField('combo_name', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="combo_products">Combo Product <span className="text-destructive">*</span></Label>
+            <Select
+              value={formData.combo_products[0] || ''}
+              onValueChange={(v) => {
+                updateField('combo_products', [v]);
+                // Reset SKU sizes when product changes
+                updateField('combo_sku_sizes', []);
+              }}
+            >
+              <SelectTrigger id="combo_products">
+                <SelectValue placeholder="Select product" />
+              </SelectTrigger>
+              <SelectContent>
+                {products.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name} ({p.sku})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* SKU Size Selection - Only shown after product is selected */}
+          {formData.combo_products.length > 0 && (
+            <div className="space-y-2 md:col-span-2">
+              <Label>SKU Size <span className="text-destructive">*</span></Label>
+              <div className="flex flex-wrap gap-3 p-3 border rounded-lg bg-muted/30">
+                {skuSizeOptions.map((size) => (
+                  <div
+                    key={size.value}
+                    className="flex items-center space-x-2"
+                  >
+                    <Checkbox
+                      id={`sku-size-${size.value}`}
+                      checked={formData.combo_sku_sizes.includes(size.value)}
+                      onCheckedChange={() => toggleComboSkuSize(size.value)}
+                    />
+                    <Label
+                      htmlFor={`sku-size-${size.value}`}
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      {size.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              {formData.combo_sku_sizes.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Selected: {formData.combo_sku_sizes.join(', ')}
+                </p>
+              )}
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            <Label htmlFor="combo_price">Combo Price</Label>
+            <Input
+              id="combo_price"
+              type="number"
+              min={0}
+              placeholder="Enter combo price"
+              value={formData.combo_price || ''}
+              onChange={(e) => updateField('combo_price', Number(e.target.value))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="combo_discount_type">Combo Discount Type</Label>
+            <Select
+              value={formData.combo_discount_type}
+              onValueChange={(v: BenefitTypeOption) => updateField('combo_discount_type', v)}
+            >
+              <SelectTrigger id="combo_discount_type">
+                <SelectValue placeholder="Select discount type" />
+              </SelectTrigger>
+              <SelectContent>
+                {benefitTypeOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="combo_discount_value">Combo Discount Value</Label>
+            <Input
+              id="combo_discount_value"
+              type="number"
+              min={0}
+              placeholder="Enter discount value"
+              value={formData.combo_discount_value || ''}
+              onChange={(e) => updateField('combo_discount_value', Number(e.target.value))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="combo_max_per_order">Max Combos Per Order</Label>
+            <Input
+              id="combo_max_per_order"
+              type="number"
+              min={1}
+              placeholder="Enter max combos"
+              value={formData.combo_max_per_order || ''}
+              onChange={(e) => updateField('combo_max_per_order', Number(e.target.value))}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
  
    const renderBillWiseFields = () => (
      <Card>
