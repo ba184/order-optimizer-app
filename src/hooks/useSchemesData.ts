@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type SchemeType = 'slab' | 'buy_x_get_y' | 'combo' | 'value_wise' | 'bill_wise' | 'display' | 'volume' | 'product' | 'opening';
+export type SchemeType = 'slab' | 'buy_x_get_y' | 'combo' | 'bill_wise' | 'display' | 'volume' | 'product' | 'opening';
 export type SchemeStatus = 'draft' | 'pending' | 'active' | 'expired' | 'closed' | 'cancelled';
 export type BenefitType = 'discount' | 'free_qty' | 'cashback' | 'points' | 'coupon';
 export type Applicability = 'all_outlets' | 'distributor' | 'retailer' | 'segment' | 'area' | 'zone';

@@ -92,7 +92,6 @@ const schemeTypes: { value: SchemeType; label: string }[] = [
   { value: 'buy_x_get_y', label: 'Buy X Get Y' },
   { value: 'combo', label: 'Combo' },
   { value: 'bill_wise', label: 'Bill Wise' },
-  { value: 'value_wise', label: 'Value Wise' },
 ];
 
 const statusOptions = [
@@ -352,11 +351,9 @@ function useOutletLocations(outlets: Outlet[]) {
          status: formData.status === 'inactive' ? 'cancelled' : formData.status as SchemeStatus,
         applicability: (formData.applicability === 'selected_outlets' ? 'segment' : formData.applicability || 'all_outlets') as Applicability,
          min_order_value: formData.type === 'slab' && formData.slabs.length > 0 ? formData.slabs[0].min_order_value : 
-                          formData.type === 'buy_x_get_y' ? formData.bxgy_min_order_value :
-                          formData.type === 'value_wise' ? formData.value_min_order_value : 0,
+                          formData.type === 'buy_x_get_y' ? formData.bxgy_min_order_value : 0,
          max_benefit: formData.type === 'slab' ? Math.max(...formData.slabs.map(s => s.max_benefit)) :
-                      formData.type === 'bill_wise' ? formData.bill_max_discount :
-                      formData.type === 'value_wise' ? formData.value_max_discount : 0,
+                      formData.type === 'bill_wise' ? formData.bill_max_discount : 0,
          slab_config: formData.type === 'slab' 
            ? formData.slabs.map(s => ({
                min_qty: s.min_order_value,
@@ -843,10 +840,8 @@ function useOutletLocations(outlets: Outlet[]) {
          return renderBuyXGetYFields();
        case 'combo':
          return renderComboFields();
-       case 'bill_wise':
-         return renderBillWiseFields();
-       case 'value_wise':
-         return renderValueWiseFields();
+        case 'bill_wise':
+          return renderBillWiseFields();
        default:
          return null;
      }

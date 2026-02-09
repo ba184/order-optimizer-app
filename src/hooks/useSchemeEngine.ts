@@ -219,7 +219,6 @@ export function useSchemeCalculation(
             break;
           }
 
-          case 'value_wise':
           case 'bill_wise': {
             const minValue = scheme.min_order_value || 0;
             if (itemsTotal >= minValue) {
