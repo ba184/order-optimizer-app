@@ -29,7 +29,7 @@ interface LeaveRequest {
   user_id: string;
   userName: string;
   leave_type: 'casual' | 'sick' | 'privilege' | 'lwp';
-  duration_type: 'full' | 'half' | 'partial';
+  duration_type: 'full' | 'half';
   start_date: string;
   end_date: string;
   days: number;
@@ -78,9 +78,6 @@ export default function LeaveManagementPage() {
     duration_type: 'full',
     start_date: '',
     end_date: '',
-    partial_date: '',
-    partial_from_time: '',
-    partial_to_time: '',
     reason: '',
   });
 
@@ -110,7 +107,6 @@ export default function LeaveManagementPage() {
     if (!start || !end) return 0;
     const totalDays = differenceInDays(new Date(end), new Date(start)) + 1;
     if (durationType === 'half') return totalDays * 0.5;
-    if (durationType === 'partial') return 0.5; // Partial is always for one day
     return totalDays;
   };
 
@@ -148,18 +144,9 @@ export default function LeaveManagementPage() {
   };
 
   const handleApplyLeave = async () => {
-    const isPartial = newLeave.duration_type === 'partial';
-    
-    if (isPartial) {
-      if (!newLeave.partial_date || !newLeave.partial_from_time || !newLeave.partial_to_time || !newLeave.reason) {
-        toast.error('Please fill all required fields');
-        return;
-      }
-    } else {
-      if (!newLeave.start_date || !newLeave.end_date || !newLeave.reason) {
-        toast.error('Please fill all required fields');
-        return;
-      }
+    if (!newLeave.start_date || !newLeave.end_date || !newLeave.reason) {
+      toast.error('Please fill all required fields');
+      return;
     }
 
     const userId = newLeave.employee_id || user?.id;
@@ -168,12 +155,10 @@ export default function LeaveManagementPage() {
       return;
     }
 
-    const startDate = isPartial ? newLeave.partial_date : newLeave.start_date;
-    const endDate = isPartial ? newLeave.partial_date : newLeave.end_date;
-    const days = calculateDays(startDate, endDate, newLeave.duration_type);
+    const days = calculateDays(newLeave.start_date, newLeave.end_date, newLeave.duration_type);
     
     // Check for overlapping leaves
-    if (hasOverlappingLeave(startDate, endDate, userId)) {
+    if (hasOverlappingLeave(newLeave.start_date, newLeave.end_date, userId)) {
       toast.error('Leave dates overlap with existing leave');
       return;
     }
@@ -189,12 +174,10 @@ export default function LeaveManagementPage() {
 
     await createLeave.mutateAsync({
       leave_type: newLeave.leave_type,
-      start_date: startDate,
-      end_date: endDate,
+      start_date: newLeave.start_date,
+      end_date: newLeave.end_date,
       days,
-      reason: isPartial 
-        ? `${newLeave.reason} (${newLeave.partial_from_time} - ${newLeave.partial_to_time})`
-        : newLeave.reason,
+      reason: newLeave.reason,
       duration_type: newLeave.duration_type,
       user_id: userId,
       applied_by: user?.id,
@@ -210,9 +193,6 @@ export default function LeaveManagementPage() {
       duration_type: 'full', 
       start_date: '', 
       end_date: '', 
-      partial_date: '',
-      partial_from_time: '',
-      partial_to_time: '',
       reason: '' 
     });
   };
@@ -359,11 +339,8 @@ export default function LeaveManagementPage() {
   }), [filteredLeaveRequests]);
 
   const leaveDaysCount = useMemo(() => {
-    const isPartial = newLeave.duration_type === 'partial';
-    const startDate = isPartial ? newLeave.partial_date : newLeave.start_date;
-    const endDate = isPartial ? newLeave.partial_date : newLeave.end_date;
-    return calculateDays(startDate, endDate, newLeave.duration_type);
-  }, [newLeave.start_date, newLeave.end_date, newLeave.partial_date, newLeave.duration_type]);
+    return calculateDays(newLeave.start_date, newLeave.end_date, newLeave.duration_type);
+  }, [newLeave.start_date, newLeave.end_date, newLeave.duration_type]);
 
   const availableBalance = useMemo(() => {
     const userId = newLeave.employee_id || user?.id;
@@ -562,66 +539,31 @@ export default function LeaveManagementPage() {
                   >
                     <option value="full">Full Day</option>
                     <option value="half">Half Day</option>
-                    <option value="partial">Partial</option>
                   </select>
                 </div>
               </div>
 
-              {/* Conditional Date Fields based on Duration Type */}
-              {newLeave.duration_type === 'partial' ? (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Date *</label>
-                    <input
-                      type="date"
-                      value={newLeave.partial_date}
-                      onChange={e => setNewLeave({ ...newLeave, partial_date: e.target.value })}
-                      className="input-field"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">From Time *</label>
-                      <input
-                        type="time"
-                        value={newLeave.partial_from_time}
-                        onChange={e => setNewLeave({ ...newLeave, partial_from_time: e.target.value })}
-                        className="input-field"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">To Time *</label>
-                      <input
-                        type="time"
-                        value={newLeave.partial_to_time}
-                        onChange={e => setNewLeave({ ...newLeave, partial_to_time: e.target.value })}
-                        className="input-field"
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">From Date *</label>
-                    <input
-                      type="date"
-                      value={newLeave.start_date}
-                      onChange={e => setNewLeave({ ...newLeave, start_date: e.target.value })}
-                      className="input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">To Date *</label>
-                    <input
-                      type="date"
-                      value={newLeave.end_date}
-                      onChange={e => setNewLeave({ ...newLeave, end_date: e.target.value })}
-                      className="input-field"
-                    />
-                  </div>
+              {/* Date Fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">From Date *</label>
+                  <input
+                    type="date"
+                    value={newLeave.start_date}
+                    onChange={e => setNewLeave({ ...newLeave, start_date: e.target.value })}
+                    className="input-field"
+                  />
                 </div>
-              )}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">To Date *</label>
+                  <input
+                    type="date"
+                    value={newLeave.end_date}
+                    onChange={e => setNewLeave({ ...newLeave, end_date: e.target.value })}
+                    className="input-field"
+                  />
+                </div>
+              </div>
 
               {/* Readonly Info */}
               <div className="grid grid-cols-2 gap-4 p-3 bg-muted/30 rounded-lg">
