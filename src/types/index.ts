@@ -1,4 +1,4 @@
-export type UserRole = 'sales_executive' | 'asm' | 'rsm' | 'admin';
+export type UserRole = 'sales_executive' | 'manager' | 'admin' | 'warehouse_manager';
 
 export interface GeoHierarchy {
   country: string;

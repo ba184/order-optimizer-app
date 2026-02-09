@@ -60,9 +60,9 @@ export const employees = [
   { id: 'se-003', name: 'Priya Singh', role: 'sales_executive', zone: 'North Zone', city: 'New Delhi', area: 'Lajpat Nagar' },
   { id: 'se-004', name: 'Vikram Patel', role: 'sales_executive', zone: 'East Zone', city: 'Preet Vihar', area: 'Preet Vihar' },
   { id: 'se-005', name: 'Sunita Gupta', role: 'sales_executive', zone: 'South Zone', city: 'Saket', area: 'Saket' },
-  { id: 'asm-001', name: 'Priya Sharma', role: 'asm', zone: 'North Zone', city: '', area: '' },
-  { id: 'asm-002', name: 'Rahul Mehta', role: 'asm', zone: 'South Zone', city: '', area: '' },
-  { id: 'rsm-001', name: 'Vikram Singh', role: 'rsm', zone: '', city: '', area: '' },
+  { id: 'mgr-001', name: 'Priya Sharma', role: 'manager', zone: 'North Zone', city: '', area: '' },
+  { id: 'mgr-002', name: 'Rahul Mehta', role: 'manager', zone: 'South Zone', city: '', area: '' },
+  { id: 'mgr-003', name: 'Vikram Singh', role: 'manager', zone: '', city: '', area: '' },
 ];
 
 export interface GeoFilter {

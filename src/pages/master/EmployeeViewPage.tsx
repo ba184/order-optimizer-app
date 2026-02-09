@@ -11,9 +11,9 @@ import { Label } from '@/components/ui/label';
 
 const roleColors: Record<string, string> = {
   sales_executive: 'bg-info/10 text-info',
-  asm: 'bg-secondary/10 text-secondary',
-  rsm: 'bg-warning/10 text-warning',
+  manager: 'bg-secondary/10 text-secondary',
   admin: 'bg-primary/10 text-primary',
+  warehouse_manager: 'bg-warning/10 text-warning',
 };
 
 export default function EmployeeViewPage() {
