@@ -73,6 +73,8 @@ import TerritoryFormPage from "./pages/master/TerritoryFormPage";
 import TerritoryViewPage from "./pages/master/TerritoryViewPage";
 import SettingsPage from "./pages/SettingsPage";
 import ExpenseManagementPage from "./pages/ExpenseManagementPage";
+import ExpenseFormPage from "./pages/expenses/ExpenseFormPage";
+import ExpenseViewPage from "./pages/expenses/ExpenseViewPage";
 import SampleGiftManagementPage from "./pages/SampleGiftManagementPage";
 import InventoryManagementPage from "./pages/InventoryManagementPage";
 import PreOrderBookingPage from "./pages/PreOrderBookingPage";
@@ -162,6 +164,8 @@ function AppRoutes() {
       
       {/* Expenses */}
       <Route path="/expenses" element={<ProtectedRoute><ExpenseManagementPage /></ProtectedRoute>} />
+      <Route path="/expenses/new" element={<ProtectedRoute><ExpenseFormPage /></ProtectedRoute>} />
+      <Route path="/expenses/:id" element={<ProtectedRoute><ExpenseViewPage /></ProtectedRoute>} />
       
       {/* Sample & Gift */}
       <Route path="/samples" element={<ProtectedRoute><SampleGiftManagementPage /></ProtectedRoute>} />
