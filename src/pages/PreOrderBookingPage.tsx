@@ -267,52 +267,6 @@ export default function PreOrderBookingPage() {
           </div>
         </motion.div>
       </div>
-
-      {/* Upcoming Schemes */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl border border-border p-6 shadow-sm">
-        <h3 className="font-semibold text-foreground mb-4">Upcoming Schemes - Pre-Order Targets</h3>
-        {schemes.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">No active schemes available</p>
-        ) : (
-          <div className="grid md:grid-cols-3 gap-4">
-            {schemes.map(scheme => {
-              const progress = scheme.pre_order_target > 0 
-                ? (scheme.pre_order_achieved / scheme.pre_order_target) * 100 
-                : 0;
-              return (
-                <div key={scheme.id} className="p-4 bg-muted/30 rounded-lg">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="font-medium text-foreground">{scheme.name}</p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar size={12} />
-                        Launch: {scheme.launch_date}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{progress.toFixed(0)}%</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${progress >= 100 ? 'bg-success' : 'bg-primary'}`}
-                        style={{ width: `${Math.min(progress, 100)}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Achieved: {scheme.pre_order_achieved.toLocaleString()}</span>
-                      <span>Target: {scheme.pre_order_target.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </motion.div>
-
       {/* Pre-Orders Table */}
       {preOrders.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-12 text-center">
@@ -347,7 +301,7 @@ export default function PreOrderBookingPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Distributor *</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Distributor / Retailer *</label>
                 <select 
                   value={selectedDistributor}
                   onChange={e => setSelectedDistributor(e.target.value)}
