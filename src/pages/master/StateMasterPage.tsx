@@ -15,10 +15,13 @@ export default function StateMasterPage() {
 
   const [deleteModal, setDeleteModal] = useState<State | null>(null);
   const [countryFilter, setCountryFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const filteredData = countryFilter === 'all' 
-    ? states 
-    : states.filter(s => s.country_id === countryFilter);
+  const filteredData = states.filter(s => {
+    if (countryFilter !== 'all' && s.country_id !== countryFilter) return false;
+    if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+    return true;
+  });
 
   const handleDelete = async () => {
     if (deleteModal) {
@@ -97,7 +100,7 @@ export default function StateMasterPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-secondary/10">
@@ -144,6 +147,18 @@ export default function StateMasterPage() {
             {countries.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
+          </select>
+        </div>
+
+        <div className="stat-card flex items-center">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="input-field"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
           </select>
         </div>
       </div>
