@@ -499,6 +499,18 @@ export default function SampleGiftManagementPage() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Quantity *</label>
+                <input
+                  type="number"
+                  value={giftData.stock || ''}
+                  onChange={(e) => setGiftData({ ...giftData, stock: parseInt(e.target.value) || 0 })}
+                  className="input-field"
+                  placeholder="Enter quantity"
+                  min="1"
+                />
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Description</label>
                 <textarea
                   value={giftData.description}
@@ -621,7 +633,7 @@ export default function SampleGiftManagementPage() {
                 disabled={issueMutation.isPending || !issueData.employee_id || issueData.items.length === 0}
                 className="flex-1 btn-primary disabled:opacity-50"
               >
-                {issueMutation.isPending ? 'Issuing...' : isAdmin ? 'Issue & Approve' : 'Submit for Approval'}
+                {issueMutation.isPending ? 'Issuing...' : 'Issue'}
               </button>
             </div>
           </motion.div>

@@ -26,7 +26,6 @@
  slab: 'Slab',
  buy_x_get_y: 'Buy X Get Y',
  combo: 'Combo',
- value_wise: 'Value-wise',
  bill_wise: 'Bill-wise',
  display: 'Display',
  volume: 'Volume',
@@ -38,7 +37,6 @@
  slab: 'bg-primary/10 text-primary border-primary/20',
  buy_x_get_y: 'bg-success/10 text-success border-success/20',
  combo: 'bg-secondary/10 text-secondary border-secondary/20',
- value_wise: 'bg-warning/10 text-warning border-warning/20',
  bill_wise: 'bg-info/10 text-info border-info/20',
  display: 'bg-accent/10 text-accent-foreground border-accent/20',
  };

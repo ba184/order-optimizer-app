@@ -44,7 +44,6 @@ const typeColors: Record<string, string> = {
   slab: 'bg-primary/10 text-primary',
   buy_x_get_y: 'bg-success/10 text-success',
   combo: 'bg-secondary/10 text-secondary',
-  value_wise: 'bg-warning/10 text-warning',
   bill_wise: 'bg-info/10 text-info',
   display: 'bg-accent/10 text-accent-foreground',
   volume: 'bg-primary/10 text-primary',
@@ -73,7 +72,6 @@ const schemeTypeLabels: Record<SchemeType, string> = {
   slab: 'Slab',
   buy_x_get_y: 'Buy X Get Y',
   combo: 'Combo',
-  value_wise: 'Value-wise',
   bill_wise: 'Bill-wise',
   display: 'Display',
   volume: 'Volume',
@@ -575,7 +573,7 @@ export default function SchemesPage() {
 
       {/* Scheme Type Tabs */}
       <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit overflow-x-auto">
-        {(['All', 'slab', 'buy_x_get_y', 'combo', 'value_wise', 'bill_wise', 'display'] as const).map(tab => (
+        {(['All', 'slab', 'buy_x_get_y', 'combo', 'bill_wise', 'display'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -661,7 +659,6 @@ export default function SchemesPage() {
                     <option value="slab">Slab</option>
                     <option value="buy_x_get_y">Buy X Get Y</option>
                     <option value="combo">Combo</option>
-                    <option value="value_wise">Value-wise</option>
                     <option value="bill_wise">Bill-wise</option>
                     <option value="display">Display</option>
                   </select>

@@ -64,7 +64,6 @@ function getSchemeLabel(scheme: Scheme): string {
         return `${firstSlab.benefit_value}% off on ${firstSlab.min_qty}+ units`;
       }
       return scheme.name;
-    case 'value_wise':
     case 'bill_wise':
       return `${scheme.discount_percent || 0}% off on ₹${scheme.min_order_value || 0}+`;
     case 'volume':
