@@ -6,6 +6,7 @@ const roleLabels: Record<string, string> = {
   asm: 'Area Sales Manager',
   rsm: 'Regional Sales Manager',
   admin: 'Administrator',
+  warehouse_manager: 'Warehouse Manager',
 };
 
 export function Header() {
