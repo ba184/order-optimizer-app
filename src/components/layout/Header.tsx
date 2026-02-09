@@ -3,8 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const roleLabels: Record<string, string> = {
   sales_executive: 'Sales Executive',
-  asm: 'Area Sales Manager',
-  rsm: 'Regional Sales Manager',
+  manager: 'Manager',
   admin: 'Administrator',
   warehouse_manager: 'Warehouse Manager',
 };
