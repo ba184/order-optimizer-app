@@ -5,7 +5,6 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   Plus,
   Gift,
-  Package,
   Users,
   TrendingUp,
   Eye,
@@ -21,7 +20,6 @@ import {
   useSampleIssues,
   useCurrentBudget,
   useCreateSample,
-  useUpdateSample,
   useIssueSample,
   useApproveSampleIssue,
   useRejectSampleIssue,
@@ -29,14 +27,13 @@ import {
   Sample,
   SampleIssue,
 } from '@/hooks/useSamplesData';
-import { useProducts } from '@/hooks/useProductsData';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SampleGiftManagementPage() {
   const { userRole } = useAuth();
   const isAdmin = userRole === 'admin' || (userRole as any)?.code === 'admin';
   
-  const [activeTab, setActiveTab] = useState<'samples' | 'issues'>('samples');
+  const [activeTab, setActiveTab] = useState<'gifts' | 'issues'>('gifts');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -46,38 +43,31 @@ export default function SampleGiftManagementPage() {
 
   const [issueData, setIssueData] = useState({
     employee_id: '',
-    item_type: 'sample',
     items: [] as { sample_id: string; quantity: number }[],
     remarks: '',
   });
 
-  const [sampleData, setSampleData] = useState({
+  const [giftData, setGiftData] = useState({
     sku: '',
     name: '',
-    type: 'sample',
     cost_price: 0,
     stock: 0,
     description: '',
-    product_id: '',
     status: 'active',
   });
 
-  const { data: samples = [], isLoading: loadingSamples } = useSamples();
+  const { data: allItems = [], isLoading: loadingItems } = useSamples();
   const { data: issues = [], isLoading: loadingIssues } = useSampleIssues(statusFilter);
   const { data: budget } = useCurrentBudget();
-  const { data: products = [] } = useProducts();
   const { data: employees = [] } = useEmployeesForSamples();
   
-  const createSampleMutation = useCreateSample();
+  // Filter only gifts
+  const gifts = allItems.filter(item => item.type === 'gift');
+  
+  const createGiftMutation = useCreateSample();
   const issueMutation = useIssueSample();
   const approveMutation = useApproveSampleIssue();
   const rejectMutation = useRejectSampleIssue();
-
-  const filteredSamples = samples.filter(s => {
-    if (issueData.item_type === 'sample') return s.type === 'sample';
-    if (issueData.item_type === 'gift') return s.type === 'gift';
-    return true;
-  });
 
   const handleIssue = () => {
     if (!issueData.employee_id || issueData.items.length === 0) return;
@@ -91,25 +81,24 @@ export default function SampleGiftManagementPage() {
       {
         onSuccess: () => {
           setShowIssueModal(false);
-          setIssueData({ employee_id: '', item_type: 'sample', items: [], remarks: '' });
+          setIssueData({ employee_id: '', items: [], remarks: '' });
         },
       }
     );
   };
 
-  const handleCreateSample = () => {
-    createSampleMutation.mutate({
-      sku: sampleData.sku,
-      name: sampleData.name,
-      type: sampleData.type,
-      cost_price: sampleData.cost_price,
-      stock: sampleData.stock,
-      description: sampleData.description || undefined,
-      product_id: sampleData.product_id || undefined,
+  const handleCreateGift = () => {
+    createGiftMutation.mutate({
+      sku: giftData.sku,
+      name: giftData.name,
+      type: 'gift', // Always gift
+      cost_price: giftData.cost_price,
+      stock: giftData.stock,
+      description: giftData.description || undefined,
     }, {
       onSuccess: () => {
         setShowCreateModal(false);
-        setSampleData({ sku: '', name: '', type: 'sample', cost_price: 0, stock: 0, description: '', product_id: '', status: 'active' });
+        setGiftData({ sku: '', name: '', cost_price: 0, stock: 0, description: '', status: 'active' });
       },
     });
   };
@@ -124,59 +113,44 @@ export default function SampleGiftManagementPage() {
     setRejectReason('');
   };
 
-  const addItemToIssue = (sampleId: string) => {
-    if (issueData.items.find(i => i.sample_id === sampleId)) return;
+  const addItemToIssue = (giftId: string) => {
+    if (issueData.items.find(i => i.sample_id === giftId)) return;
     setIssueData({
       ...issueData,
-      items: [...issueData.items, { sample_id: sampleId, quantity: 1 }],
+      items: [...issueData.items, { sample_id: giftId, quantity: 1 }],
     });
   };
 
-  const updateItemQuantity = (sampleId: string, quantity: number) => {
+  const updateItemQuantity = (giftId: string, quantity: number) => {
     setIssueData({
       ...issueData,
       items: issueData.items.map(i => 
-        i.sample_id === sampleId ? { ...i, quantity: Math.max(1, quantity) } : i
+        i.sample_id === giftId ? { ...i, quantity: Math.max(1, quantity) } : i
       ),
     });
   };
 
-  const removeItemFromIssue = (sampleId: string) => {
+  const removeItemFromIssue = (giftId: string) => {
     setIssueData({
       ...issueData,
-      items: issueData.items.filter(i => i.sample_id !== sampleId),
+      items: issueData.items.filter(i => i.sample_id !== giftId),
     });
   };
 
-  const sampleColumns = [
+  const giftColumns = [
     {
       key: 'name',
-      header: 'Item Name',
+      header: 'Gift Name',
       render: (item: Sample) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-            {item.type === 'gift' ? (
-              <Gift size={20} className="text-secondary" />
-            ) : (
-              <Package size={20} className="text-primary" />
-            )}
+            <Gift size={20} className="text-secondary" />
           </div>
           <div>
             <p className="font-medium text-foreground">{item.name}</p>
             <p className="text-xs text-muted-foreground">{item.sku}</p>
           </div>
         </div>
-      ),
-    },
-    {
-      key: 'type',
-      header: 'Item Type',
-      render: (item: Sample) => (
-        <span className={`px-2 py-1 rounded text-xs font-medium ${
-          item.type === 'gift' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'
-        }`}>
-          {item.type === 'gift' ? 'Gift' : 'Sample'}
-        </span>
       ),
     },
     {
@@ -190,6 +164,11 @@ export default function SampleGiftManagementPage() {
       key: 'cost_price',
       header: 'Cost Price',
       render: (item: Sample) => <span>₹{Number(item.cost_price).toLocaleString()}</span>,
+    },
+    {
+      key: 'issued_this_month',
+      header: 'Issued (MTD)',
+      render: (item: Sample) => <span>{item.issued_this_month || 0}</span>,
     },
     {
       key: 'status',
@@ -222,23 +201,12 @@ export default function SampleGiftManagementPage() {
     },
     {
       key: 'issued_to_name',
-      header: 'Employee Name',
+      header: 'Executive Name',
       render: (item: SampleIssue) => <span>{item.issued_to_name}</span>,
     },
     {
-      key: 'sample_type',
-      header: 'Item Type',
-      render: (item: SampleIssue) => (
-        <span className={`px-2 py-1 rounded text-xs font-medium ${
-          (item as any).sample_type === 'gift' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'
-        }`}>
-          {(item as any).sample_type === 'gift' ? 'Gift' : 'Sample'}
-        </span>
-      ),
-    },
-    {
       key: 'sample_name',
-      header: 'Item Name',
+      header: 'Gift Name',
       render: (item: SampleIssue) => <span>{item.sample_name}</span>,
     },
     {
@@ -297,14 +265,14 @@ export default function SampleGiftManagementPage() {
   ];
 
   const stats = {
-    totalSamples: samples.filter((s) => s.type === 'sample').length,
-    totalGifts: samples.filter((s) => s.type === 'gift').length,
-    issuedThisMonth: samples.reduce((sum, s) => sum + (s.issued_this_month || 0), 0),
+    totalGifts: gifts.length,
+    totalStock: gifts.reduce((sum, g) => sum + g.stock, 0),
+    issuedThisMonth: gifts.reduce((sum, g) => sum + (g.issued_this_month || 0), 0),
     conversionRate:
-      samples.reduce((sum, s) => sum + (s.issued_this_month || 0), 0) > 0
+      gifts.reduce((sum, g) => sum + (g.issued_this_month || 0), 0) > 0
         ? (
-            (samples.reduce((sum, s) => sum + (s.conversions || 0), 0) /
-              samples.reduce((sum, s) => sum + (s.issued_this_month || 0), 0)) *
+            (gifts.reduce((sum, g) => sum + (g.conversions || 0), 0) /
+              gifts.reduce((sum, g) => sum + (g.issued_this_month || 0), 0)) *
             100
           ).toFixed(0)
         : 0,
@@ -313,7 +281,7 @@ export default function SampleGiftManagementPage() {
   const executiveBudget = budget || { monthly_budget: 5000, used_amount: 0 };
   const budgetRemaining = Number(executiveBudget.monthly_budget) - Number(executiveBudget.used_amount);
 
-  if (loadingSamples || loadingIssues) {
+  if (loadingItems || loadingIssues) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -326,17 +294,17 @@ export default function SampleGiftManagementPage() {
       {/* Header */}
       <div className="module-header">
         <div>
-          <h1 className="module-title">Sample & Gift Management</h1>
-          <p className="text-muted-foreground">Manage stock, issue samples/gifts, and track conversions</p>
+          <h1 className="module-title">Gift Management</h1>
+          <p className="text-muted-foreground">Manage gift stock and issue gifts to executives</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowCreateModal(true)} className="btn-outline flex items-center gap-2">
             <Plus size={18} />
-            Add Stock
+            Add Gift
           </button>
           <button onClick={() => setShowIssueModal(true)} className="btn-primary flex items-center gap-2">
             <Plus size={18} />
-            Issue to FSE
+            Issue Gift
           </button>
         </div>
       </div>
@@ -345,24 +313,24 @@ export default function SampleGiftManagementPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <Package size={24} className="text-primary" />
+            <div className="p-3 rounded-xl bg-secondary/10">
+              <Gift size={24} className="text-secondary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalSamples}</p>
-              <p className="text-sm text-muted-foreground">Sample SKUs</p>
+              <p className="text-2xl font-bold text-foreground">{stats.totalGifts}</p>
+              <p className="text-sm text-muted-foreground">Gift Types</p>
             </div>
           </div>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-secondary/10">
-              <Gift size={24} className="text-secondary" />
+            <div className="p-3 rounded-xl bg-primary/10">
+              <Gift size={24} className="text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalGifts}</p>
-              <p className="text-sm text-muted-foreground">Gift Items</p>
+              <p className="text-2xl font-bold text-foreground">{stats.totalStock}</p>
+              <p className="text-sm text-muted-foreground">Total Stock</p>
             </div>
           </div>
         </motion.div>
@@ -436,12 +404,12 @@ export default function SampleGiftManagementPage() {
       {/* Tabs */}
       <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
         <button
-          onClick={() => setActiveTab('samples')}
+          onClick={() => setActiveTab('gifts')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'samples' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+            activeTab === 'gifts' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
           }`}
         >
-          Stock Master
+          Gift Stock
         </button>
         <button
           onClick={() => setActiveTab('issues')}
@@ -473,13 +441,13 @@ export default function SampleGiftManagementPage() {
       )}
 
       {/* Content */}
-      {activeTab === 'samples' ? (
-        <DataTable data={samples} columns={sampleColumns} searchPlaceholder="Search samples..." />
+      {activeTab === 'gifts' ? (
+        <DataTable data={gifts} columns={giftColumns} searchPlaceholder="Search gifts..." />
       ) : (
         <DataTable data={issues} columns={issueColumns} searchPlaceholder="Search issues..." />
       )}
 
-      {/* Create Sample Modal */}
+      {/* Create Gift Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
@@ -487,57 +455,16 @@ export default function SampleGiftManagementPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-4">Add Stock Item</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Add Gift Item</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Item Type *</label>
-                <select
-                  value={sampleData.type}
-                  onChange={(e) => setSampleData({ ...sampleData, type: e.target.value })}
-                  className="input-field"
-                >
-                  <option value="sample">Sample</option>
-                  <option value="gift">Gift</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Link to Product (Optional)</label>
-                <select
-                  value={sampleData.product_id}
-                  onChange={(e) => {
-                    const selectedProduct = products.find(p => p.id === e.target.value);
-                    if (selectedProduct) {
-                      setSampleData({
-                        ...sampleData,
-                        product_id: e.target.value,
-                        sku: `SMP-${selectedProduct.sku}`,
-                        name: `${selectedProduct.name} (Sample)`,
-                        cost_price: Math.round(Number(selectedProduct.ptr) * 0.5),
-                      });
-                    } else {
-                      setSampleData({ ...sampleData, product_id: '' });
-                    }
-                  }}
-                  className="input-field"
-                >
-                  <option value="">Select a product (optional)</option>
-                  {products.filter(p => p.status === 'active').map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.sku})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Item Name *</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Gift Name *</label>
                 <input
                   type="text"
-                  value={sampleData.name}
-                  onChange={(e) => setSampleData({ ...sampleData, name: e.target.value })}
+                  value={giftData.name}
+                  onChange={(e) => setGiftData({ ...giftData, name: e.target.value })}
                   className="input-field"
-                  placeholder="Sample/Gift name"
+                  placeholder="e.g., T-Shirt, Hoodie, Cap"
                 />
               </div>
 
@@ -545,10 +472,10 @@ export default function SampleGiftManagementPage() {
                 <label className="block text-sm font-medium text-foreground mb-2">SKU Code *</label>
                 <input
                   type="text"
-                  value={sampleData.sku}
-                  onChange={(e) => setSampleData({ ...sampleData, sku: e.target.value })}
+                  value={giftData.sku}
+                  onChange={(e) => setGiftData({ ...giftData, sku: e.target.value })}
                   className="input-field"
-                  placeholder="e.g., SMP-001"
+                  placeholder="e.g., GFT-001"
                 />
               </div>
 
@@ -556,8 +483,8 @@ export default function SampleGiftManagementPage() {
                 <label className="block text-sm font-medium text-foreground mb-2">Quantity Available *</label>
                 <input
                   type="number"
-                  value={sampleData.stock || ''}
-                  onChange={(e) => setSampleData({ ...sampleData, stock: parseInt(e.target.value) || 0 })}
+                  value={giftData.stock || ''}
+                  onChange={(e) => setGiftData({ ...giftData, stock: parseInt(e.target.value) || 0 })}
                   className="input-field"
                   placeholder="Enter quantity"
                 />
@@ -567,8 +494,8 @@ export default function SampleGiftManagementPage() {
                 <label className="block text-sm font-medium text-foreground mb-2">Cost Price (₹) *</label>
                 <input
                   type="number"
-                  value={sampleData.cost_price || ''}
-                  onChange={(e) => setSampleData({ ...sampleData, cost_price: parseFloat(e.target.value) || 0 })}
+                  value={giftData.cost_price || ''}
+                  onChange={(e) => setGiftData({ ...giftData, cost_price: parseFloat(e.target.value) || 0 })}
                   className="input-field"
                   placeholder="Enter cost price"
                 />
@@ -577,11 +504,11 @@ export default function SampleGiftManagementPage() {
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Description</label>
                 <textarea
-                  value={sampleData.description}
-                  onChange={(e) => setSampleData({ ...sampleData, description: e.target.value })}
+                  value={giftData.description}
+                  onChange={(e) => setGiftData({ ...giftData, description: e.target.value })}
                   rows={2}
                   className="input-field resize-none"
-                  placeholder="Optional description"
+                  placeholder="Optional description (e.g., size, color)"
                 />
               </div>
             </div>
@@ -591,18 +518,18 @@ export default function SampleGiftManagementPage() {
                 Cancel
               </button>
               <button
-                onClick={handleCreateSample}
-                disabled={createSampleMutation.isPending || !sampleData.name || !sampleData.sku}
+                onClick={handleCreateGift}
+                disabled={createGiftMutation.isPending || !giftData.name || !giftData.sku}
                 className="flex-1 btn-primary disabled:opacity-50"
               >
-                {createSampleMutation.isPending ? 'Creating...' : 'Create'}
+                {createGiftMutation.isPending ? 'Creating...' : 'Create Gift'}
               </button>
             </div>
           </motion.div>
         </div>
       )}
 
-      {/* Issue Sample Modal */}
+      {/* Issue Gift Modal */}
       {showIssueModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
@@ -610,16 +537,16 @@ export default function SampleGiftManagementPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-card rounded-xl border border-border p-6 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-4">Issue Sample/Gift to FSE</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Issue Gift to Executive</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Employee *</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Executive *</label>
                 <select
                   value={issueData.employee_id}
                   onChange={(e) => setIssueData({ ...issueData, employee_id: e.target.value })}
                   className="input-field"
                 >
-                  <option value="">Select Employee</option>
+                  <option value="">Select Executive</option>
                   {employees.map((emp) => (
                     <option key={emp.id} value={emp.id}>{emp.name}</option>
                   ))}
@@ -627,20 +554,7 @@ export default function SampleGiftManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Item Type</label>
-                <select
-                  value={issueData.item_type}
-                  onChange={(e) => setIssueData({ ...issueData, item_type: e.target.value, items: [] })}
-                  className="input-field"
-                >
-                  <option value="sample">Sample</option>
-                  <option value="gift">Gift</option>
-                  <option value="both">Both</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Select Items *</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Select Gifts *</label>
                 <select
                   onChange={(e) => {
                     if (e.target.value) addItemToIssue(e.target.value);
@@ -648,12 +562,12 @@ export default function SampleGiftManagementPage() {
                   }}
                   className="input-field"
                 >
-                  <option value="">Add item...</option>
-                  {filteredSamples
-                    .filter(s => s.status === 'active' && !issueData.items.find(i => i.sample_id === s.id))
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} (Stock: {s.stock})
+                  <option value="">Add gift...</option>
+                  {gifts
+                    .filter(g => g.status === 'active' && !issueData.items.find(i => i.sample_id === g.id))
+                    .map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name} (Stock: {g.stock})
                       </option>
                     ))}
                 </select>
@@ -662,19 +576,19 @@ export default function SampleGiftManagementPage() {
               {issueData.items.length > 0 && (
                 <div className="space-y-2">
                   {issueData.items.map((item) => {
-                    const sample = samples.find(s => s.id === item.sample_id);
+                    const gift = gifts.find(g => g.id === item.sample_id);
                     return (
                       <div key={item.sample_id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{sample?.name}</p>
-                          <p className="text-xs text-muted-foreground">Available: {sample?.stock}</p>
+                          <p className="font-medium text-sm">{gift?.name}</p>
+                          <p className="text-xs text-muted-foreground">Available: {gift?.stock}</p>
                         </div>
                         <input
                           type="number"
                           value={item.quantity}
                           onChange={(e) => updateItemQuantity(item.sample_id, parseInt(e.target.value) || 1)}
                           min={1}
-                          max={sample?.stock}
+                          max={gift?.stock}
                           className="w-20 input-field text-center"
                         />
                         <button
@@ -738,11 +652,11 @@ export default function SampleGiftManagementPage() {
                 <span className="font-medium">{viewingIssue.id.slice(0, 8).toUpperCase()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Employee</span>
+                <span className="text-muted-foreground">Executive</span>
                 <span className="font-medium">{viewingIssue.issued_to_name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Item</span>
+                <span className="text-muted-foreground">Gift</span>
                 <span className="font-medium">{viewingIssue.sample_name}</span>
               </div>
               <div className="flex justify-between">
