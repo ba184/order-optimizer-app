@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type RoleCode = 'sales_executive' | 'asm' | 'rsm' | 'admin';
+type RoleCode = 'sales_executive' | 'manager' | 'admin' | 'warehouse_manager';
 
 interface NavChild {
   label: string;
@@ -61,12 +61,12 @@ const navigationItems: NavItem[] = [
     label: 'Dashboard',
     icon: LayoutDashboard,
     path: '/dashboard',
-    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
+    roles: ['sales_executive', 'manager', 'admin', 'warehouse_manager'],
   },
   {
     label: 'Sales Team',
     icon: Users,
-    roles: ['asm', 'rsm', 'admin'],
+    roles: ['manager', 'admin'],
     children: [
       { label: 'Attendance', path: '/sales-team/attendance', icon: MapPin },
       { label: 'Beat Plans', path: '/sales-team/beat-plans', icon: Target },
@@ -90,7 +90,7 @@ const navigationItems: NavItem[] = [
   {
     label: 'Outlets',
     icon: Store,
-    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
+    roles: ['sales_executive', 'manager', 'admin', 'warehouse_manager'],
     children: [
       { label: 'Distributors', path: '/outlets/distributors', icon: Building2 },
       { label: 'Retailers', path: '/outlets/retailers', icon: Store },
@@ -100,7 +100,7 @@ const navigationItems: NavItem[] = [
   {
     label: 'Orders',
     icon: ShoppingCart,
-    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
+    roles: ['sales_executive', 'manager', 'admin', 'warehouse_manager'],
     children: [
       { label: 'All Orders', path: '/orders/list', icon: ClipboardList },
       { label: 'Pre-Orders', path: '/pre-orders', icon: Calendar },
@@ -110,43 +110,43 @@ const navigationItems: NavItem[] = [
     label: 'Inventory',
     icon: Box,
     path: '/inventory',
-    roles: ['asm', 'rsm', 'admin'],
+    roles: ['manager', 'admin', 'warehouse_manager'],
   },
   {
     label: 'Expenses',
     icon: Wallet,
     path: '/expenses',
-    roles: ['asm', 'rsm', 'admin'],
+    roles: ['manager', 'admin'],
   },
   {
     label: 'Gifts',
     icon: Gift,
     path: '/samples',
-    roles: ['sales_executive', 'asm', 'rsm', 'admin'],
+    roles: ['sales_executive', 'manager', 'admin', 'warehouse_manager'],
   },
   {
     label: 'Marketing Collateral',
     icon: Package,
     path: '/collaterals',
-    roles: ['asm', 'rsm', 'admin'],
+    roles: ['manager', 'admin', 'warehouse_manager'],
   },
   {
     label: 'Feedback',
     icon: MessageSquare,
     path: '/feedback',
-    roles: ['asm', 'rsm', 'admin'],
+    roles: ['manager', 'admin', 'warehouse_manager'],
   },
   {
     label: 'Returns',
     icon: RotateCcw,
     path: '/returns',
-    roles: ['asm', 'rsm', 'admin'],
+    roles: ['manager', 'admin', 'warehouse_manager'],
   },
   {
     label: 'Reports',
     icon: BarChart3,
     path: '/reports',
-    roles: ['asm', 'rsm', 'admin'],
+    roles: ['manager', 'admin', 'warehouse_manager'],
   },
   {
     label: 'Employees',
@@ -194,9 +194,9 @@ const navigationItems: NavItem[] = [
 
 const roleLabels: Record<string, string> = {
   sales_executive: 'Sales Executive',
-  asm: 'Area Sales Manager',
-  rsm: 'Regional Sales Manager',
+  manager: 'Manager',
   admin: 'Administrator',
+  warehouse_manager: 'Warehouse Manager',
 };
 
 export function Sidebar() {
