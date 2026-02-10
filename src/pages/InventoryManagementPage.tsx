@@ -52,11 +52,15 @@ import {
 } from '@/hooks/useInventoryData';
 import { useProducts } from '@/hooks/useOrdersData';
 import { useDistributors } from '@/hooks/useOutletsData';
+import { useWarehouses } from '@/hooks/useWarehousesData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 
-const warehouses = ['Main Warehouse', 'North Warehouse', 'South Warehouse'];
+const locationTypes = [
+  { value: 'central', label: 'Central Warehouse' },
+  { value: 'depot', label: 'Depot' },
+];
 const entryModes = [
   { value: 'manual', label: 'Manual Entry' },
   { value: 'purchase', label: 'Purchase/GRN' },
@@ -81,6 +85,7 @@ export default function InventoryManagementPage() {
   const { data: transfers = [], isLoading: transfersLoading } = useStockTransfers();
   const { data: products = [] } = useProducts();
   const { data: distributors = [] } = useDistributors();
+  const { data: warehousesList = [] } = useWarehouses();
   
   const createBatch = useCreateInventoryBatch();
   const updateBatch = useUpdateInventoryBatch();
@@ -95,8 +100,8 @@ export default function InventoryManagementPage() {
     quantity: '',
     manufacturing_date: '',
     expiry_date: '',
+    location_type: '' as 'central' | 'depot' | '',
     warehouse: '',
-    distributor_id: '',
     purchase_price: '',
     entry_mode: 'manual',
   });
@@ -151,8 +156,8 @@ export default function InventoryManagementPage() {
       quantity: '',
       manufacturing_date: '',
       expiry_date: '',
+      location_type: '',
       warehouse: '',
-      distributor_id: '',
       purchase_price: '',
       entry_mode: 'manual',
     });
@@ -186,7 +191,6 @@ export default function InventoryManagementPage() {
           manufacturing_date: stockForm.manufacturing_date || undefined,
           expiry_date: stockForm.expiry_date || undefined,
           warehouse: stockForm.warehouse || undefined,
-          distributor_id: stockForm.distributor_id || undefined,
           purchase_price: parseFloat(stockForm.purchase_price) || 0,
         });
       } else {
@@ -197,7 +201,6 @@ export default function InventoryManagementPage() {
           manufacturing_date: stockForm.manufacturing_date || undefined,
           expiry_date: stockForm.expiry_date || undefined,
           warehouse: stockForm.warehouse || undefined,
-          distributor_id: stockForm.distributor_id || undefined,
           purchase_price: parseFloat(stockForm.purchase_price) || 0,
           entry_mode: stockForm.entry_mode,
         });
@@ -211,14 +214,15 @@ export default function InventoryManagementPage() {
 
   const handleEditBatch = (batch: InventoryBatch) => {
     setEditingBatch(batch);
+    const matchedWarehouse = warehousesList.find(w => w.name === batch.warehouse);
     setStockForm({
       product_id: batch.product_id,
       batch_number: batch.batch_number,
       quantity: batch.quantity.toString(),
       manufacturing_date: batch.manufacturing_date || '',
       expiry_date: batch.expiry_date || '',
+      location_type: matchedWarehouse?.location_type || '',
       warehouse: batch.warehouse || '',
-      distributor_id: batch.distributor_id || '',
       purchase_price: batch.purchase_price.toString(),
       entry_mode: batch.entry_mode || 'manual',
     });
@@ -948,29 +952,30 @@ export default function InventoryManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Location Type</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Location Type *</label>
                 <div className="grid grid-cols-2 gap-4">
                   <select
-                    value={stockForm.warehouse}
-                    onChange={e => setStockForm(prev => ({ ...prev, warehouse: e.target.value, distributor_id: '' }))}
+                    value={stockForm.location_type}
+                    onChange={e => setStockForm(prev => ({ ...prev, location_type: e.target.value as 'central' | 'depot' | '', warehouse: '' }))}
                     className="input-field"
-                    disabled={!!stockForm.distributor_id}
                   >
-                    <option value="">Warehouse</option>
-                    {warehouses.map(w => (
-                      <option key={w} value={w}>{w}</option>
+                    <option value="">Select Type</option>
+                    {locationTypes.map(lt => (
+                      <option key={lt.value} value={lt.value}>{lt.label}</option>
                     ))}
                   </select>
                   <select
-                    value={stockForm.distributor_id}
-                    onChange={e => setStockForm(prev => ({ ...prev, distributor_id: e.target.value, warehouse: '' }))}
+                    value={stockForm.warehouse}
+                    onChange={e => setStockForm(prev => ({ ...prev, warehouse: e.target.value }))}
                     className="input-field"
-                    disabled={!!stockForm.warehouse}
+                    disabled={!stockForm.location_type}
                   >
-                    <option value="">Or Distributor</option>
-                    {distributors.map(d => (
-                      <option key={d.id} value={d.id}>{d.firm_name}</option>
-                    ))}
+                    <option value="">Select Warehouse</option>
+                    {warehousesList
+                      .filter(w => w.status === 'active' && w.location_type === stockForm.location_type)
+                      .map(w => (
+                        <option key={w.id} value={w.name}>{w.name} ({w.code})</option>
+                      ))}
                   </select>
                 </div>
               </div>
@@ -1039,27 +1044,23 @@ export default function InventoryManagementPage() {
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">From *</label>
                 <select
-                  value={transferForm.from_distributor_id || transferForm.from_location}
-                  onChange={e => {
-                    const value = e.target.value;
-                    const isDistributor = distributors.some(d => d.id === value);
-                    setTransferForm(prev => ({
-                      ...prev,
-                      from_location: isDistributor ? '' : value,
-                      from_distributor_id: isDistributor ? value : '',
-                    }));
-                  }}
+                  value={transferForm.from_location}
+                  onChange={e => setTransferForm(prev => ({
+                    ...prev,
+                    from_location: e.target.value,
+                    from_distributor_id: '',
+                  }))}
                   className="input-field"
                 >
                   <option value="">Select Source</option>
-                  <optgroup label="Warehouses">
-                    {warehouses.map(w => (
-                      <option key={w} value={w}>{w}</option>
+                  <optgroup label="Central Warehouses">
+                    {warehousesList.filter(w => w.status === 'active' && w.location_type === 'central').map(w => (
+                      <option key={w.id} value={w.name}>{w.name} ({w.code})</option>
                     ))}
                   </optgroup>
-                  <optgroup label="Distributors">
-                    {distributors.map(d => (
-                      <option key={d.id} value={d.id}>{d.firm_name}</option>
+                  <optgroup label="Depots">
+                    {warehousesList.filter(w => w.status === 'active' && w.location_type === 'depot').map(w => (
+                      <option key={w.id} value={w.name}>{w.name} ({w.code})</option>
                     ))}
                   </optgroup>
                 </select>
@@ -1068,27 +1069,23 @@ export default function InventoryManagementPage() {
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">To *</label>
                 <select
-                  value={transferForm.to_distributor_id || transferForm.to_location}
-                  onChange={e => {
-                    const value = e.target.value;
-                    const isDistributor = distributors.some(d => d.id === value);
-                    setTransferForm(prev => ({
-                      ...prev,
-                      to_location: isDistributor ? '' : value,
-                      to_distributor_id: isDistributor ? value : '',
-                    }));
-                  }}
+                  value={transferForm.to_location}
+                  onChange={e => setTransferForm(prev => ({
+                    ...prev,
+                    to_location: e.target.value,
+                    to_distributor_id: '',
+                  }))}
                   className="input-field"
                 >
                   <option value="">Select Destination</option>
-                  <optgroup label="Warehouses">
-                    {warehouses.map(w => (
-                      <option key={w} value={w}>{w}</option>
+                  <optgroup label="Central Warehouses">
+                    {warehousesList.filter(w => w.status === 'active' && w.location_type === 'central').map(w => (
+                      <option key={w.id} value={w.name}>{w.name} ({w.code})</option>
                     ))}
                   </optgroup>
-                  <optgroup label="Distributors">
-                    {distributors.map(d => (
-                      <option key={d.id} value={d.id}>{d.firm_name}</option>
+                  <optgroup label="Depots">
+                    {warehousesList.filter(w => w.status === 'active' && w.location_type === 'depot').map(w => (
+                      <option key={w.id} value={w.name}>{w.name} ({w.code})</option>
                     ))}
                   </optgroup>
                 </select>
