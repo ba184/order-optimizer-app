@@ -42,6 +42,7 @@ import {
 } from '@/hooks/useMarketingCollateralsData';
 import { useDistributors, useRetailers } from '@/hooks/useOutletsData';
 import { useWarehouses } from '@/hooks/useWarehousesData';
+import { useProfiles } from '@/hooks/useSalesTeamData';
 
 type TabType = 'inventory' | 'issues' | 'direct-issue';
 
@@ -61,6 +62,7 @@ export default function MarketingCollateralPage() {
   const { data: distributors = [] } = useDistributors();
   const { data: retailers = [] } = useRetailers();
   const { data: warehouses = [] } = useWarehouses();
+  const { data: profiles = [] } = useProfiles();
 
   const createCollateral = useCreateMarketingCollateral();
   const updateCollateral = useUpdateMarketingCollateral();
@@ -75,7 +77,6 @@ export default function MarketingCollateralPage() {
     name: '',
     type: 'pos_material',
     description: '',
-    unit: '',
     current_stock: '',
     warehouse: '',
     status: 'active',
@@ -121,7 +122,6 @@ export default function MarketingCollateralPage() {
       name: '',
       type: 'pos_material',
       description: '',
-      unit: '',
       current_stock: '',
       warehouse: '',
       status: 'active',
@@ -148,7 +148,6 @@ export default function MarketingCollateralPage() {
       name: item.name,
       type: item.type,
       description: item.description || '',
-      unit: item.unit || 'pcs',
       current_stock: item.current_stock.toString(),
       warehouse: item.warehouse || '',
       status: item.status || 'active',
@@ -167,7 +166,6 @@ export default function MarketingCollateralPage() {
       name: collateralForm.name,
       type: collateralForm.type,
       description: collateralForm.description || null,
-      unit: collateralForm.unit || null,
       current_stock: parseInt(collateralForm.current_stock) || 0,
       warehouse: collateralForm.warehouse || null,
       status: collateralForm.status,
@@ -248,7 +246,10 @@ export default function MarketingCollateralPage() {
     if (issueForm.issued_to_type === 'distributor') {
       return distributors.map(d => ({ id: d.id, name: d.firm_name }));
     }
-    return retailers.map(r => ({ id: r.id, name: r.shop_name }));
+    if (issueForm.issued_to_type === 'retailer') {
+      return retailers.map(r => ({ id: r.id, name: r.shop_name }));
+    }
+    return profiles.map(p => ({ id: p.id, name: p.name }));
   };
 
   const getStatusIcon = (status: string) => {
@@ -696,29 +697,17 @@ export default function MarketingCollateralPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Type *</label>
-                  <select
-                    value={collateralForm.type}
-                    onChange={(e) => setCollateralForm({ ...collateralForm, type: e.target.value })}
-                    className="input-field"
-                  >
-                    {COLLATERAL_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Unit</label>
-                  <input
-                    type="text"
-                    value={collateralForm.unit}
-                    onChange={(e) => setCollateralForm({ ...collateralForm, unit: e.target.value })}
-                    className="input-field"
-                    placeholder="pcs"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Type *</label>
+                <select
+                  value={collateralForm.type}
+                  onChange={(e) => setCollateralForm({ ...collateralForm, type: e.target.value })}
+                  className="input-field"
+                >
+                  {COLLATERAL_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -864,6 +853,14 @@ export default function MarketingCollateralPage() {
                       onChange={() => setIssueForm({ ...issueForm, issued_to_type: 'retailer', issued_to_id: '', issued_to_name: '' })}
                     />
                     Retailer
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      checked={issueForm.issued_to_type === 'executive'}
+                      onChange={() => setIssueForm({ ...issueForm, issued_to_type: 'executive', issued_to_id: '', issued_to_name: '' })}
+                    />
+                    Executive
                   </label>
                 </div>
                 <select
