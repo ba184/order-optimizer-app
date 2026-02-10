@@ -64,7 +64,7 @@ const entryModes = [
   { value: 'transfer', label: 'Transfer' },
 ];
 
-type TabType = 'overview' | 'stock-entry' | 'expiry' | 'transfers' | 'sync';
+type TabType = 'overview' | 'stock-entry' | 'expiry' | 'transfers';
 type ExpiryFilter = 'all' | 'warning' | 'expired';
 type LocationFilter = 'all' | 'warehouse' | 'distributor';
 
@@ -649,10 +649,6 @@ export default function InventoryManagementPage() {
             <Download size={18} />
             Export
           </button>
-          <button className="btn-outline flex items-center gap-2">
-            <RefreshCw size={18} />
-            Sync Stock
-          </button>
           <button 
             onClick={() => setShowTransferModal(true)}
             className="btn-outline flex items-center gap-2"
@@ -815,7 +811,6 @@ export default function InventoryManagementPage() {
           <TabsTrigger value="stock-entry">Stock Entries</TabsTrigger>
           <TabsTrigger value="expiry">Expiry Alerts</TabsTrigger>
           <TabsTrigger value="transfers">Transfers</TabsTrigger>
-          <TabsTrigger value="sync">Sync & Reconciliation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -871,19 +866,6 @@ export default function InventoryManagementPage() {
           <DataTable data={transfers} columns={transferColumns} searchPlaceholder="Search transfers..." />
         </TabsContent>
 
-        <TabsContent value="sync" className="mt-4">
-          <div className="bg-card border border-border rounded-xl p-8 text-center">
-            <RefreshCw size={48} className="mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Stock Reconciliation</h3>
-            <p className="text-muted-foreground mb-6">
-              Sync inventory data across all locations and reconcile stock levels.
-            </p>
-            <div className="flex justify-center gap-4">
-              <button className="btn-outline">View Last Sync</button>
-              <button className="btn-primary">Start Reconciliation</button>
-            </div>
-          </div>
-        </TabsContent>
       </Tabs>
 
       {/* Add/Edit Stock Modal */}
