@@ -16,6 +16,8 @@ import {
   Loader2,
   Tag,
   ArrowLeft,
+  FlaskConical,
+  MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProducts, useCreateOrder, CartItem } from '@/hooks/useOrdersData';
@@ -26,6 +28,9 @@ import { ProductSchemesBadge } from '@/components/orders/ProductSchemesBadge';
 import { OrderCollateralSelector, OrderCollateralItem } from '@/components/orders/OrderCollateralSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { useCountries, useStates, useCities } from '@/hooks/useGeoMasterData';
+import { useTerritories } from '@/hooks/useTerritoriesData';
+import { useSamples } from '@/hooks/useSamplesData';
 
 export default function CreateOrderPage() {
   const navigate = useNavigate();
@@ -38,12 +43,89 @@ export default function CreateOrderPage() {
   const [notes, setNotes] = useState('');
   const [orderCollaterals, setOrderCollaterals] = useState<OrderCollateralItem[]>([]);
 
+  // Location filter state
+  const [filterCountry, setFilterCountry] = useState('');
+  const [filterState, setFilterState] = useState('');
+  const [filterCity, setFilterCity] = useState('');
+  const [filterTerritory, setFilterTerritory] = useState('');
+
+  // Product/Sample tab
+  const [productTab, setProductTab] = useState<'products' | 'samples'>('products');
+
   const { data: products = [], isLoading: productsLoading } = useProducts();
   const { data: distributors = [], isLoading: distributorsLoading } = useDistributors();
   const { data: retailers = [] } = useRetailers();
   const { data: activeSchemes = [] } = useActiveSchemes();
+  const { data: countries = [] } = useCountries();
+  const { data: states = [] } = useStates();
+  const { data: cities = [] } = useCities();
+  const { data: territories = [] } = useTerritories();
+  const { data: samples = [] } = useSamples();
   const createOrder = useCreateOrder();
   const logOverride = useLogSchemeOverride();
+
+  // Filter geo data cascading
+  const filteredStates = useMemo(() => {
+    if (!filterCountry) return states.filter(s => s.status === 'active');
+    return states.filter(s => s.status === 'active' && s.country_id === filterCountry);
+  }, [states, filterCountry]);
+
+  const filteredCities = useMemo(() => {
+    if (!filterState) return cities.filter(c => c.status === 'active');
+    return cities.filter(c => c.status === 'active' && c.state_id === filterState);
+  }, [cities, filterState]);
+
+  const filteredTerritories = useMemo(() => {
+    let filtered = territories.filter(t => t.status === 'active');
+    if (filterCity) filtered = filtered.filter(t => t.city_id === filterCity);
+    else if (filterState) filtered = filtered.filter(t => t.state_id === filterState);
+    else if (filterCountry) filtered = filtered.filter(t => t.country_id === filterCountry);
+    return filtered;
+  }, [territories, filterCountry, filterState, filterCity]);
+
+  // Filter distributors by location
+  const locationFilteredDistributors = useMemo(() => {
+    let filtered = distributors.filter(d => d.status === 'active' || d.status === 'approved');
+    if (filterCountry) {
+      const countryName = countries.find(c => c.id === filterCountry)?.name;
+      if (countryName) filtered = filtered.filter(d => d.country === countryName);
+    }
+    if (filterState) {
+      const stateName = states.find(s => s.id === filterState)?.name;
+      if (stateName) filtered = filtered.filter(d => d.state === stateName);
+    }
+    if (filterCity) {
+      const cityName = cities.find(c => c.id === filterCity)?.name;
+      if (cityName) filtered = filtered.filter(d => d.city === cityName);
+    }
+    if (filterTerritory) {
+      const territoryName = territories.find(t => t.id === filterTerritory)?.name;
+      if (territoryName) filtered = filtered.filter(d => d.territory === territoryName);
+    }
+    return filtered;
+  }, [distributors, filterCountry, filterState, filterCity, filterTerritory, countries, states, cities, territories]);
+
+  // Filter retailers by location
+  const locationFilteredRetailers = useMemo(() => {
+    let filtered = retailers.filter(r => r.status === 'active' || r.status === 'approved');
+    if (filterCountry) {
+      const countryName = countries.find(c => c.id === filterCountry)?.name;
+      if (countryName) filtered = filtered.filter(r => r.country === countryName);
+    }
+    if (filterState) {
+      const stateName = states.find(s => s.id === filterState)?.name;
+      if (stateName) filtered = filtered.filter(r => r.state === stateName);
+    }
+    if (filterCity) {
+      const cityName = cities.find(c => c.id === filterCity)?.name;
+      if (cityName) filtered = filtered.filter(r => r.city === cityName);
+    }
+    if (filterTerritory) {
+      const territoryName = territories.find(t => t.id === filterTerritory)?.name;
+      if (territoryName) filtered = filtered.filter(r => r.zone === territoryName);
+    }
+    return filtered;
+  }, [retailers, filterCountry, filterState, filterCity, filterTerritory, countries, states, cities, territories]);
 
   const distributor = distributors.find(d => d.id === selectedDistributor);
   const retailer = retailers.find(r => r.id === selectedRetailer);
@@ -54,10 +136,15 @@ export default function CreateOrderPage() {
     p.sku.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Show all retailers for secondary orders - filter by distributor only if retailer has distributor_id set
+  const filteredSamples = samples.filter(s =>
+    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.sku.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Show retailers filtered by distributor for secondary orders
   const filteredRetailers = selectedDistributor 
-    ? retailers.filter(r => !r.distributor_id || r.distributor_id === selectedDistributor)
-    : retailers;
+    ? locationFilteredRetailers.filter(r => !r.distributor_id || r.distributor_id === selectedDistributor)
+    : locationFilteredRetailers;
 
   // Build cart items with product details for scheme calculation
   const cartItemsWithProducts: CartItemWithProduct[] = useMemo(() => {
@@ -250,7 +337,11 @@ export default function CreateOrderPage() {
             {/* Order Type Toggle */}
             <div className="flex gap-4 mb-6">
               <button
-                onClick={() => setOrderType('primary')}
+                onClick={() => {
+                  setOrderType('primary');
+                  setSelectedDistributor('');
+                  setSelectedRetailer('');
+                }}
                 className={`flex-1 p-4 rounded-xl border-2 transition-all ${
                   orderType === 'primary'
                     ? 'border-primary bg-primary/5'
@@ -262,7 +353,11 @@ export default function CreateOrderPage() {
                 <p className="text-xs text-muted-foreground">Company to Distributor</p>
               </button>
               <button
-                onClick={() => setOrderType('secondary')}
+                onClick={() => {
+                  setOrderType('secondary');
+                  setSelectedDistributor('');
+                  setSelectedRetailer('');
+                }}
                 className={`flex-1 p-4 rounded-xl border-2 transition-all ${
                   orderType === 'secondary'
                     ? 'border-secondary bg-secondary/5'
@@ -273,6 +368,81 @@ export default function CreateOrderPage() {
                 <p className="font-medium mt-2">Secondary Order</p>
                 <p className="text-xs text-muted-foreground">Distributor to Retailer</p>
               </button>
+            </div>
+
+            {/* Location Filters */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <MapPin size={16} className="text-muted-foreground" />
+                <label className="text-sm font-medium text-foreground">Filter by Location</label>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <select
+                  value={filterCountry}
+                  onChange={e => {
+                    setFilterCountry(e.target.value);
+                    setFilterState('');
+                    setFilterCity('');
+                    setFilterTerritory('');
+                    setSelectedDistributor('');
+                    setSelectedRetailer('');
+                  }}
+                  className="input-field text-sm"
+                >
+                  <option value="">All Countries</option>
+                  {countries.filter(c => c.status === 'active').map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterState}
+                  onChange={e => {
+                    setFilterState(e.target.value);
+                    setFilterCity('');
+                    setFilterTerritory('');
+                    setSelectedDistributor('');
+                    setSelectedRetailer('');
+                  }}
+                  className="input-field text-sm"
+                >
+                  <option value="">All States</option>
+                  {filteredStates.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterCity}
+                  onChange={e => {
+                    setFilterCity(e.target.value);
+                    setFilterTerritory('');
+                    setSelectedDistributor('');
+                    setSelectedRetailer('');
+                  }}
+                  className="input-field text-sm"
+                >
+                  <option value="">All Cities</option>
+                  {filteredCities.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterTerritory}
+                  onChange={e => {
+                    setFilterTerritory(e.target.value);
+                    setSelectedDistributor('');
+                    setSelectedRetailer('');
+                  }}
+                  className="input-field text-sm"
+                >
+                  <option value="">All Territories</option>
+                  {filteredTerritories.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Outlet Selection */}
@@ -290,7 +460,7 @@ export default function CreateOrderPage() {
                   className="input-field"
                 >
                   <option value="">Select Distributor</option>
-                  {distributors.map(dist => (
+                  {locationFilteredDistributors.map(dist => (
                     <option key={dist.id} value={dist.id}>
                       {dist.firm_name}
                     </option>
@@ -340,11 +510,187 @@ export default function CreateOrderPage() {
             </div>
           </motion.div>
 
-          {/* Marketing Collateral Section */}
+          {/* Product & Sample Selection */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
+            className="bg-card rounded-xl border border-border p-6 shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <h2 className="text-lg font-semibold text-foreground">Add Products</h2>
+                <div className="flex bg-muted rounded-lg p-0.5">
+                  <button
+                    onClick={() => setProductTab('products')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                      productTab === 'products'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Package size={14} />
+                      Products
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setProductTab('samples')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                      productTab === 'samples'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <FlaskConical size={14} />
+                      Samples
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                <input
+                  type="text"
+                  placeholder={productTab === 'products' ? 'Search products...' : 'Search samples...'}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="input-field pl-9 text-sm"
+                />
+              </div>
+            </div>
+
+            {productTab === 'products' ? (
+              /* Products List */
+              products.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>No products available. Please add products first.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin">
+                  {filteredProducts.map(product => {
+                    const quantity = getCartQuantity(product.id);
+                    return (
+                      <div
+                        key={product.id}
+                        className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
+                          quantity > 0 ? 'bg-primary/5 border border-primary/20' : 'bg-muted/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                            <Package size={24} className="text-muted-foreground" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground">{product.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              SKU: {product.sku} • PTR: ₹{product.ptr} • GST: {product.gst}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Stock: {product.stock} units
+                            </p>
+                            <ProductSchemesBadge 
+                              schemes={activeSchemes} 
+                              productId={product.id} 
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => updateCart(product.id, quantity - 1)}
+                            disabled={quantity === 0}
+                            className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <input
+                            type="number"
+                            value={quantity}
+                            onChange={e => updateCart(product.id, parseInt(e.target.value) || 0)}
+                            className="w-16 text-center input-field py-1"
+                            min="0"
+                          />
+                          <button
+                            onClick={() => updateCart(product.id, quantity + 1)}
+                            className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              /* Samples List */
+              samples.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FlaskConical size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>No samples available. Please add samples first.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin">
+                  {filteredSamples.map(sample => {
+                    const quantity = getCartQuantity(sample.id);
+                    return (
+                      <div
+                        key={sample.id}
+                        className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
+                          quantity > 0 ? 'bg-accent/10 border border-accent/20' : 'bg-muted/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
+                            <FlaskConical size={24} className="text-accent-foreground" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground">{sample.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              SKU: {sample.sku} • Type: {sample.type}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Stock: {sample.stock} units
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => updateCart(sample.id, quantity - 1)}
+                            disabled={quantity === 0}
+                            className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <input
+                            type="number"
+                            value={quantity}
+                            onChange={e => updateCart(sample.id, parseInt(e.target.value) || 0)}
+                            className="w-16 text-center input-field py-1"
+                            min="0"
+                          />
+                          <button
+                            onClick={() => updateCart(sample.id, quantity + 1)}
+                            className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
+          </motion.div>
+
+          {/* Marketing Collateral Section - Below Products */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
             className="bg-card rounded-xl border border-border p-6 shadow-sm"
           >
             <h2 className="text-lg font-semibold text-foreground mb-4">Marketing Collateral</h2>
@@ -356,91 +702,6 @@ export default function CreateOrderPage() {
               items={orderCollaterals}
               onChange={setOrderCollaterals}
             />
-          </motion.div>
-
-          {/* Product Selection */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-sm"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Add Products</h2>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="input-field pl-9 text-sm"
-                />
-              </div>
-            </div>
-
-            {products.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Package size={48} className="mx-auto mb-4 opacity-50" />
-                <p>No products available. Please add products first.</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin">
-                {filteredProducts.map(product => {
-                  const quantity = getCartQuantity(product.id);
-                  return (
-                    <div
-                      key={product.id}
-                      className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
-                        quantity > 0 ? 'bg-primary/5 border border-primary/20' : 'bg-muted/30'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                          <Package size={24} className="text-muted-foreground" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{product.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            SKU: {product.sku} • PTR: ₹{product.ptr} • GST: {product.gst}%
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Stock: {product.stock} units
-                          </p>
-                          {/* Show applicable schemes for this product */}
-                          <ProductSchemesBadge 
-                            schemes={activeSchemes} 
-                            productId={product.id} 
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => updateCart(product.id, quantity - 1)}
-                          disabled={quantity === 0}
-                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50"
-                        >
-                          <Minus size={16} />
-                        </button>
-                        <input
-                          type="number"
-                          value={quantity}
-                          onChange={e => updateCart(product.id, parseInt(e.target.value) || 0)}
-                          className="w-16 text-center input-field py-1"
-                          min="0"
-                        />
-                        <button
-                          onClick={() => updateCart(product.id, quantity + 1)}
-                          className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"
-                        >
-                          <Plus size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </motion.div>
         </div>
 
@@ -466,17 +727,26 @@ export default function CreateOrderPage() {
                 <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-thin">
                   {cartItems.map(item => {
                     const product = products.find(p => p.id === item.productId);
-                    if (!product) return null;
+                    const sample = samples.find(s => s.id === item.productId);
+                    const itemName = product?.name || sample?.name || 'Unknown';
+                    const itemPrice = product?.ptr || 0;
+                    const isSample = !!sample && !product;
+
                     return (
                       <div key={item.productId} className="flex items-center justify-between py-2 border-b border-border">
                         <div>
-                          <p className="text-sm font-medium">{product.name}</p>
+                          <p className="text-sm font-medium flex items-center gap-1.5">
+                            {isSample && <FlaskConical size={12} className="text-accent-foreground" />}
+                            {itemName}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {item.quantity} x ₹{product.ptr}
+                            {isSample ? `${item.quantity} units (Sample)` : `${item.quantity} x ₹${itemPrice}`}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">₹{(Number(product.ptr) * item.quantity).toLocaleString()}</p>
+                          {!isSample && (
+                            <p className="font-medium">₹{(Number(itemPrice) * item.quantity).toLocaleString()}</p>
+                          )}
                           <button
                             onClick={() => updateCart(item.productId, 0)}
                             className="p-1 hover:text-destructive"
