@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Save, Loader2, Plus, Trash2, Package, FlaskConical, Calculator, Upload, X, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, Trash2, Package, FlaskConical, Calculator, Upload, X, ImageIcon } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { useProduct, useCreateProduct } from '@/hooks/useProductsData';
 import { useCreateSample } from '@/hooks/useSamplesData';
 import { useWarehouses } from '@/hooks/useWarehousesData';
@@ -786,26 +787,17 @@ export default function ProductFormPage() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate('/master/products')}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            {isSample ? 'Create Sample' : 'Publish Product'}
-          </Button>
-        </div>
+        <FormActionButtons
+          isEdit={isEdit}
+          isSubmitting={isSubmitting}
+          onCancel={() => navigate('/master/products')}
+          onReset={() => { setProductInfo({ name: '', variant: '', packType: '', status: 'active' }); setSkuEntries([{ id: crypto.randomUUID(), skuSize: '2g', packSize: '5nos', unitMRP: '', unitPTR: '', unitPTS: '', boxMRP: 0, boxPTR: 0, boxPTS: 0, imageUrl: '' }]); setIsSample(false); setErrors({}); }}
+          onSubmit={handleSubmit}
+          onAddMore={async () => {
+            await handleSubmit();
+          }}
+          entityName={isSample ? 'Sample' : 'Product'}
+        />
       </div>
     </div>
   );

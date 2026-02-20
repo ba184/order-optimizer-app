@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVendor, useCreateVendor, useUpdateVendor } from '@/hooks/useVendorsData';
@@ -433,15 +434,15 @@ export default function VendorFormPage() {
         </motion.div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-4">
-          <button type="button" onClick={() => navigate(-1)} className="btn-outline">
-            Cancel
-          </button>
-          <button type="submit" disabled={isSaving} className="btn-primary flex items-center gap-2">
-            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            {isEdit ? 'Update Vendor' : 'Create Vendor'}
-          </button>
-        </div>
+        <FormActionButtons
+          isEdit={isEdit}
+          isSubmitting={isSaving}
+          onCancel={() => navigate(-1)}
+          onReset={() => setFormData({ firm_name: '', contact_person: '', contact_number: '', alternate_number: '', email: '', gstin: '', pan: '', business_type: 'supplier', credit_limit: 0, credit_days: 30, address: '', country: 'India', state: '', city: '', zone: '', since_date: new Date().toISOString().split('T')[0], assigned_manager_id: '', status: 'active' })}
+          submitViaForm
+          onAddMore={async () => { await handleSubmit({ preventDefault: () => {} } as React.FormEvent); }}
+          entityName="Vendor"
+        />
       </form>
     </div>
   );

@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, X, FileText, Video, Presentation as PresentationIcon, ArrowLeft, Save } from 'lucide-react';
+import { Upload, X, FileText, Video, Presentation as PresentationIcon, ArrowLeft } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -293,20 +294,15 @@ export default function PresentationFormPage() {
             {/* Actions */}
             <Card>
               <CardContent className="pt-6">
-                <div className="flex flex-col gap-3">
-                  <Button type="submit" disabled={isLoading || uploading} className="w-full">
-                    <Save size={16} className="mr-2" />
-                    {isLoading ? 'Saving...' : isEditMode ? 'Update Presentation' : 'Create Presentation'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate('/master/presentations')}
-                    className="w-full"
-                  >
-                    Cancel
-                  </Button>
-                </div>
+                <FormActionButtons
+                  isEdit={isEditMode}
+                  isSubmitting={isLoading || uploading}
+                  onCancel={() => navigate('/master/presentations')}
+                  onReset={() => { setTitle(''); setType('ppt'); setStatus('active'); setDescription(''); setFileUrl(null); setFileName(null); }}
+                  submitViaForm
+                  onAddMore={async () => { await handleSubmit({ preventDefault: () => {} } as React.FormEvent); }}
+                  entityName="Presentation"
+                />
               </CardContent>
             </Card>
           </div>

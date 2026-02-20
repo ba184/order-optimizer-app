@@ -16,6 +16,7 @@ import {
   Check,
   MapPin,
 } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { toast } from 'sonner';
 import { useRetailer, useCreateRetailer, useUpdateRetailer, useDistributors } from '@/hooks/useOutletsData';
 import { useSchemes } from '@/hooks/useSchemesData';
@@ -960,23 +961,15 @@ export default function RetailerFormPage() {
         </button>
 
         {currentStep === steps.length - 1 ? (
-          <button
-            onClick={handleSubmit}
-            disabled={isSaving}
-            className="btn-primary flex items-center gap-2"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save size={18} />
-                {isEdit ? 'Update Retailer' : 'Save Retailer'}
-              </>
-            )}
-          </button>
+          <FormActionButtons
+            isEdit={isEdit}
+            isSubmitting={isSaving}
+            onCancel={() => navigate('/outlets/retailers')}
+            onReset={() => window.location.reload()}
+            onSubmit={handleSubmit}
+            onAddMore={async () => { await handleSubmit(); }}
+            entityName="Retailer"
+          />
         ) : (
           <button onClick={handleNext} className="btn-primary flex items-center gap-2">
             Next

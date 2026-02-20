@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -452,27 +453,17 @@ export default function EmployeeFormPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <button
-              type="button"
-              onClick={() => navigate('/master/employees')}
-              className="btn-outline"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary flex items-center gap-2"
-            >
-              {isSubmitting ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <Save size={18} />
-              )}
-              {isEditMode ? 'Update Employee' : 'Create Employee'}
-            </button>
-          </div>
+          <FormActionButtons
+            isEdit={isEditMode}
+            isSubmitting={isSubmitting}
+            onCancel={() => navigate('/master/employees')}
+            onReset={() => setFormData({ name: '', phone: '', email: '', password: '', role: '', reportingTo: '', country: '', state: '', city: '', territory: '', status: 'active', doj: '', dob: '', bloodGroup: '', emergencyContactName: '', emergencyContactPhone: '' })}
+            onSubmit={() => handleSubmit({ preventDefault: () => {} } as React.FormEvent)}
+            onAddMore={async () => {
+              await handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+            }}
+            entityName="Employee"
+          />
         </form>
       </motion.div>
     </div>

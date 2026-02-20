@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Save, Loader2, Building } from 'lucide-react';
+import { ArrowLeft, Loader2, Building } from 'lucide-react';
 import { useCities, useStates, useCountries, useCreateCity, useUpdateCity } from '@/hooks/useGeoMasterData';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { toast } from 'sonner';
 
 export default function CityFormPage() {
@@ -45,24 +46,30 @@ export default function CityFormPage() {
 
   const filteredStates = states.filter(s => s.country_id === selectedCountry);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const initialFormData = { name: '', code: '', state_id: '', status: 'active' as 'active' | 'inactive' };
 
+  const handleSubmit = async (e?: React.FormEvent, addMore = false) => {
+    e?.preventDefault();
     if (!formData.name || !formData.code || !formData.state_id) {
       toast.error('Please fill required fields');
       return;
     }
-
     try {
       if (isEdit && id) {
         await updateCity.mutateAsync({ id, ...formData });
+        navigate('/master/cities');
       } else {
         await createCity.mutateAsync(formData);
+        if (addMore) { setFormData(initialFormData); setSelectedCountry(''); toast.success('City created! Add another.'); }
+        else navigate('/master/cities');
       }
-      navigate('/master/cities');
-    } catch (error) {
-      // Error handled by mutation
-    }
+    } catch (error) {}
+  };
+
+  const handleReset = () => {
+    if (existingCity && isEdit) {
+      setFormData({ name: existingCity.name, code: existingCity.code, state_id: existingCity.state_id, status: existingCity.status });
+    } else { setFormData(initialFormData); setSelectedCountry(''); }
   };
 
   const isSubmitting = createCity.isPending || updateCity.isPending;
@@ -171,27 +178,15 @@ export default function CityFormPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-          <button
-            type="button"
-            onClick={() => navigate('/master/cities')}
-            className="btn-secondary"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="btn-primary flex items-center gap-2"
-          >
-            {isSubmitting ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Save size={18} />
-            )}
-            {isEdit ? 'Update' : 'Create'} City
-          </button>
-        </div>
+        <FormActionButtons
+          isEdit={isEdit}
+          isSubmitting={isSubmitting}
+          onCancel={() => navigate('/master/cities')}
+          onReset={handleReset}
+          onSubmit={() => handleSubmit()}
+          onAddMore={() => handleSubmit(undefined, true)}
+          entityName="City"
+        />
       </motion.form>
     </div>
   );

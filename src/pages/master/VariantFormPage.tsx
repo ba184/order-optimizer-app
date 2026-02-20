@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -57,30 +59,26 @@ export default function VariantFormPage() {
     }
   }, [isEdit, id, categories]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const initialFormData = { name: '', code: '', description: '', status: 'active' as 'active' | 'inactive' };
 
-    // Generate code on submit for new variants
+  const handleSubmit = async (e?: React.FormEvent, addMore = false) => {
+    e?.preventDefault();
     const codeToUse = isEdit ? formData.code : generateVariantCode();
-
     if (isEdit && id) {
-      await updateCategory.mutateAsync({
-        id,
-        name: formData.name,
-        code: formData.code,
-        description: formData.description || null,
-        status: formData.status,
-      });
+      await updateCategory.mutateAsync({ id, name: formData.name, code: formData.code, description: formData.description || null, status: formData.status });
+      navigate('/master/variants');
     } else {
-      await createCategory.mutateAsync({
-        name: formData.name,
-        code: codeToUse,
-        description: formData.description || undefined,
-        status: formData.status,
-      });
+      await createCategory.mutateAsync({ name: formData.name, code: codeToUse, description: formData.description || undefined, status: formData.status });
+      if (addMore) { setFormData(initialFormData); toast.success('Variant created! Add another.'); }
+      else navigate('/master/variants');
     }
+  };
 
-    navigate('/master/variants');
+  const handleReset = () => {
+    if (isEdit && categories) {
+      const cat = categories.find(c => c.id === id);
+      if (cat) setFormData({ name: cat.name, code: cat.code, description: cat.description || '', status: (cat.status as 'active' | 'inactive') || 'active' });
+    } else setFormData(initialFormData);
   };
 
   const isLoading = createCategory.isPending || updateCategory.isPending;
@@ -159,24 +157,15 @@ export default function VariantFormPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-3 mt-6">
-          <Button type="button" variant="outline" onClick={() => navigate('/master/variants')}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                {isEdit ? 'Update Variant' : 'Create Variant'}
-              </>
-            )}
-          </Button>
-        </div>
+        <FormActionButtons
+          isEdit={isEdit}
+          isSubmitting={isLoading}
+          onCancel={() => navigate('/master/variants')}
+          onReset={handleReset}
+          onSubmit={() => handleSubmit()}
+          onAddMore={() => handleSubmit(undefined, true)}
+          entityName="Variant"
+        />
       </form>
     </div>
   );

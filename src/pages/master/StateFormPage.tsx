@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Save, Loader2, Map } from 'lucide-react';
+import { ArrowLeft, Loader2, Map } from 'lucide-react';
 import { useStates, useCountries, useCreateState, useUpdateState } from '@/hooks/useGeoMasterData';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { toast } from 'sonner';
 
 export default function StateFormPage() {
@@ -35,24 +36,30 @@ export default function StateFormPage() {
     }
   }, [existingState]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const initialFormData = { name: '', code: '', country_id: '', status: 'active' as 'active' | 'inactive' };
 
+  const handleSubmit = async (e?: React.FormEvent, addMore = false) => {
+    e?.preventDefault();
     if (!formData.name || !formData.code || !formData.country_id) {
       toast.error('Please fill required fields');
       return;
     }
-
     try {
       if (isEdit && id) {
         await updateState.mutateAsync({ id, ...formData });
+        navigate('/master/states');
       } else {
         await createState.mutateAsync(formData);
+        if (addMore) { setFormData(initialFormData); toast.success('State created! Add another.'); }
+        else navigate('/master/states');
       }
-      navigate('/master/states');
-    } catch (error) {
-      // Error handled by mutation
-    }
+    } catch (error) {}
+  };
+
+  const handleReset = () => {
+    if (existingState && isEdit) {
+      setFormData({ name: existingState.name, code: existingState.code, country_id: existingState.country_id, status: existingState.status });
+    } else setFormData(initialFormData);
   };
 
   const isSubmitting = createState.isPending || updateState.isPending;
@@ -142,27 +149,15 @@ export default function StateFormPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-          <button
-            type="button"
-            onClick={() => navigate('/master/states')}
-            className="btn-secondary"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="btn-primary flex items-center gap-2"
-          >
-            {isSubmitting ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Save size={18} />
-            )}
-            {isEdit ? 'Update' : 'Create'} State
-          </button>
-        </div>
+        <FormActionButtons
+          isEdit={isEdit}
+          isSubmitting={isSubmitting}
+          onCancel={() => navigate('/master/states')}
+          onReset={handleReset}
+          onSubmit={() => handleSubmit()}
+          onAddMore={() => handleSubmit(undefined, true)}
+          entityName="State"
+        />
       </motion.form>
     </div>
   );
