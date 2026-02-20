@@ -515,36 +515,36 @@ export default function RolesPermissionsPage() {
                       <div className="bg-muted/50 px-4 py-2 border-b border-border">
                         <h4 className="text-sm font-medium text-foreground">{group.name}</h4>
                       </div>
-                      <table className="w-full">
+                      <table className="w-full table-fixed">
                         <thead className="bg-muted/30">
                           <tr className="border-b border-border">
-                            <th className="text-left py-2 px-4 text-xs font-medium text-foreground">Module</th>
-                            <th className="text-center py-2 px-2 text-xs font-medium text-foreground">View</th>
-                            <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Create</th>
-                            <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Edit</th>
-                            <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Delete</th>
-                            <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Approve</th>
-                            <th className="text-center py-2 px-2 text-xs font-medium text-foreground">All</th>
+                            <th className="text-left py-2.5 px-4 text-xs font-semibold text-muted-foreground w-[30%]">Module</th>
+                            <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[12%]">View</th>
+                            <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[12%]">Create</th>
+                            <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[12%]">Edit</th>
+                            <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[12%]">Delete</th>
+                            <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[12%]">Approve</th>
+                            <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[10%]">All</th>
                           </tr>
                         </thead>
                         <tbody>
                           {group.permissions.map(perm => {
                             const allEnabled = Object.values(perm.actions).every(v => v);
                             return (
-                              <tr key={perm.module} className="border-b border-border/50 hover:bg-muted/30">
-                                <td className="py-2 px-4 text-sm text-foreground">{perm.module}</td>
+                              <tr key={perm.module} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                                <td className="py-2.5 px-4 text-sm text-foreground">{perm.module}</td>
                                 {(['view', 'create', 'edit', 'delete', 'approve'] as const).map(action => (
-                                  <td key={action} className="py-2 px-2 text-center">
+                                  <td key={action} className="py-2.5 px-1 text-center">
                                     <button onClick={() => togglePermission(perm.module, action, 'form')}
-                                      className={`p-1 rounded transition-colors ${perm.actions[action] ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
-                                      {perm.actions[action] ? <Unlock size={12} /> : <Lock size={12} />}
+                                      className={`p-1.5 rounded-md transition-colors ${perm.actions[action] ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
+                                      {perm.actions[action] ? <Unlock size={14} /> : <Lock size={14} />}
                                     </button>
                                   </td>
                                 ))}
-                                <td className="py-2 px-2 text-center">
+                                <td className="py-2.5 px-1 text-center">
                                   <button onClick={() => toggleAllForModule(perm.module, !allEnabled)}
-                                    className={`p-1 rounded transition-colors ${allEnabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                                    <Check size={12} />
+                                    className={`p-1.5 rounded-md transition-colors ${allEnabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
+                                    <Check size={14} />
                                   </button>
                                 </td>
                               </tr>
@@ -587,25 +587,25 @@ export default function RolesPermissionsPage() {
                   <div className="bg-muted/50 px-4 py-2 border-b border-border">
                     <h4 className="text-sm font-medium text-foreground">{group.name}</h4>
                   </div>
-                  <table className="w-full">
+                  <table className="w-full table-fixed">
                     <thead className="bg-muted/30">
                       <tr className="border-b border-border">
-                        <th className="text-left py-2 px-4 text-xs font-medium text-foreground">Module</th>
-                        <th className="text-center py-2 px-2 text-xs font-medium text-foreground">View</th>
-                        <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Create</th>
-                        <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Edit</th>
-                        <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Delete</th>
-                        <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Approve</th>
+                        <th className="text-left py-2.5 px-4 text-xs font-semibold text-muted-foreground w-[30%]">Module</th>
+                        <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[14%]">View</th>
+                        <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[14%]">Create</th>
+                        <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[14%]">Edit</th>
+                        <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[14%]">Delete</th>
+                        <th className="text-center py-2.5 px-1 text-xs font-semibold text-muted-foreground w-[14%]">Approve</th>
                       </tr>
                     </thead>
                     <tbody>
                       {group.permissions.map(perm => (
-                        <tr key={perm.module} className="border-b border-border/50 hover:bg-muted/30">
-                          <td className="py-2 px-4 text-sm text-foreground">{perm.module}</td>
+                        <tr key={perm.module} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                          <td className="py-2.5 px-4 text-sm text-foreground">{perm.module}</td>
                           {(['view', 'create', 'edit', 'delete', 'approve'] as const).map(action => (
-                            <td key={action} className="py-2 px-2 text-center">
+                            <td key={action} className="py-2.5 px-1 text-center">
                               <button onClick={() => togglePermission(perm.module, action, 'edit')}
-                                className={`p-1.5 rounded-lg transition-colors ${perm.actions[action] ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+                                className={`p-1.5 rounded-md transition-colors ${perm.actions[action] ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
                                 {perm.actions[action] ? <Unlock size={14} /> : <Lock size={14} />}
                               </button>
                             </td>
