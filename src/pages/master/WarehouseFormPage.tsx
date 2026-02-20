@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -509,18 +510,15 @@ export default function WarehouseFormPage() {
           </Card>
 
           {/* Actions */}
-          <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => navigate('/master/warehouses')}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={createWarehouse.isPending || updateWarehouse.isPending}>
-              {(createWarehouse.isPending || updateWarehouse.isPending) && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              <Save className="mr-2 h-4 w-4" />
-              {isEdit ? 'Update Warehouse' : 'Create Warehouse'}
-            </Button>
-          </div>
+          <FormActionButtons
+            isEdit={isEdit}
+            isSubmitting={createWarehouse.isPending || updateWarehouse.isPending}
+            onCancel={() => navigate('/master/warehouses')}
+            onReset={() => setFormData({ name: '', location_type: 'depot', country: 'India', state: '', city: '', territory: '', latitude: undefined, longitude: undefined, address: '', contact_person: '', contact_number: '', contact_person_id: '', alt_contact_person: '', alt_contact_number: '', images: [], capacity: '', status: 'active' })}
+            submitViaForm
+            onAddMore={async () => { await handleSubmit({ preventDefault: () => {} } as React.FormEvent); }}
+            entityName="Warehouse"
+          />
         </div>
       </form>
     </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Target as TargetIcon, Save, Loader2, MapPin, X } from 'lucide-react';
+import { ArrowLeft, Target as TargetIcon, Loader2, MapPin, X } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { useTargets, useCreateTarget, useUpdateTarget, useUsers, useEmployeeLocations, filterUsersByGeo, Target } from '@/hooks/useTargetsData';
 import { toast } from 'sonner';
 import {
@@ -431,30 +432,16 @@ interface TargetFormData {
              )}
            </div>
  
-           {/* Actions */}
-           <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-             <button
-               type="button"
-               onClick={() => navigate('/master/targets')}
-               className="btn-outline"
-             >
-               Cancel
-             </button>
-             <button type="submit" disabled={isLoading} className="btn-primary flex items-center gap-2">
-               {isLoading ? (
-                 <Loader2 size={18} className="animate-spin" />
-               ) : (
-                 <Save size={18} />
-               )}
-               {isLoading
-                 ? isEditMode
-                   ? 'Updating...'
-                   : 'Creating...'
-                 : isEditMode
-                 ? 'Update Target'
-                 : 'Create Target'}
-             </button>
-           </div>
+            {/* Actions */}
+            <FormActionButtons
+              isEdit={isEditMode}
+              isSubmitting={isLoading}
+              onCancel={() => navigate('/master/targets')}
+              onReset={() => setFormData({ user_id: '', target_type: 'sales', target_value: 0, period: 'monthly', start_date: '', end_date: '', status: 'active' })}
+              submitViaForm
+              onAddMore={async () => { await handleSubmit({ preventDefault: () => {} } as React.FormEvent); }}
+              entityName="Target"
+            />
          </form>
        </motion.div>
      </div>

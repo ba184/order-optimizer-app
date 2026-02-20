@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { MultiImageUpload } from '@/components/ui/MultiImageUpload';
 import {
   useCreateExpenseClaim,
@@ -156,19 +157,15 @@ export default function ExpenseFormPage() {
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <button onClick={() => navigate('/expenses')} className="btn-outline">
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={createMutation.isPending || !claimData.expense_date || !claimData.amount}
-              className="btn-primary flex items-center gap-2"
-            >
-              {createMutation.isPending && <Loader2 size={16} className="animate-spin" />}
-              Create
-            </button>
-          </div>
+          <FormActionButtons
+            isEdit={false}
+            isSubmitting={createMutation.isPending}
+            onCancel={() => navigate('/expenses')}
+            onReset={() => setClaimData({ employee_id: '', expense_type: 'misc', expense_date: '', amount: 0, description: '', bill_photos: [] })}
+            onSubmit={handleSubmit}
+            onAddMore={async () => { handleSubmit(); }}
+            entityName="Expense"
+          />
         </div>
       </motion.div>
     </div>

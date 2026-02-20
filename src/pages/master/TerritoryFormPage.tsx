@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Save, Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, Loader2, MapPin } from 'lucide-react';
 import { useTerritories, useCreateTerritory, useUpdateTerritory } from '@/hooks/useTerritoriesData';
 import { useCountries, useStates, useCities } from '@/hooks/useGeoMasterData';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { toast } from 'sonner';
 
 export default function TerritoryFormPage() {
@@ -57,33 +58,39 @@ export default function TerritoryFormPage() {
     }
   }, [formData.state_id, isEdit]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const initialFormData = { name: '', country_id: '', state_id: '', city_id: '', status: 'active' as 'active' | 'inactive' };
 
+  const handleSubmit = async (e?: React.FormEvent, addMore = false) => {
+    e?.preventDefault();
     if (!formData.name || !formData.country_id || !formData.state_id || !formData.city_id) {
       toast.error('Please fill all required fields');
       return;
     }
-
     try {
       const data = {
-        name: formData.name,
-        type: 'area' as any, // Default type
-        country_id: formData.country_id,
-        state_id: formData.state_id,
-        city_id: formData.city_id,
-        status: formData.status,
+        name: formData.name, type: 'area' as any,
+        country_id: formData.country_id, state_id: formData.state_id,
+        city_id: formData.city_id, status: formData.status,
       };
-
       if (isEdit && id) {
         await updateTerritory.mutateAsync({ id, ...data });
+        navigate('/master/territories');
       } else {
         await createTerritory.mutateAsync(data);
+        if (addMore) { setFormData(initialFormData); toast.success('Territory created! Add another.'); }
+        else navigate('/master/territories');
       }
-      navigate('/master/territories');
-    } catch (error) {
-      // Error handled by mutation
-    }
+    } catch (error) {}
+  };
+
+  const handleReset = () => {
+    if (existingTerritory && isEdit) {
+      setFormData({
+        name: existingTerritory.name, country_id: (existingTerritory as any).country_id || '',
+        state_id: (existingTerritory as any).state_id || '', city_id: (existingTerritory as any).city_id || '',
+        status: existingTerritory.status as 'active' | 'inactive',
+      });
+    } else setFormData(initialFormData);
   };
 
   const isSubmitting = createTerritory.isPending || updateTerritory.isPending;
@@ -196,27 +203,15 @@ export default function TerritoryFormPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-          <button
-            type="button"
-            onClick={() => navigate('/master/territories')}
-            className="btn-secondary"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="btn-primary flex items-center gap-2"
-          >
-            {isSubmitting ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Save size={18} />
-            )}
-            {isEdit ? 'Update' : 'Create'} Territory
-          </button>
-        </div>
+        <FormActionButtons
+          isEdit={isEdit}
+          isSubmitting={isSubmitting}
+          onCancel={() => navigate('/master/territories')}
+          onReset={handleReset}
+          onSubmit={() => handleSubmit()}
+          onAddMore={() => handleSubmit(undefined, true)}
+          entityName="Territory"
+        />
       </motion.form>
     </div>
   );

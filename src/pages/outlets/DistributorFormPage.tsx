@@ -22,6 +22,7 @@ import {
   Camera,
   MapPin,
 } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDistributor, useCreateDistributor, useUpdateDistributor } from '@/hooks/useOutletsData';
@@ -2122,18 +2123,15 @@ export default function DistributorFormPage() {
 
         <div className="flex items-center gap-3">
           {currentStep === steps.length - 1 ? (
-            <button
-              onClick={handleSubmit}
-              disabled={isSaving}
-              className="btn-primary flex items-center gap-2"
-            >
-              {isSaving ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <Check size={18} />
-              )}
-              {isEdit ? 'Update Distributor' : 'Create Distributor'}
-            </button>
+            <FormActionButtons
+              isEdit={isEdit}
+              isSubmitting={isSaving}
+              onCancel={() => navigate('/outlets/distributors')}
+              onReset={() => window.location.reload()}
+              onSubmit={handleSubmit}
+              onAddMore={async () => { await handleSubmit(); }}
+              entityName="Distributor"
+            />
           ) : (
             <button onClick={handleNext} className="btn-primary flex items-center gap-2">
               Next

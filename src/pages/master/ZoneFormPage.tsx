@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Save, Loader2, Compass, Map, Building, MapPin, X } from 'lucide-react';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { useZones, useStates, useCountries, useCities, useCreateZone, useUpdateZone } from '@/hooks/useGeoMasterData';
 import { useTerritories } from '@/hooks/useTerritoriesData';
 import { supabase } from '@/integrations/supabase/client';
@@ -537,32 +538,19 @@ export default function ZoneFormPage() {
         )}
 
         {/* Submit Button */}
-        <div className="flex justify-end gap-4 pt-6 border-t border-border">
-          <button
-            type="button"
-            onClick={() => navigate('/master/zones')}
-            className="btn-secondary"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="btn-primary flex items-center gap-2"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save size={18} />
-                {isEdit ? 'Update' : 'Create'} Zone
-              </>
-            )}
-          </button>
-        </div>
+        <FormActionButtons
+          isEdit={isEdit}
+          isSubmitting={isSaving}
+          onCancel={() => navigate('/master/zones')}
+          onReset={() => { setFormData({ name: '', status: 'active' }); setSelectedStates([]); setSelectedCities([]); setSelectedTerritories([]); setSelectedCountry(''); setSelectedState(''); setSelectedCity(''); }}
+          onSubmit={() => handleSubmit({ preventDefault: () => {} } as React.FormEvent)}
+          onAddMore={async () => {
+            const e = { preventDefault: () => {} } as React.FormEvent;
+            // Submit, then reset form
+            await handleSubmit(e);
+          }}
+          entityName="Zone"
+        />
       </motion.form>
     </div>
   );

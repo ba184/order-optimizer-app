@@ -1,6 +1,7 @@
  import { useState, useEffect } from 'react';
  import { useNavigate, useParams } from 'react-router-dom';
  import { ArrowLeft, RotateCcw, Loader2, Plus, Trash2 } from 'lucide-react';
+ import { FormActionButtons } from '@/components/ui/FormActionButtons';
  import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
  import { Input } from '@/components/ui/input';
  import { Label } from '@/components/ui/label';
@@ -1184,30 +1185,15 @@ function useOutletLocations(outlets: Outlet[]) {
        {/* Sticky Footer */}
        <div className="border-t bg-card sticky bottom-0 z-10">
          <div className="max-w-5xl mx-auto px-6 py-4">
-           <div className="flex items-center justify-end gap-3">
-             <Button
-               variant="outline"
-               onClick={handleReset}
-               disabled={isSubmitting}
-             >
-               <RotateCcw className="h-4 w-4 mr-2" />
-               Reset
-             </Button>
-             <Button
-               onClick={handleSubmit}
-               disabled={isSubmitting || !isFormValid()}
-               className="min-w-[140px]"
-             >
-               {isSubmitting ? (
-                 <>
-                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                   {isEditing ? 'Updating...' : 'Creating...'}
-                 </>
-               ) : (
-                 isEditing ? 'Update Scheme' : 'Create Scheme'
-               )}
-             </Button>
-           </div>
+           <FormActionButtons
+             isEdit={isEditing}
+             isSubmitting={isSubmitting}
+             onCancel={() => navigate('/master/schemes')}
+             onReset={handleReset}
+             onSubmit={handleSubmit}
+             onAddMore={async () => { await handleSubmit(); }}
+             entityName="Scheme"
+           />
          </div>
        </div>
      </div>
