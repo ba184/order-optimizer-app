@@ -2266,6 +2266,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          aadhaar_number: string | null
           avatar_url: string | null
           blood_group: string | null
           city: string | null
@@ -2278,17 +2279,33 @@ export type Database = {
           emergency_contact_phone: string | null
           employee_id: string | null
           id: string
+          is_probation: boolean | null
           last_login_at: string | null
           name: string
+          pan_number: string | null
+          permanent_address: string | null
+          permanent_city: string | null
+          permanent_country: string | null
+          permanent_pincode: string | null
+          permanent_state: string | null
+          permanent_territory: string | null
           phone: string | null
+          photo_url: string | null
           region: string | null
           reporting_to: string | null
           status: string | null
           territory: string | null
           updated_at: string | null
+          working_address: string | null
+          working_city: string | null
+          working_country: string | null
+          working_pincode: string | null
+          working_state: string | null
+          working_territory: string | null
           zone: string | null
         }
         Insert: {
+          aadhaar_number?: string | null
           avatar_url?: string | null
           blood_group?: string | null
           city?: string | null
@@ -2301,17 +2318,33 @@ export type Database = {
           emergency_contact_phone?: string | null
           employee_id?: string | null
           id: string
+          is_probation?: boolean | null
           last_login_at?: string | null
           name: string
+          pan_number?: string | null
+          permanent_address?: string | null
+          permanent_city?: string | null
+          permanent_country?: string | null
+          permanent_pincode?: string | null
+          permanent_state?: string | null
+          permanent_territory?: string | null
           phone?: string | null
+          photo_url?: string | null
           region?: string | null
           reporting_to?: string | null
           status?: string | null
           territory?: string | null
           updated_at?: string | null
+          working_address?: string | null
+          working_city?: string | null
+          working_country?: string | null
+          working_pincode?: string | null
+          working_state?: string | null
+          working_territory?: string | null
           zone?: string | null
         }
         Update: {
+          aadhaar_number?: string | null
           avatar_url?: string | null
           blood_group?: string | null
           city?: string | null
@@ -2324,14 +2357,29 @@ export type Database = {
           emergency_contact_phone?: string | null
           employee_id?: string | null
           id?: string
+          is_probation?: boolean | null
           last_login_at?: string | null
           name?: string
+          pan_number?: string | null
+          permanent_address?: string | null
+          permanent_city?: string | null
+          permanent_country?: string | null
+          permanent_pincode?: string | null
+          permanent_state?: string | null
+          permanent_territory?: string | null
           phone?: string | null
+          photo_url?: string | null
           region?: string | null
           reporting_to?: string | null
           status?: string | null
           territory?: string | null
           updated_at?: string | null
+          working_address?: string | null
+          working_city?: string | null
+          working_country?: string | null
+          working_pincode?: string | null
+          working_state?: string | null
+          working_territory?: string | null
           zone?: string | null
         }
         Relationships: [

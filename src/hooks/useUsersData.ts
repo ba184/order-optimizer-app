@@ -21,6 +21,22 @@ export interface UserWithRole {
   blood_group: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
+  pan_number: string | null;
+  aadhaar_number: string | null;
+  is_probation: boolean | null;
+  photo_url: string | null;
+  working_address: string | null;
+  working_country: string | null;
+  working_state: string | null;
+  working_city: string | null;
+  working_territory: string | null;
+  working_pincode: string | null;
+  permanent_address: string | null;
+  permanent_country: string | null;
+  permanent_state: string | null;
+  permanent_city: string | null;
+  permanent_territory: string | null;
+  permanent_pincode: string | null;
 }
 
 export function useUsersData() {
@@ -88,6 +104,22 @@ export function useUsersData() {
           blood_group: profile.blood_group,
           emergency_contact_name: profile.emergency_contact_name,
           emergency_contact_phone: profile.emergency_contact_phone,
+          pan_number: profile.pan_number,
+          aadhaar_number: profile.aadhaar_number,
+          is_probation: profile.is_probation,
+          photo_url: profile.photo_url,
+          working_address: profile.working_address,
+          working_country: profile.working_country,
+          working_state: profile.working_state,
+          working_city: profile.working_city,
+          working_territory: profile.working_territory,
+          working_pincode: profile.working_pincode,
+          permanent_address: profile.permanent_address,
+          permanent_country: profile.permanent_country,
+          permanent_state: profile.permanent_state,
+          permanent_city: profile.permanent_city,
+          permanent_territory: profile.permanent_territory,
+          permanent_pincode: profile.permanent_pincode,
         };
       });
 
@@ -110,6 +142,22 @@ export function useUsersData() {
       blood_group?: string;
       emergency_contact_name?: string;
       emergency_contact_phone?: string;
+      pan_number?: string;
+      aadhaar_number?: string;
+      is_probation?: boolean;
+      photo_url?: string;
+      working_address?: string;
+      working_country?: string;
+      working_state?: string;
+      working_city?: string;
+      working_territory?: string;
+      working_pincode?: string;
+      permanent_address?: string;
+      permanent_country?: string;
+      permanent_state?: string;
+      permanent_city?: string;
+      permanent_territory?: string;
+      permanent_pincode?: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
@@ -146,6 +194,22 @@ export function useUsersData() {
       blood_group: string;
       emergency_contact_name: string;
       emergency_contact_phone: string;
+      pan_number: string;
+      aadhaar_number: string;
+      is_probation: boolean;
+      photo_url: string;
+      working_address: string;
+      working_country: string;
+      working_state: string;
+      working_city: string;
+      working_territory: string;
+      working_pincode: string;
+      permanent_address: string;
+      permanent_country: string;
+      permanent_state: string;
+      permanent_city: string;
+      permanent_territory: string;
+      permanent_pincode: string;
     }>) => {
       const { error } = await supabase
         .from('profiles')
