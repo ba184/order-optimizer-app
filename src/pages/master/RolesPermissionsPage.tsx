@@ -67,11 +67,7 @@ const modulesList = [
   'Variants',
   'Warehouses',
   'Schemes',
-  'Countries',
-  'States',
-  'Cities',
-  'Zones',
-  'Territories',
+  'Geographical',
   'Targets',
   'Presentations',
   // 15. Settings
@@ -285,7 +281,7 @@ export default function RolesPermissionsPage() {
       { name: 'Orders', permissions: formPermissions.filter(p => ['All Orders', 'Pre-Orders'].includes(p.module)) },
       { name: 'Operations', permissions: formPermissions.filter(p => ['Inventory', 'Expenses', 'Gifts', 'Marketing Collateral', 'Feedback', 'Returns', 'Reports'].includes(p.module)) },
       { name: 'Administration', permissions: formPermissions.filter(p => ['Employees', 'Roles & Permissions'].includes(p.module)) },
-      { name: 'Master Data', permissions: formPermissions.filter(p => ['Products', 'Variants', 'Warehouses', 'Schemes', 'Countries', 'States', 'Cities', 'Zones', 'Territories', 'Targets', 'Presentations'].includes(p.module)) },
+      { name: 'Master Data', permissions: formPermissions.filter(p => ['Products', 'Variants', 'Warehouses', 'Schemes', 'Geographical', 'Targets', 'Presentations'].includes(p.module)) },
     ];
     return groups.filter(g => g.permissions.length > 0);
   }, [formPermissions]);
