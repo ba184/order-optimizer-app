@@ -273,18 +273,21 @@ export default function RolesPermissionsPage() {
     deleteRole.mutate(role.id);
   };
 
-  const groupedPermissions = useMemo(() => {
+  const buildGroups = (perms: PermissionForm[]) => {
     const groups: { name: string; permissions: PermissionForm[] }[] = [
-      { name: 'Dashboard & Settings', permissions: formPermissions.filter(p => ['Dashboard', 'Settings'].includes(p.module)) },
-      { name: 'Sales Team', permissions: formPermissions.filter(p => ['Attendance', 'Beat Plans', 'Leads', 'Leave Management', 'Live Tracking'].includes(p.module)) },
-      { name: 'Outlets', permissions: formPermissions.filter(p => ['Distributors', 'Retailers', 'Vendors'].includes(p.module)) },
-      { name: 'Orders', permissions: formPermissions.filter(p => ['All Orders', 'Pre-Orders'].includes(p.module)) },
-      { name: 'Operations', permissions: formPermissions.filter(p => ['Inventory', 'Expenses', 'Gifts', 'Marketing Collateral', 'Feedback', 'Returns', 'Reports'].includes(p.module)) },
-      { name: 'Administration', permissions: formPermissions.filter(p => ['Employees', 'Roles & Permissions'].includes(p.module)) },
-      { name: 'Master Data', permissions: formPermissions.filter(p => ['Products', 'Variants', 'Warehouses', 'Schemes', 'Geographical', 'Targets', 'Presentations'].includes(p.module)) },
+      { name: 'Dashboard & Settings', permissions: perms.filter(p => ['Dashboard', 'Settings'].includes(p.module)) },
+      { name: 'Sales Team', permissions: perms.filter(p => ['Attendance', 'Beat Plans', 'Leads', 'Leave Management', 'Live Tracking'].includes(p.module)) },
+      { name: 'Outlets', permissions: perms.filter(p => ['Distributors', 'Retailers', 'Vendors'].includes(p.module)) },
+      { name: 'Orders', permissions: perms.filter(p => ['All Orders', 'Pre-Orders'].includes(p.module)) },
+      { name: 'Operations', permissions: perms.filter(p => ['Inventory', 'Expenses', 'Gifts', 'Marketing Collateral', 'Feedback', 'Returns', 'Reports'].includes(p.module)) },
+      { name: 'Administration', permissions: perms.filter(p => ['Employees', 'Roles & Permissions'].includes(p.module)) },
+      { name: 'Master Data', permissions: perms.filter(p => ['Products', 'Variants', 'Warehouses', 'Schemes', 'Geographical', 'Targets', 'Presentations'].includes(p.module)) },
     ];
     return groups.filter(g => g.permissions.length > 0);
-  }, [formPermissions]);
+  };
+
+  const groupedPermissions = useMemo(() => buildGroups(formPermissions), [formPermissions]);
+  const groupedEditPermissions = useMemo(() => buildGroups(editingPermissions), [editingPermissions]);
 
   const columns = [
     {
@@ -578,34 +581,41 @@ export default function RolesPermissionsPage() {
               </div>
               <button onClick={() => setShowPermissionModal(false)} className="p-2 hover:bg-muted rounded-lg"><X size={20} /></button>
             </div>
-            <div className="flex-1 overflow-auto">
-              <table className="w-full">
-                <thead className="sticky top-0 bg-card">
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-foreground">Module</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-foreground">View</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-foreground">Create</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-foreground">Edit</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-foreground">Delete</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-foreground">Approve</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {editingPermissions.map(perm => (
-                    <tr key={perm.module} className="border-b border-border/50 hover:bg-muted/50">
-                      <td className="py-3 px-4 text-sm font-medium text-foreground">{perm.module}</td>
-                      {(['view', 'create', 'edit', 'delete', 'approve'] as const).map(action => (
-                        <td key={action} className="py-3 px-4 text-center">
-                          <button onClick={() => togglePermission(perm.module, action, 'edit')}
-                            className={`p-2 rounded-lg transition-colors ${perm.actions[action] ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
-                            {perm.actions[action] ? <Unlock size={16} /> : <Lock size={16} />}
-                          </button>
-                        </td>
+            <div className="flex-1 overflow-auto space-y-4">
+              {groupedEditPermissions.map(group => (
+                <div key={group.name} className="border border-border rounded-lg overflow-hidden">
+                  <div className="bg-muted/50 px-4 py-2 border-b border-border">
+                    <h4 className="text-sm font-medium text-foreground">{group.name}</h4>
+                  </div>
+                  <table className="w-full">
+                    <thead className="bg-muted/30">
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 px-4 text-xs font-medium text-foreground">Module</th>
+                        <th className="text-center py-2 px-2 text-xs font-medium text-foreground">View</th>
+                        <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Create</th>
+                        <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Edit</th>
+                        <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Delete</th>
+                        <th className="text-center py-2 px-2 text-xs font-medium text-foreground">Approve</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.permissions.map(perm => (
+                        <tr key={perm.module} className="border-b border-border/50 hover:bg-muted/30">
+                          <td className="py-2 px-4 text-sm text-foreground">{perm.module}</td>
+                          {(['view', 'create', 'edit', 'delete', 'approve'] as const).map(action => (
+                            <td key={action} className="py-2 px-2 text-center">
+                              <button onClick={() => togglePermission(perm.module, action, 'edit')}
+                                className={`p-1.5 rounded-lg transition-colors ${perm.actions[action] ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+                                {perm.actions[action] ? <Unlock size={14} /> : <Lock size={14} />}
+                              </button>
+                            </td>
+                          ))}
+                        </tr>
                       ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    </tbody>
+                  </table>
+                </div>
+              ))}
             </div>
             <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
               <button onClick={() => setShowPermissionModal(false)} className="btn-outline">Cancel</button>
