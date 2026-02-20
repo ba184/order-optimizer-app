@@ -91,7 +91,12 @@ Deno.serve(async (req) => {
     console.log('Action:', action, 'Data:', JSON.stringify({ ...data, password: data.password ? '[REDACTED]' : undefined }));
 
     if (action === 'create') {
-      const { email, password, name, phone, territory, region, reporting_to, role_code } = data;
+      const { email, password, name, phone, territory, region, reporting_to, role_code,
+        doj, dob, blood_group, emergency_contact_name, emergency_contact_phone,
+        pan_number, aadhaar_number, is_probation, photo_url,
+        working_address, working_country, working_state, working_city, working_territory, working_pincode,
+        permanent_address, permanent_country, permanent_state, permanent_city, permanent_territory, permanent_pincode,
+      } = data;
 
       if (!email || !password || !name) {
         return new Response(
@@ -157,6 +162,27 @@ Deno.serve(async (req) => {
           region: region || null,
           reporting_to: reporting_to || null,
           status: 'active',
+          doj: doj || null,
+          dob: dob || null,
+          blood_group: blood_group || null,
+          emergency_contact_name: emergency_contact_name || null,
+          emergency_contact_phone: emergency_contact_phone || null,
+          pan_number: pan_number || null,
+          aadhaar_number: aadhaar_number || null,
+          is_probation: is_probation || false,
+          photo_url: photo_url || null,
+          working_address: working_address || null,
+          working_country: working_country || null,
+          working_state: working_state || null,
+          working_city: working_city || null,
+          working_territory: working_territory || null,
+          working_pincode: working_pincode || null,
+          permanent_address: permanent_address || null,
+          permanent_country: permanent_country || null,
+          permanent_state: permanent_state || null,
+          permanent_city: permanent_city || null,
+          permanent_territory: permanent_territory || null,
+          permanent_pincode: permanent_pincode || null,
         })
         .eq('id', userId);
 
