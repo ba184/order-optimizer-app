@@ -36,44 +36,46 @@ type GeoLevel = 'country' | 'state' | 'city' | 'territory' | 'zone';
 type ZoneType = 'country' | 'state' | 'city' | 'territory';
 
 const modulesList = [
+  // 1. Dashboard
   'Dashboard',
-  'Users',
+  // 2. Sales Team
+  'Attendance',
+  'Beat Plans',
+  'Leads',
+  'Leave Management',
+  'Live Tracking',
+  // 3. Outlets
+  'Distributors',
+  'Retailers',
+  'Vendors',
+  // 4. Orders
+  'All Orders',
+  'Pre-Orders',
+  // 5-11. Standalone
+  'Inventory',
+  'Expenses',
+  'Gifts',
+  'Marketing Collateral',
+  'Feedback',
+  'Returns',
+  'Reports',
+  // 12-13. Admin
   'Employees',
   'Roles & Permissions',
-  'Sales Team',
-  'Outlets',
-  'Orders',
-  'Pre-Orders',
-  'Inventory',
-  'Schemes',
-  'Advanced Schemes',
-  'Expenses',
-  'Reports',
+  // 14. Master Data
   'Products',
   'Variants',
-  'Categories',
   'Warehouses',
-  'Territories',
+  'Schemes',
   'Countries',
   'States',
   'Cities',
   'Zones',
+  'Territories',
   'Targets',
   'Presentations',
+  // 15. Settings
   'Settings',
-  'Leads',
-  'Beat Plans',
-  'Attendance',
-  'DSR',
-  'Leave Management',
-  'Live Tracking',
-  'Samples & Gifts',
-  'Marketing Collateral',
-  'Training',
-  'Feedback',
-  'Returns',
-  'Credit Management',
-  'Approval Workflow',
 ];
 
 const geoLevels: { value: GeoLevel; label: string }[] = [
@@ -277,12 +279,13 @@ export default function RolesPermissionsPage() {
 
   const groupedPermissions = useMemo(() => {
     const groups: { name: string; permissions: PermissionForm[] }[] = [
-      { name: 'Core Modules', permissions: formPermissions.filter(p => ['Dashboard', 'Users', 'Employees', 'Roles & Permissions', 'Settings'].includes(p.module)) },
-      { name: 'Sales & Operations', permissions: formPermissions.filter(p => ['Sales Team', 'Outlets', 'Orders', 'Pre-Orders', 'Leads', 'Schemes', 'Advanced Schemes', 'Credit Management', 'Approval Workflow'].includes(p.module)) },
-      { name: 'Field Activities', permissions: formPermissions.filter(p => ['Beat Plans', 'Attendance', 'DSR', 'Leave Management', 'Live Tracking'].includes(p.module)) },
-      { name: 'Inventory & Finance', permissions: formPermissions.filter(p => ['Inventory', 'Expenses', 'Samples & Gifts', 'Marketing Collateral', 'Returns'].includes(p.module)) },
-      { name: 'Master Data', permissions: formPermissions.filter(p => ['Products', 'Variants', 'Categories', 'Warehouses', 'Territories', 'Countries', 'States', 'Cities', 'Zones', 'Targets', 'Presentations'].includes(p.module)) },
-      { name: 'Other', permissions: formPermissions.filter(p => ['Reports', 'Training', 'Feedback'].includes(p.module)) },
+      { name: 'Dashboard & Settings', permissions: formPermissions.filter(p => ['Dashboard', 'Settings'].includes(p.module)) },
+      { name: 'Sales Team', permissions: formPermissions.filter(p => ['Attendance', 'Beat Plans', 'Leads', 'Leave Management', 'Live Tracking'].includes(p.module)) },
+      { name: 'Outlets', permissions: formPermissions.filter(p => ['Distributors', 'Retailers', 'Vendors'].includes(p.module)) },
+      { name: 'Orders', permissions: formPermissions.filter(p => ['All Orders', 'Pre-Orders'].includes(p.module)) },
+      { name: 'Operations', permissions: formPermissions.filter(p => ['Inventory', 'Expenses', 'Gifts', 'Marketing Collateral', 'Feedback', 'Returns', 'Reports'].includes(p.module)) },
+      { name: 'Administration', permissions: formPermissions.filter(p => ['Employees', 'Roles & Permissions'].includes(p.module)) },
+      { name: 'Master Data', permissions: formPermissions.filter(p => ['Products', 'Variants', 'Warehouses', 'Schemes', 'Countries', 'States', 'Cities', 'Zones', 'Territories', 'Targets', 'Presentations'].includes(p.module)) },
     ];
     return groups.filter(g => g.permissions.length > 0);
   }, [formPermissions]);
