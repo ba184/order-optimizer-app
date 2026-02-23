@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useUsersData, useRoles } from '@/hooks/useUsersData';
-import { useCountries, useStates, useCities } from '@/hooks/useGeoMasterData';
+import { useCountries, useStates, useCities, useZones } from '@/hooks/useGeoMasterData';
 import { useTerritories } from '@/hooks/useTerritoriesData';
 import { toast } from 'sonner';
 
@@ -32,6 +32,12 @@ const initialFormData = {
   aadhaarNumber: '',
   isProbation: false,
   photoPreview: '',
+  // Assignment location (based on role geo_level)
+  assignedCountry: '',
+  assignedState: '',
+  assignedCity: '',
+  assignedTerritory: '',
+  assignedZone: '',
   // Working address
   workingCountry: '',
   workingState: '',
@@ -59,6 +65,7 @@ export default function EmployeeFormPage() {
   const { data: states = [] } = useStates();
   const { data: cities = [] } = useCities();
   const { data: territories = [] } = useTerritories();
+  const { data: zones = [] } = useZones();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ ...initialFormData });
@@ -85,6 +92,11 @@ export default function EmployeeFormPage() {
           aadhaarNumber: employee.aadhaar_number || '',
           isProbation: employee.is_probation || false,
           photoPreview: employee.photo_url || '',
+          assignedCountry: '',
+          assignedState: employee.region || '',
+          assignedCity: employee.city || '',
+          assignedTerritory: employee.territory || '',
+          assignedZone: employee.zone || '',
           workingCountry: employee.working_country || '',
           workingState: employee.working_state || '',
           workingCity: employee.working_city || '',
@@ -122,6 +134,10 @@ export default function EmployeeFormPage() {
   const filterCities = (stateId: string) => cities.filter(c => !stateId || c.state_id === stateId);
   const filterTerritories = (cityId: string) => territories.filter(t => !cityId || t.city_id === cityId);
 
+  // Get selected role's geo_level
+  const selectedRoleData = roles.find((r: any) => r.code === formData.role);
+  const selectedGeoLevel = selectedRoleData?.geo_level || '';
+
   const managers = users.filter(u => u.id !== id && ['admin', 'manager'].includes(u.role_code || ''));
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,8 +167,10 @@ export default function EmployeeFormPage() {
     setIsSubmitting(true);
     try {
       const commonFields = {
-        territory: formData.workingTerritory || undefined,
-        region: formData.workingState || undefined,
+        territory: formData.assignedTerritory || formData.workingTerritory || undefined,
+        region: formData.assignedState || formData.workingState || undefined,
+        city: formData.assignedCity || undefined,
+        zone: formData.assignedZone || undefined,
         reporting_to: formData.reportingTo || undefined,
         doj: formData.doj || undefined,
         dob: formData.dob || undefined,
@@ -455,10 +473,10 @@ export default function EmployeeFormPage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Role *</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}>
+              <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value, assignedCountry: '', assignedState: '', assignedCity: '', assignedTerritory: '', assignedZone: '' }))}>
                 <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                 <SelectContent>
-                  {roles.map(role => <SelectItem key={role.id} value={role.code}>{role.name}</SelectItem>)}
+                  {roles.map((role: any) => <SelectItem key={role.id} value={role.code}>{role.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -472,6 +490,81 @@ export default function EmployeeFormPage() {
               </Select>
             </div>
           </div>
+
+          {/* Dynamic Assignment Location based on role's geo_level */}
+          {formData.role && selectedGeoLevel && (
+            <div className="bg-muted/30 rounded-lg p-4 border border-border space-y-4">
+              <h3 className="text-base font-semibold text-foreground">Assignment Location</h3>
+              <div className="grid grid-cols-2 gap-6">
+                {/* Zone-based assignment */}
+                {selectedGeoLevel === 'zone' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Zone *</Label>
+                      <Select value={formData.assignedZone} onValueChange={(value) => setFormData(prev => ({ ...prev, assignedZone: value }))}>
+                        <SelectTrigger><SelectValue placeholder="Select zone" /></SelectTrigger>
+                        <SelectContent>
+                          {zones.map((z: any) => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
+                {/* Country-level and above */}
+                {['country', 'state', 'city', 'territory'].includes(selectedGeoLevel) && (
+                  <div className="space-y-2">
+                    <Label>Country *</Label>
+                    <Select value={formData.assignedCountry} onValueChange={(value) => setFormData(prev => ({ ...prev, assignedCountry: value, assignedState: '', assignedCity: '', assignedTerritory: '' }))}>
+                      <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
+                      <SelectContent>
+                        {countries.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* State-level and below */}
+                {['state', 'city', 'territory'].includes(selectedGeoLevel) && (
+                  <div className="space-y-2">
+                    <Label>State *</Label>
+                    <Select value={formData.assignedState} onValueChange={(value) => setFormData(prev => ({ ...prev, assignedState: value, assignedCity: '', assignedTerritory: '' }))} disabled={!formData.assignedCountry}>
+                      <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                      <SelectContent>
+                        {filterStates(formData.assignedCountry).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* City-level and below */}
+                {['city', 'territory'].includes(selectedGeoLevel) && (
+                  <div className="space-y-2">
+                    <Label>City *</Label>
+                    <Select value={formData.assignedCity} onValueChange={(value) => setFormData(prev => ({ ...prev, assignedCity: value, assignedTerritory: '' }))} disabled={!formData.assignedState}>
+                      <SelectTrigger><SelectValue placeholder="Select city" /></SelectTrigger>
+                      <SelectContent>
+                        {filterCities(formData.assignedState).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Territory-level */}
+                {selectedGeoLevel === 'territory' && (
+                  <div className="space-y-2">
+                    <Label>Territory *</Label>
+                    <Select value={formData.assignedTerritory} onValueChange={(value) => setFormData(prev => ({ ...prev, assignedTerritory: value }))} disabled={!formData.assignedCity}>
+                      <SelectTrigger><SelectValue placeholder="Select territory" /></SelectTrigger>
+                      <SelectContent>
+                        {filterTerritories(formData.assignedCity).map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Working Address */}
           <div className="border-t border-border pt-6">

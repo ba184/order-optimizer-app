@@ -18,7 +18,9 @@ import {
 import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FormActionButtons } from '@/components/ui/FormActionButtons';
 import { useRolesPermissionsData, DbRole } from '@/hooks/useRolesPermissionsData';
 
 interface PermissionForm {
@@ -125,6 +127,7 @@ export default function RolesPermissionsPage() {
     name: '',
     code: '',
     level: 5,
+    description: '',
     geoLevel: 'territory' as GeoLevel,
     zoneType: '' as ZoneType | '',
     status: 'active' as 'active' | 'inactive',
@@ -161,6 +164,7 @@ export default function RolesPermissionsPage() {
       name: role.name,
       code: role.code,
       level: role.level,
+      description: role.description || '',
       geoLevel: (role.geo_level || 'territory') as GeoLevel,
       zoneType: (role.zone_type || '') as ZoneType | '',
       status: role.status as 'active' | 'inactive',
@@ -239,6 +243,7 @@ export default function RolesPermissionsPage() {
       name: roleForm.name,
       code: roleForm.code,
       level: roleForm.level,
+      description: roleForm.description || undefined,
       geo_level: roleForm.geoLevel,
       zone_type: roleForm.geoLevel === 'zone' ? (roleForm.zoneType as string) : null,
       status: roleForm.status,
@@ -257,7 +262,7 @@ export default function RolesPermissionsPage() {
     setShowCreateModal(false);
     setSelectedRole(null);
     setModalMode('create');
-    setRoleForm({ name: '', code: '', level: 5, geoLevel: 'territory', zoneType: '', status: 'active' });
+    setRoleForm({ name: '', code: '', level: 5, description: '', geoLevel: 'territory', zoneType: '', status: 'active' });
     setFormPermissions(createDefaultPermissions());
   };
 
@@ -497,6 +502,18 @@ export default function RolesPermissionsPage() {
                     </Select>
                   </div>
                 </div>
+                <div className="mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={roleForm.description}
+                      onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
+                      placeholder="Brief description of this role's responsibilities..."
+                      rows={2}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Permissions Section */}
@@ -558,13 +575,22 @@ export default function RolesPermissionsPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
-              <button onClick={resetForm} className="btn-outline">Cancel</button>
-              <button onClick={handleCreateRole} className="btn-primary flex items-center gap-2" disabled={createRole.isPending || updateRole.isPending}>
-                {(createRole.isPending || updateRole.isPending) ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-                {modalMode === 'edit' ? 'Update Role' : 'Create Role'}
-              </button>
-            </div>
+            <FormActionButtons
+              isEdit={modalMode === 'edit'}
+              isSubmitting={createRole.isPending || updateRole.isPending}
+              onCancel={resetForm}
+              onReset={() => {
+                setRoleForm({ name: '', code: '', level: 5, description: '', geoLevel: 'territory', zoneType: '', status: 'active' });
+                setFormPermissions(createDefaultPermissions());
+              }}
+              onSubmit={handleCreateRole}
+              onAddMore={() => {
+                handleCreateRole();
+                // Form will reset via resetForm on success, but we reopen
+                setTimeout(() => { setModalMode('create'); setShowCreateModal(true); }, 500);
+              }}
+              entityName="Role"
+            />
           </motion.div>
         </div>
       )}

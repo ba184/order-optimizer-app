@@ -9,6 +9,8 @@ export interface UserWithRole {
   phone: string | null;
   territory: string | null;
   region: string | null;
+  city: string | null;
+  zone: string | null;
   reporting_to: string | null;
   reporting_to_name?: string;
   status: string | null;
@@ -92,6 +94,8 @@ export function useUsersData() {
           phone: profile.phone,
           territory: profile.territory,
           region: profile.region,
+          city: profile.city,
+          zone: profile.zone,
           reporting_to: profile.reporting_to,
           reporting_to_name: profile.reporting_to ? profileMap.get(profile.reporting_to) : null,
           status: profile.status,
