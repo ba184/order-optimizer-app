@@ -49,23 +49,22 @@ export function usePreOrderSchemes() {
     queryKey: ['pre-order-schemes'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('schemes')
+        .from('pre_order_schemes' as any)
         .select('*')
         .eq('status', 'active')
-        .order('start_date');
+        .order('launch_date');
       
       if (error) throw error;
       
-      // Map schemes to PreOrderScheme format
       return (data || []).map((s: any) => ({
         id: s.id,
         name: s.name,
         description: s.description,
-        launch_date: s.start_date,
-        pre_order_start: s.start_date,
-        pre_order_end: s.end_date,
-        pre_order_target: s.min_quantity || 0,
-        pre_order_achieved: 0,
+        launch_date: s.launch_date,
+        pre_order_start: s.pre_order_start,
+        pre_order_end: s.pre_order_end,
+        pre_order_target: s.pre_order_target || 0,
+        pre_order_achieved: s.pre_order_achieved || 0,
         status: s.status,
       })) as PreOrderScheme[];
     },
