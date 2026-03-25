@@ -79,7 +79,7 @@ export function usePreOrders() {
         .from('pre_orders' as any)
         .select(`
           *,
-          scheme:schemes(name),
+          scheme:pre_order_schemes(name),
           distributor:distributors(firm_name)
         `)
         .order('created_at', { ascending: false });
