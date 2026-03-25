@@ -4,7 +4,6 @@ import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   Plus,
-  Settings,
   GitBranch,
   CheckCircle,
   Clock,
@@ -12,44 +11,22 @@ import {
   Eye,
   Edit,
   ArrowRight,
-  Users,
   FileText,
   ShoppingCart,
   Building2,
   Wallet,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { usePendingApprovals, useApproveItem, useRejectItem, type PendingApproval } from '@/hooks/useApprovalData';
+import { useNavigate } from 'react-router-dom';
 
 interface ApprovalWorkflow {
   id: string;
   name: string;
-  type: 'distributor' | 'order' | 'expense' | 'leave' | 'claim' | 'retailer';
-  steps: ApprovalStep[];
-  isActive: boolean;
-  createdAt: string;
-}
-
-interface ApprovalStep {
-  level: number;
-  role: string;
-  condition?: string;
-  autoEscalate: number; // hours
-}
-
-interface PendingApproval {
-  id: string;
   type: string;
-  reference: string;
-  description: string;
-  amount?: number;
-  submittedBy: string;
-  submittedAt: string;
-  currentStep: number;
-  totalSteps: number;
-  currentApprover: string;
-  status: 'pending' | 'approved' | 'rejected';
-  priority: 'low' | 'medium' | 'high';
+  steps: { level: number; role: string; condition?: string; autoEscalate: number }[];
+  isActive: boolean;
 }
 
 const mockWorkflows: ApprovalWorkflow[] = [
@@ -64,7 +41,6 @@ const mockWorkflows: ApprovalWorkflow[] = [
       { level: 4, role: 'Admin', autoEscalate: 48 },
     ],
     isActive: true,
-    createdAt: '2024-01-15',
   },
   {
     id: 'wf-002',
@@ -75,7 +51,6 @@ const mockWorkflows: ApprovalWorkflow[] = [
       { level: 2, role: 'Admin', condition: 'Order > ₹5L', autoEscalate: 8 },
     ],
     isActive: true,
-    createdAt: '2024-01-15',
   },
   {
     id: 'wf-003',
@@ -86,7 +61,6 @@ const mockWorkflows: ApprovalWorkflow[] = [
       { level: 2, role: 'Accounts', condition: 'Amount > ₹5000', autoEscalate: 48 },
     ],
     isActive: true,
-    createdAt: '2024-01-15',
   },
   {
     id: 'wf-004',
@@ -97,75 +71,14 @@ const mockWorkflows: ApprovalWorkflow[] = [
       { level: 2, role: 'HR', condition: 'Days > 3', autoEscalate: 24 },
     ],
     isActive: true,
-    createdAt: '2024-01-15',
-  },
-];
-
-const mockPendingApprovals: PendingApproval[] = [
-  {
-    id: 'pa-001',
-    type: 'Distributor',
-    reference: 'DIST-NEW-001',
-    description: 'New Distributor: Krishna Traders Pvt Ltd',
-    amount: 500000,
-    submittedBy: 'Rajesh Kumar',
-    submittedAt: '2024-12-08 10:30 AM',
-    currentStep: 2,
-    totalSteps: 4,
-    currentApprover: 'Manager',
-    status: 'pending',
-    priority: 'high',
-  },
-  {
-    id: 'pa-002',
-    type: 'Order',
-    reference: 'ORD-2024-0156',
-    description: 'Primary Order: Sharma Distributors',
-    amount: 750000,
-    submittedBy: 'Amit Sharma',
-    submittedAt: '2024-12-09 09:15 AM',
-    currentStep: 1,
-    totalSteps: 2,
-    currentApprover: 'Manager',
-    status: 'pending',
-    priority: 'high',
-  },
-  {
-    id: 'pa-003',
-    type: 'Expense',
-    reference: 'EXP-2024-089',
-    description: 'Travel Claim: Dec 1-7',
-    amount: 12500,
-    submittedBy: 'Priya Singh',
-    submittedAt: '2024-12-08 04:00 PM',
-    currentStep: 1,
-    totalSteps: 2,
-    currentApprover: 'Manager',
-    status: 'pending',
-    priority: 'medium',
-  },
-  {
-    id: 'pa-004',
-    type: 'Leave',
-    reference: 'LV-2024-045',
-    description: 'Earned Leave: 5 days',
-    submittedBy: 'Vikram Patel',
-    submittedAt: '2024-12-07 11:00 AM',
-    currentStep: 2,
-    totalSteps: 2,
-    currentApprover: 'HR',
-    status: 'pending',
-    priority: 'low',
   },
 ];
 
 const typeIcons: Record<string, React.ElementType> = {
-  Distributor: Building2,
   Order: ShoppingCart,
   Expense: Wallet,
   Leave: FileText,
-  Claim: FileText,
-  Retailer: Building2,
+  Distributor: Building2,
 };
 
 const priorityColors = {
@@ -176,13 +89,22 @@ const priorityColors = {
 
 export default function ApprovalWorkflowPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'workflows'>('pending');
+  const { data: pendingApprovals = [], isLoading } = usePendingApprovals();
+  const approveMutation = useApproveItem();
+  const rejectMutation = useRejectItem();
+  const navigate = useNavigate();
 
-  const handleApprove = (id: string) => {
-    toast.success('Approved successfully');
+  const handleApprove = (item: PendingApproval) => {
+    approveMutation.mutate({ id: item.id, type: item.type });
   };
 
-  const handleReject = (id: string) => {
-    toast.success('Rejected with notification');
+  const handleReject = (item: PendingApproval) => {
+    rejectMutation.mutate({ id: item.id, type: item.type });
+  };
+
+  const handleView = (item: PendingApproval) => {
+    if (item.type === 'Order') navigate(`/orders/view/${item.id}`);
+    else if (item.type === 'Expense') navigate(`/expenses/view/${item.id}`);
   };
 
   const pendingColumns = [
@@ -229,28 +151,11 @@ export default function ApprovalWorkflowPage() {
       ),
     },
     {
-      key: 'progress',
-      header: 'Progress',
+      key: 'type',
+      header: 'Type',
       render: (item: PendingApproval) => (
-        <div className="flex items-center gap-2">
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden w-20">
-            <div
-              className="h-full bg-primary rounded-full"
-              style={{ width: `${(item.currentStep / item.totalSteps) * 100}%` }}
-            />
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {item.currentStep}/{item.totalSteps}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'currentApprover',
-      header: 'Pending With',
-      render: (item: PendingApproval) => (
-        <span className="px-2.5 py-1 bg-warning/10 text-warning rounded-full text-xs font-medium">
-          {item.currentApprover}
+        <span className="px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
+          {item.type}
         </span>
       ),
     },
@@ -259,19 +164,21 @@ export default function ApprovalWorkflowPage() {
       header: 'Actions',
       render: (item: PendingApproval) => (
         <div className="flex items-center gap-1">
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors" title="View">
+          <button onClick={() => handleView(item)} className="p-2 hover:bg-muted rounded-lg transition-colors" title="View">
             <Eye size={16} className="text-muted-foreground" />
           </button>
           <button
-            onClick={() => handleApprove(item.id)}
-            className="p-2 hover:bg-success/10 rounded-lg transition-colors"
+            onClick={() => handleApprove(item)}
+            disabled={approveMutation.isPending}
+            className="p-2 hover:bg-success/10 rounded-lg transition-colors disabled:opacity-50"
             title="Approve"
           >
             <CheckCircle size={16} className="text-success" />
           </button>
           <button
-            onClick={() => handleReject(item.id)}
-            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+            onClick={() => handleReject(item)}
+            disabled={rejectMutation.isPending}
+            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50"
             title="Reject"
           >
             <XCircle size={16} className="text-destructive" />
@@ -282,8 +189,8 @@ export default function ApprovalWorkflowPage() {
   ];
 
   const stats = {
-    pending: mockPendingApprovals.length,
-    highPriority: mockPendingApprovals.filter(p => p.priority === 'high').length,
+    pending: pendingApprovals.length,
+    highPriority: pendingApprovals.filter(p => p.priority === 'high').length,
     workflows: mockWorkflows.filter(w => w.isActive).length,
   };
 
@@ -303,11 +210,7 @@ export default function ApprovalWorkflowPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="stat-card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-warning/10">
               <Clock size={24} className="text-warning" />
@@ -319,12 +222,7 @@ export default function ApprovalWorkflowPage() {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="stat-card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-destructive/10">
               <AlertTriangle size={24} className="text-destructive" />
@@ -336,12 +234,7 @@ export default function ApprovalWorkflowPage() {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="stat-card"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-success/10">
               <GitBranch size={24} className="text-success" />
@@ -376,11 +269,17 @@ export default function ApprovalWorkflowPage() {
 
       {/* Content */}
       {activeTab === 'pending' ? (
-        <DataTable
-          data={mockPendingApprovals}
-          columns={pendingColumns}
-          searchPlaceholder="Search approvals..."
-        />
+        isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <DataTable
+            data={pendingApprovals}
+            columns={pendingColumns}
+            searchPlaceholder="Search approvals..."
+          />
+        )
       ) : (
         <div className="grid gap-4">
           {mockWorkflows.map((workflow, index) => (
@@ -404,7 +303,6 @@ export default function ApprovalWorkflowPage() {
                 </button>
               </div>
 
-              {/* Workflow Steps */}
               <div className="flex items-center gap-2 overflow-x-auto pb-2">
                 {workflow.steps.map((step, stepIndex) => (
                   <div key={stepIndex} className="flex items-center">
@@ -416,9 +314,7 @@ export default function ApprovalWorkflowPage() {
                       {step.condition && (
                         <p className="text-xs text-muted-foreground text-center">{step.condition}</p>
                       )}
-                      <p className="text-xs text-muted-foreground">
-                        Escalate: {step.autoEscalate}h
-                      </p>
+                      <p className="text-xs text-muted-foreground">Escalate: {step.autoEscalate}h</p>
                     </div>
                     {stepIndex < workflow.steps.length - 1 && (
                       <ArrowRight size={20} className="text-muted-foreground mx-2" />
