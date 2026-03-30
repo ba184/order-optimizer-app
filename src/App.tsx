@@ -245,6 +245,11 @@ function AppRoutes() {
       <Route path="/master/presentations/view/:id" element={<ProtectedRoute><PresentationViewPage /></ProtectedRoute>} />
       <Route path="/master/presentations/edit/:id" element={<ProtectedRoute><PresentationFormPage /></ProtectedRoute>} />
       
+      {/* HRMS */}
+      <Route path="/hrms/payroll" element={<ProtectedRoute><PayrollPage /></ProtectedRoute>} />
+      <Route path="/hrms/travel-allowance" element={<ProtectedRoute><TravelAllowancePage /></ProtectedRoute>} />
+      <Route path="/hrms/shifts-policies" element={<ProtectedRoute><ShiftsPoliciesPage /></ProtectedRoute>} />
+      
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       
       <Route path="*" element={<NotFound />} />
