@@ -147,6 +147,16 @@ const navigationItems: NavItem[] = [
     roles: ['manager', 'admin', 'warehouse_manager'],
   },
   {
+    label: 'HRMS',
+    icon: Briefcase,
+    roles: ['admin', 'manager'],
+    children: [
+      { label: 'Payroll', path: '/hrms/payroll', icon: DollarSign },
+      { label: 'Travel Allowance', path: '/hrms/travel-allowance', icon: Car },
+      { label: 'Shifts & Policies', path: '/hrms/shifts-policies', icon: Clock },
+    ],
+  },
+  {
     label: 'Reports',
     icon: BarChart3,
     path: '/reports',

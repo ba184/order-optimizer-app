@@ -86,6 +86,9 @@ import FeedbackComplaintsPage from "./pages/FeedbackComplaintsPage";
 import ReturnsManagementPage from "./pages/ReturnsManagementPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import PayrollPage from "./pages/hrms/PayrollPage";
+import TravelAllowancePage from "./pages/hrms/TravelAllowancePage";
+import ShiftsPoliciesPage from "./pages/hrms/ShiftsPoliciesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
