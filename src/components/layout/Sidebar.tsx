@@ -36,6 +36,10 @@ import {
   RotateCcw,
   Shield,
   Truck,
+  DollarSign,
+  Car,
+  Clock,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
