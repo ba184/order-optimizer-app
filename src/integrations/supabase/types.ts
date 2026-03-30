@@ -1315,6 +1315,39 @@ export type Database = {
           },
         ]
       }
+      hr_policies: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          rules: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          rules?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          rules?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_batches: {
         Row: {
           approved_at: string | null
@@ -1880,6 +1913,136 @@ export type Database = {
             columns: ["retailer_id"]
             isOneToOne: false
             referencedRelation: "retailers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_runs: {
+        Row: {
+          absent_days: number
+          approved_at: string | null
+          approved_by: string | null
+          basic_salary: number
+          created_at: string
+          employee_id: string
+          esi_deduction: number
+          generated_by: string | null
+          gross_salary: number
+          id: string
+          incentive_amount: number
+          late_days: number
+          late_deduction: number
+          leave_days: number
+          leave_deduction: number
+          month: number
+          net_salary: number
+          notes: string | null
+          other_deduction: number
+          payment_date: string | null
+          payment_reference: string | null
+          payment_status: string
+          pf_deduction: number
+          present_days: number
+          reimbursement_amount: number
+          status: string
+          tax_deduction: number
+          total_allowances: number
+          total_deductions: number
+          total_order_value: number
+          total_orders: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          absent_days?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          basic_salary?: number
+          created_at?: string
+          employee_id: string
+          esi_deduction?: number
+          generated_by?: string | null
+          gross_salary?: number
+          id?: string
+          incentive_amount?: number
+          late_days?: number
+          late_deduction?: number
+          leave_days?: number
+          leave_deduction?: number
+          month: number
+          net_salary?: number
+          notes?: string | null
+          other_deduction?: number
+          payment_date?: string | null
+          payment_reference?: string | null
+          payment_status?: string
+          pf_deduction?: number
+          present_days?: number
+          reimbursement_amount?: number
+          status?: string
+          tax_deduction?: number
+          total_allowances?: number
+          total_deductions?: number
+          total_order_value?: number
+          total_orders?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          absent_days?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          basic_salary?: number
+          created_at?: string
+          employee_id?: string
+          esi_deduction?: number
+          generated_by?: string | null
+          gross_salary?: number
+          id?: string
+          incentive_amount?: number
+          late_days?: number
+          late_deduction?: number
+          leave_days?: number
+          leave_deduction?: number
+          month?: number
+          net_salary?: number
+          notes?: string | null
+          other_deduction?: number
+          payment_date?: string | null
+          payment_reference?: string | null
+          payment_status?: string
+          pf_deduction?: number
+          present_days?: number
+          reimbursement_amount?: number
+          status?: string
+          tax_deduction?: number
+          total_allowances?: number
+          total_deductions?: number
+          total_order_value?: number
+          total_orders?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_runs_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2889,6 +3052,68 @@ export type Database = {
         }
         Relationships: []
       }
+      salary_structures: {
+        Row: {
+          basic_salary: number
+          created_at: string
+          da: number
+          effective_from: string
+          employee_id: string
+          esi_deduction: number
+          hra: number
+          id: string
+          medical_allowance: number
+          pf_deduction: number
+          special_allowance: number
+          status: string
+          tax_deduction: number
+          travel_allowance: number
+          updated_at: string
+        }
+        Insert: {
+          basic_salary?: number
+          created_at?: string
+          da?: number
+          effective_from?: string
+          employee_id: string
+          esi_deduction?: number
+          hra?: number
+          id?: string
+          medical_allowance?: number
+          pf_deduction?: number
+          special_allowance?: number
+          status?: string
+          tax_deduction?: number
+          travel_allowance?: number
+          updated_at?: string
+        }
+        Update: {
+          basic_salary?: number
+          created_at?: string
+          da?: number
+          effective_from?: string
+          employee_id?: string
+          esi_deduction?: number
+          hra?: number
+          id?: string
+          medical_allowance?: number
+          pf_deduction?: number
+          special_allowance?: number
+          status?: string
+          tax_deduction?: number
+          travel_allowance?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_structures_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sample_budgets: {
         Row: {
           created_at: string
@@ -3271,6 +3496,102 @@ export type Database = {
         }
         Relationships: []
       }
+      shift_assignments: {
+        Row: {
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          employee_id: string
+          id: string
+          shift_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          employee_id: string
+          id?: string
+          shift_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          employee_id?: string
+          id?: string
+          shift_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_assignments_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shifts: {
+        Row: {
+          created_at: string
+          end_time: string
+          grace_minutes: number
+          id: string
+          late_penalty_after_minutes: number
+          late_penalty_amount: number
+          name: string
+          overtime_after_hours: number
+          overtime_rate_multiplier: number
+          start_time: string
+          status: string
+          updated_at: string
+          weekly_off: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          grace_minutes?: number
+          id?: string
+          late_penalty_after_minutes?: number
+          late_penalty_amount?: number
+          name: string
+          overtime_after_hours?: number
+          overtime_rate_multiplier?: number
+          start_time: string
+          status?: string
+          updated_at?: string
+          weekly_off?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          grace_minutes?: number
+          id?: string
+          late_penalty_after_minutes?: number
+          late_penalty_amount?: number
+          name?: string
+          overtime_after_hours?: number
+          overtime_rate_multiplier?: number
+          start_time?: string
+          status?: string
+          updated_at?: string
+          weekly_off?: string
+        }
+        Relationships: []
+      }
       states: {
         Row: {
           code: string
@@ -3605,6 +3926,91 @@ export type Database = {
             columns: ["zone_id"]
             isOneToOne: false
             referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      travel_claims: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          claim_date: string
+          created_at: string
+          distance_km: number
+          employee_id: string
+          end_location: string | null
+          id: string
+          payroll_id: string | null
+          purpose: string | null
+          rate_per_km: number
+          rejection_reason: string | null
+          start_location: string | null
+          status: string
+          synced_to_payroll: boolean
+          total_amount: number
+          travel_type: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          claim_date?: string
+          created_at?: string
+          distance_km?: number
+          employee_id: string
+          end_location?: string | null
+          id?: string
+          payroll_id?: string | null
+          purpose?: string | null
+          rate_per_km?: number
+          rejection_reason?: string | null
+          start_location?: string | null
+          status?: string
+          synced_to_payroll?: boolean
+          total_amount?: number
+          travel_type?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          claim_date?: string
+          created_at?: string
+          distance_km?: number
+          employee_id?: string
+          end_location?: string | null
+          id?: string
+          payroll_id?: string | null
+          purpose?: string | null
+          rate_per_km?: number
+          rejection_reason?: string | null
+          start_location?: string | null
+          status?: string
+          synced_to_payroll?: boolean
+          total_amount?: number
+          travel_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travel_claims_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_claims_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travel_claims_payroll_id_fkey"
+            columns: ["payroll_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
             referencedColumns: ["id"]
           },
         ]
