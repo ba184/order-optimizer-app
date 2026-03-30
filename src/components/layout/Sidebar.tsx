@@ -36,6 +36,10 @@ import {
   RotateCcw,
   Shield,
   Truck,
+  DollarSign,
+  Car,
+  Clock,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -141,6 +145,16 @@ const navigationItems: NavItem[] = [
     icon: RotateCcw,
     path: '/returns',
     roles: ['manager', 'admin', 'warehouse_manager'],
+  },
+  {
+    label: 'HRMS',
+    icon: Briefcase,
+    roles: ['admin', 'manager'],
+    children: [
+      { label: 'Payroll', path: '/hrms/payroll', icon: DollarSign },
+      { label: 'Travel Allowance', path: '/hrms/travel-allowance', icon: Car },
+      { label: 'Shifts & Policies', path: '/hrms/shifts-policies', icon: Clock },
+    ],
   },
   {
     label: 'Reports',

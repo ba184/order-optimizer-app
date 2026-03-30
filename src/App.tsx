@@ -86,6 +86,9 @@ import FeedbackComplaintsPage from "./pages/FeedbackComplaintsPage";
 import ReturnsManagementPage from "./pages/ReturnsManagementPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import PayrollPage from "./pages/hrms/PayrollPage";
+import TravelAllowancePage from "./pages/hrms/TravelAllowancePage";
+import ShiftsPoliciesPage from "./pages/hrms/ShiftsPoliciesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -241,6 +244,11 @@ function AppRoutes() {
       <Route path="/master/presentations/new" element={<ProtectedRoute><PresentationFormPage /></ProtectedRoute>} />
       <Route path="/master/presentations/view/:id" element={<ProtectedRoute><PresentationViewPage /></ProtectedRoute>} />
       <Route path="/master/presentations/edit/:id" element={<ProtectedRoute><PresentationFormPage /></ProtectedRoute>} />
+      
+      {/* HRMS */}
+      <Route path="/hrms/payroll" element={<ProtectedRoute><PayrollPage /></ProtectedRoute>} />
+      <Route path="/hrms/travel-allowance" element={<ProtectedRoute><TravelAllowancePage /></ProtectedRoute>} />
+      <Route path="/hrms/shifts-policies" element={<ProtectedRoute><ShiftsPoliciesPage /></ProtectedRoute>} />
       
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       
