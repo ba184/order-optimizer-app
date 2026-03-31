@@ -40,6 +40,7 @@ import {
   Car,
   Clock,
   Briefcase,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
