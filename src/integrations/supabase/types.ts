@@ -77,6 +77,42 @@ export type Database = {
         }
         Relationships: []
       }
+      appraisal_cycles: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          cycle_type: string | null
+          end_date: string
+          id: string
+          name: string
+          start_date: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          cycle_type?: string | null
+          end_date: string
+          id?: string
+          name: string
+          start_date: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          cycle_type?: string | null
+          end_date?: string
+          id?: string
+          name?: string
+          start_date?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           created_at: string | null
@@ -239,6 +275,74 @@ export type Database = {
             columns: ["beat_plan_id"]
             isOneToOne: false
             referencedRelation: "beat_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidates: {
+        Row: {
+          created_at: string | null
+          current_ctc: number | null
+          email: string | null
+          expected_ctc: number | null
+          experience_years: number | null
+          id: string
+          job_opening_id: string | null
+          name: string
+          notes: string | null
+          notice_period: number | null
+          phone: string | null
+          referred_by: string | null
+          resume_url: string | null
+          skills: string[] | null
+          source: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_ctc?: number | null
+          email?: string | null
+          expected_ctc?: number | null
+          experience_years?: number | null
+          id?: string
+          job_opening_id?: string | null
+          name: string
+          notes?: string | null
+          notice_period?: number | null
+          phone?: string | null
+          referred_by?: string | null
+          resume_url?: string | null
+          skills?: string[] | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_ctc?: number | null
+          email?: string | null
+          expected_ctc?: number | null
+          experience_years?: number | null
+          id?: string
+          job_opening_id?: string | null
+          name?: string
+          notes?: string | null
+          notice_period?: number | null
+          phone?: string | null
+          referred_by?: string | null
+          resume_url?: string | null
+          skills?: string[] | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidates_job_opening_id_fkey"
+            columns: ["job_opening_id"]
+            isOneToOne: false
+            referencedRelation: "job_openings"
             referencedColumns: ["id"]
           },
         ]
@@ -1100,6 +1204,63 @@ export type Database = {
           },
         ]
       }
+      employee_lifecycle: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          employee_id: string
+          event_date: string
+          event_type: string
+          from_location: string | null
+          from_role: string | null
+          id: string
+          metadata: Json | null
+          reason: string | null
+          remarks: string | null
+          status: string | null
+          to_location: string | null
+          to_role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          employee_id: string
+          event_date: string
+          event_type: string
+          from_location?: string | null
+          from_role?: string | null
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          remarks?: string | null
+          status?: string | null
+          to_location?: string | null
+          to_role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          employee_id?: string
+          event_date?: string
+          event_type?: string
+          from_location?: string | null
+          from_role?: string | null
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          remarks?: string | null
+          status?: string | null
+          to_location?: string | null
+          to_role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       employee_locations: {
         Row: {
           accuracy: number | null
@@ -1315,6 +1476,45 @@ export type Database = {
           },
         ]
       }
+      holiday_calendar: {
+        Row: {
+          applicable_to: string | null
+          created_at: string | null
+          date: string
+          id: string
+          name: string
+          status: string | null
+          type: string | null
+          updated_at: string | null
+          year: number
+          zone_id: string | null
+        }
+        Insert: {
+          applicable_to?: string | null
+          created_at?: string | null
+          date: string
+          id?: string
+          name: string
+          status?: string | null
+          type?: string | null
+          updated_at?: string | null
+          year: number
+          zone_id?: string | null
+        }
+        Update: {
+          applicable_to?: string | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          name?: string
+          status?: string | null
+          type?: string | null
+          updated_at?: string | null
+          year?: number
+          zone_id?: string | null
+        }
+        Relationships: []
+      }
       hr_policies: {
         Row: {
           category: string
@@ -1347,6 +1547,113 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      incentive_rules: {
+        Row: {
+          category_ids: string[] | null
+          created_at: string | null
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          name: string
+          product_ids: string[] | null
+          role_filter: string | null
+          scheme_id: string | null
+          slab_config: Json | null
+          status: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          category_ids?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          name: string
+          product_ids?: string[] | null
+          role_filter?: string | null
+          scheme_id?: string | null
+          slab_config?: Json | null
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          category_ids?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          name?: string
+          product_ids?: string[] | null
+          role_filter?: string | null
+          scheme_id?: string | null
+          slab_config?: Json | null
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      interviews: {
+        Row: {
+          candidate_id: string
+          created_at: string | null
+          duration_minutes: number | null
+          feedback: string | null
+          id: string
+          interviewer_id: string | null
+          mode: string | null
+          rating: number | null
+          result: string | null
+          round: number | null
+          round_name: string | null
+          scheduled_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string | null
+          duration_minutes?: number | null
+          feedback?: string | null
+          id?: string
+          interviewer_id?: string | null
+          mode?: string | null
+          rating?: number | null
+          result?: string | null
+          round?: number | null
+          round_name?: string | null
+          scheduled_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string | null
+          duration_minutes?: number | null
+          feedback?: string | null
+          id?: string
+          interviewer_id?: string | null
+          mode?: string | null
+          rating?: number | null
+          result?: string | null
+          round?: number | null
+          round_name?: string | null
+          scheduled_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interviews_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_batches: {
         Row: {
@@ -1433,6 +1740,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      job_openings: {
+        Row: {
+          closing_date: string | null
+          created_at: string | null
+          department: string | null
+          description: string | null
+          filled_positions: number | null
+          id: string
+          job_type: string | null
+          location: string | null
+          positions: number | null
+          posted_at: string | null
+          posted_by: string | null
+          requirements: string | null
+          role_id: string | null
+          salary_range_max: number | null
+          salary_range_min: number | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          closing_date?: string | null
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          filled_positions?: number | null
+          id?: string
+          job_type?: string | null
+          location?: string | null
+          positions?: number | null
+          posted_at?: string | null
+          posted_by?: string | null
+          requirements?: string | null
+          role_id?: string | null
+          salary_range_max?: number | null
+          salary_range_min?: number | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          closing_date?: string | null
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          filled_positions?: number | null
+          id?: string
+          job_type?: string | null
+          location?: string | null
+          positions?: number | null
+          posted_at?: string | null
+          posted_by?: string | null
+          requirements?: string | null
+          role_id?: string | null
+          salary_range_max?: number | null
+          salary_range_min?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       leads: {
         Row: {
@@ -1705,6 +2075,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      onboarding_checklists: {
+        Row: {
+          assigned_to: string | null
+          category: string | null
+          completed_at: string | null
+          created_at: string | null
+          due_date: string | null
+          employee_id: string
+          id: string
+          notes: string | null
+          status: string | null
+          task_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          task_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          task_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       order_collaterals: {
         Row: {
@@ -2043,6 +2455,77 @@ export type Database = {
             columns: ["generated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_reviews: {
+        Row: {
+          created_at: string | null
+          cycle_id: string | null
+          employee_feedback: string | null
+          employee_id: string
+          final_rating: number | null
+          goals_next_period: string | null
+          id: string
+          improvements: string | null
+          kpi_score: number | null
+          manager_feedback: string | null
+          manager_rating: number | null
+          review_period: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          self_rating: number | null
+          status: string | null
+          strengths: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cycle_id?: string | null
+          employee_feedback?: string | null
+          employee_id: string
+          final_rating?: number | null
+          goals_next_period?: string | null
+          id?: string
+          improvements?: string | null
+          kpi_score?: number | null
+          manager_feedback?: string | null
+          manager_rating?: number | null
+          review_period?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          self_rating?: number | null
+          status?: string | null
+          strengths?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cycle_id?: string | null
+          employee_feedback?: string | null
+          employee_id?: string
+          final_rating?: number | null
+          goals_next_period?: string | null
+          id?: string
+          improvements?: string | null
+          kpi_score?: number | null
+          manager_feedback?: string | null
+          manager_rating?: number | null
+          review_period?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          self_rating?: number | null
+          status?: string | null
+          strengths?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_reviews_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "appraisal_cycles"
             referencedColumns: ["id"]
           },
         ]

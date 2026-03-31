@@ -89,6 +89,11 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import PayrollPage from "./pages/hrms/PayrollPage";
 import TravelAllowancePage from "./pages/hrms/TravelAllowancePage";
 import ShiftsPoliciesPage from "./pages/hrms/ShiftsPoliciesPage";
+import IncentiveCommissionPage from "./pages/hrms/IncentiveCommissionPage";
+import PerformanceManagementPage from "./pages/hrms/PerformanceManagementPage";
+import RecruitmentPage from "./pages/hrms/RecruitmentPage";
+import EmployeeLifecyclePage from "./pages/hrms/EmployeeLifecyclePage";
+import HolidayCalendarPage from "./pages/hrms/HolidayCalendarPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -247,8 +252,13 @@ function AppRoutes() {
       
       {/* HRMS */}
       <Route path="/hrms/payroll" element={<ProtectedRoute><PayrollPage /></ProtectedRoute>} />
+      <Route path="/hrms/incentives" element={<ProtectedRoute><IncentiveCommissionPage /></ProtectedRoute>} />
       <Route path="/hrms/travel-allowance" element={<ProtectedRoute><TravelAllowancePage /></ProtectedRoute>} />
       <Route path="/hrms/shifts-policies" element={<ProtectedRoute><ShiftsPoliciesPage /></ProtectedRoute>} />
+      <Route path="/hrms/holidays" element={<ProtectedRoute><HolidayCalendarPage /></ProtectedRoute>} />
+      <Route path="/hrms/performance" element={<ProtectedRoute><PerformanceManagementPage /></ProtectedRoute>} />
+      <Route path="/hrms/recruitment" element={<ProtectedRoute><RecruitmentPage /></ProtectedRoute>} />
+      <Route path="/hrms/lifecycle" element={<ProtectedRoute><EmployeeLifecyclePage /></ProtectedRoute>} />
       
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       
