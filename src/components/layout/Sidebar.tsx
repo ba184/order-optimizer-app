@@ -152,8 +152,13 @@ const navigationItems: NavItem[] = [
     roles: ['admin', 'manager'],
     children: [
       { label: 'Payroll', path: '/hrms/payroll', icon: DollarSign },
+      { label: 'Incentive & Commission', path: '/hrms/incentives', icon: TrendingUp },
       { label: 'Travel Allowance', path: '/hrms/travel-allowance', icon: Car },
       { label: 'Shifts & Policies', path: '/hrms/shifts-policies', icon: Clock },
+      { label: 'Holiday Calendar', path: '/hrms/holidays', icon: CalendarDays },
+      { label: 'Performance', path: '/hrms/performance', icon: Target },
+      { label: 'Recruitment', path: '/hrms/recruitment', icon: UserPlus },
+      { label: 'Employee Lifecycle', path: '/hrms/lifecycle', icon: Users },
     ],
   },
   {
