@@ -61,7 +61,7 @@ export function usePerformanceReviews(cycleId?: string) {
     queryFn: async () => {
       let query = supabase
         .from('performance_reviews' as any)
-        .select('*, employee:profiles!performance_reviews_employee_id_fkey(name, email, employee_code, designation), reviewer:profiles!performance_reviews_reviewer_id_fkey(name)')
+        .select('*, employee:profiles!performance_reviews_employee_id_fkey(name, email, employee_id, designation), reviewer:profiles!performance_reviews_reviewer_id_fkey(name)')
         .order('created_at', { ascending: false });
       if (cycleId) query = query.eq('cycle_id', cycleId);
       const { data, error } = await query;
