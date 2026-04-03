@@ -21,9 +21,19 @@ export function useCreateIncentiveRule() {
   return useMutation({
     mutationFn: async (rule: any) => {
       const { data: { user } } = await supabase.auth.getUser();
+      const payload: any = {
+        name: rule.name,
+        type: rule.type,
+        role_filter: rule.role_filter || null,
+        effective_from: rule.effective_from,
+        effective_to: rule.effective_to || null,
+        slab_config: rule.slab_config,
+        status: rule.status || 'active',
+        created_by: user?.id,
+      };
       const { data, error } = await supabase
         .from('incentive_rules' as any)
-        .insert({ ...rule, created_by: user?.id })
+        .insert(payload)
         .select()
         .single();
       if (error) throw error;
@@ -41,9 +51,18 @@ export function useUpdateIncentiveRule() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: any) => {
+      const payload: any = {
+        name: updates.name,
+        type: updates.type,
+        role_filter: updates.role_filter || null,
+        effective_from: updates.effective_from,
+        effective_to: updates.effective_to || null,
+        slab_config: updates.slab_config,
+        status: updates.status || 'active',
+      };
       const { error } = await supabase
         .from('incentive_rules' as any)
-        .update(updates)
+        .update(payload)
         .eq('id', id);
       if (error) throw error;
     },
