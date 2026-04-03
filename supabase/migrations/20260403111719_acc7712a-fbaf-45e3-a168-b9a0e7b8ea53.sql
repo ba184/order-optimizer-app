@@ -1,0 +1,1 @@
+ALTER TABLE public.payroll_runs ADD COLUMN IF NOT EXISTS payment_mode text DEFAULT 'bank';
