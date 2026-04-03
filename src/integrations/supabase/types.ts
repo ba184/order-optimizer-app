@@ -79,33 +79,39 @@ export type Database = {
       }
       appraisal_cycles: {
         Row: {
+          approval_required: boolean | null
           created_at: string | null
           created_by: string | null
           cycle_type: string | null
           end_date: string
           id: string
+          kpi_config: Json | null
           name: string
           start_date: string
           status: string | null
           updated_at: string | null
         }
         Insert: {
+          approval_required?: boolean | null
           created_at?: string | null
           created_by?: string | null
           cycle_type?: string | null
           end_date: string
           id?: string
+          kpi_config?: Json | null
           name: string
           start_date: string
           status?: string | null
           updated_at?: string | null
         }
         Update: {
+          approval_required?: boolean | null
           created_at?: string | null
           created_by?: string | null
           cycle_type?: string | null
           end_date?: string
           id?: string
+          kpi_config?: Json | null
           name?: string
           start_date?: string
           status?: string | null
@@ -2464,6 +2470,9 @@ export type Database = {
       }
       performance_reviews: {
         Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string | null
           cycle_id: string | null
           employee_feedback: string | null
@@ -2472,9 +2481,15 @@ export type Database = {
           goals_next_period: string | null
           id: string
           improvements: string | null
+          increment_amount: number | null
+          increment_percent: number | null
           kpi_score: number | null
+          kpi_weights: Json | null
+          linked_payroll_id: string | null
           manager_feedback: string | null
           manager_rating: number | null
+          payroll_linked: boolean | null
+          rejection_reason: string | null
           review_period: string | null
           reviewed_at: string | null
           reviewer_id: string | null
@@ -2482,8 +2497,12 @@ export type Database = {
           status: string | null
           strengths: string | null
           updated_at: string | null
+          weighted_score: number | null
         }
         Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           cycle_id?: string | null
           employee_feedback?: string | null
@@ -2492,9 +2511,15 @@ export type Database = {
           goals_next_period?: string | null
           id?: string
           improvements?: string | null
+          increment_amount?: number | null
+          increment_percent?: number | null
           kpi_score?: number | null
+          kpi_weights?: Json | null
+          linked_payroll_id?: string | null
           manager_feedback?: string | null
           manager_rating?: number | null
+          payroll_linked?: boolean | null
+          rejection_reason?: string | null
           review_period?: string | null
           reviewed_at?: string | null
           reviewer_id?: string | null
@@ -2502,8 +2527,12 @@ export type Database = {
           status?: string | null
           strengths?: string | null
           updated_at?: string | null
+          weighted_score?: number | null
         }
         Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           cycle_id?: string | null
           employee_feedback?: string | null
@@ -2512,9 +2541,15 @@ export type Database = {
           goals_next_period?: string | null
           id?: string
           improvements?: string | null
+          increment_amount?: number | null
+          increment_percent?: number | null
           kpi_score?: number | null
+          kpi_weights?: Json | null
+          linked_payroll_id?: string | null
           manager_feedback?: string | null
           manager_rating?: number | null
+          payroll_linked?: boolean | null
+          rejection_reason?: string | null
           review_period?: string | null
           reviewed_at?: string | null
           reviewer_id?: string | null
@@ -2522,13 +2557,28 @@ export type Database = {
           status?: string | null
           strengths?: string | null
           updated_at?: string | null
+          weighted_score?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "performance_reviews_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "performance_reviews_cycle_id_fkey"
             columns: ["cycle_id"]
             isOneToOne: false
             referencedRelation: "appraisal_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_reviews_linked_payroll_id_fkey"
+            columns: ["linked_payroll_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
             referencedColumns: ["id"]
           },
         ]
