@@ -87,7 +87,7 @@ import ReturnsManagementPage from "./pages/ReturnsManagementPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import PayrollPage from "./pages/hrms/PayrollPage";
-import TravelAllowancePage from "./pages/hrms/TravelAllowancePage";
+
 import ShiftsPoliciesPage from "./pages/hrms/ShiftsPoliciesPage";
 import IncentiveCommissionPage from "./pages/hrms/IncentiveCommissionPage";
 import PerformanceManagementPage from "./pages/hrms/PerformanceManagementPage";
