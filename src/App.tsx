@@ -257,7 +257,7 @@ function AppRoutes() {
       <Route path="/hrms/shifts-policies" element={<ProtectedRoute><ShiftsPoliciesPage /></ProtectedRoute>} />
       <Route path="/hrms/holidays" element={<ProtectedRoute><HolidayCalendarPage /></ProtectedRoute>} />
       <Route path="/hrms/performance" element={<ProtectedRoute><PerformanceManagementPage /></ProtectedRoute>} />
-      <Route path="/hrms/recruitment" element={<ProtectedRoute><RecruitmentPage /></ProtectedRoute>} />
+      
       <Route path="/hrms/lifecycle" element={<ProtectedRoute><EmployeeLifecyclePage /></ProtectedRoute>} />
       
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
