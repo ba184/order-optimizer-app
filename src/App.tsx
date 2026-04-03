@@ -91,7 +91,7 @@ import PayrollPage from "./pages/hrms/PayrollPage";
 import ShiftsPoliciesPage from "./pages/hrms/ShiftsPoliciesPage";
 import IncentiveCommissionPage from "./pages/hrms/IncentiveCommissionPage";
 import PerformanceManagementPage from "./pages/hrms/PerformanceManagementPage";
-import RecruitmentPage from "./pages/hrms/RecruitmentPage";
+
 import EmployeeLifecyclePage from "./pages/hrms/EmployeeLifecyclePage";
 import HolidayCalendarPage from "./pages/hrms/HolidayCalendarPage";
 import NotFound from "./pages/NotFound";
