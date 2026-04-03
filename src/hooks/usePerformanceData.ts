@@ -140,7 +140,7 @@ export function useEmployeeKPIs(employeeId?: string, startDate?: string, endDate
         .eq('assigned_se', employeeId!);
 
       const { data: retailers } = await supabase
-        .from('retailers')
+        .from('retailers' as any)
         .select('id')
         .eq('assigned_se', employeeId!);
 
