@@ -1,19 +1,44 @@
 import { useState } from 'react';
-import { Clock, Plus, Users, Shield, Edit } from 'lucide-react';
+import { Clock, Plus, Users, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatCard } from '@/components/ui/StatCard';
-import { useShifts, useCreateShift, useUpdateShift, useShiftAssignments, useAssignShift, useHrPolicies, useCreateHrPolicy } from '@/hooks/useShiftsData';
+import { useShifts, useCreateShift, useShiftAssignments, useAssignShift, useHrPolicies, useCreateHrPolicy } from '@/hooks/useShiftsData';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-const weekDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const weekDays = [
+  { value: 'sunday', label: 'Sun' },
+  { value: 'monday', label: 'Mon' },
+  { value: 'tuesday', label: 'Tue' },
+  { value: 'wednesday', label: 'Wed' },
+  { value: 'thursday', label: 'Thu' },
+  { value: 'friday', label: 'Fri' },
+  { value: 'saturday', label: 'Sat' },
+];
+
+function useEmployees() {
+  return useQuery({
+    queryKey: ['employees-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, email, employee_id, department, designation')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+}
 
 export default function ShiftsPoliciesPage() {
   const [showShiftDialog, setShowShiftDialog] = useState(false);
@@ -21,8 +46,8 @@ export default function ShiftsPoliciesPage() {
   const [showPolicyDialog, setShowPolicyDialog] = useState(false);
   const [shiftForm, setShiftForm] = useState({
     name: '', start_time: '09:00', end_time: '18:00', grace_minutes: 15,
-    weekly_off: 'sunday', late_penalty_amount: 100, late_penalty_after_minutes: 30,
-    overtime_rate_multiplier: 1.5, overtime_after_hours: 9,
+    weekly_off: ['sunday'] as string[],
+    weekly_off_type: 'fixed',
   });
   const [assignForm, setAssignForm] = useState({ employee_id: '', shift_id: '', effective_from: new Date().toISOString().split('T')[0] });
   const [policyForm, setPolicyForm] = useState({ name: '', category: 'attendance', description: '', rules: '{}' });
@@ -30,16 +55,36 @@ export default function ShiftsPoliciesPage() {
   const { data: shifts = [] } = useShifts();
   const { data: assignments = [] } = useShiftAssignments();
   const { data: policies = [] } = useHrPolicies();
+  const { data: employees = [] } = useEmployees();
   const createShift = useCreateShift();
   const assignShift = useAssignShift();
   const createPolicy = useCreateHrPolicy();
 
+  const toggleWeeklyOff = (day: string) => {
+    setShiftForm(p => ({
+      ...p,
+      weekly_off: p.weekly_off.includes(day)
+        ? p.weekly_off.filter(d => d !== day)
+        : [...p.weekly_off, day],
+    }));
+  };
+
   const handleCreateShift = () => {
     if (!shiftForm.name) { toast.error('Enter shift name'); return; }
-    createShift.mutate(shiftForm, { onSuccess: () => {
-      setShowShiftDialog(false);
-      setShiftForm({ name: '', start_time: '09:00', end_time: '18:00', grace_minutes: 15, weekly_off: 'sunday', late_penalty_amount: 100, late_penalty_after_minutes: 30, overtime_rate_multiplier: 1.5, overtime_after_hours: 9 });
-    }});
+    if (shiftForm.weekly_off.length === 0) { toast.error('Select at least one weekly off day'); return; }
+    createShift.mutate({
+      name: shiftForm.name,
+      start_time: shiftForm.start_time,
+      end_time: shiftForm.end_time,
+      grace_minutes: shiftForm.grace_minutes,
+      weekly_off: shiftForm.weekly_off.join(','),
+      weekly_off_type: shiftForm.weekly_off_type,
+    }, {
+      onSuccess: () => {
+        setShowShiftDialog(false);
+        setShiftForm({ name: '', start_time: '09:00', end_time: '18:00', grace_minutes: 15, weekly_off: ['sunday'], weekly_off_type: 'fixed' });
+      }
+    });
   };
 
   const handleAssignShift = () => {
@@ -58,6 +103,11 @@ export default function ShiftsPoliciesPage() {
       setShowPolicyDialog(false);
       setPolicyForm({ name: '', category: 'attendance', description: '', rules: '{}' });
     }});
+  };
+
+  const formatWeeklyOff = (off: string) => {
+    if (!off) return '-';
+    return off.split(',').map(d => d.trim().charAt(0).toUpperCase() + d.trim().slice(1)).join(', ');
   };
 
   return (
@@ -83,6 +133,7 @@ export default function ShiftsPoliciesPage() {
           <TabsTrigger value="policies">Policies</TabsTrigger>
         </TabsList>
 
+        {/* SHIFTS TAB */}
         <TabsContent value="shifts">
           <div className="flex justify-end mb-4">
             <Dialog open={showShiftDialog} onOpenChange={setShowShiftDialog}>
@@ -100,23 +151,33 @@ export default function ShiftsPoliciesPage() {
                     <div><Label>Start Time</Label><Input type="time" value={shiftForm.start_time} onChange={e => setShiftForm(p => ({ ...p, start_time: e.target.value }))} /></div>
                     <div><Label>End Time</Label><Input type="time" value={shiftForm.end_time} onChange={e => setShiftForm(p => ({ ...p, end_time: e.target.value }))} /></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><Label>Grace Time (min)</Label><Input type="number" value={shiftForm.grace_minutes} onChange={e => setShiftForm(p => ({ ...p, grace_minutes: Number(e.target.value) }))} /></div>
-                    <div>
-                      <Label>Weekly Off</Label>
-                      <Select value={shiftForm.weekly_off} onValueChange={v => setShiftForm(p => ({ ...p, weekly_off: v }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{weekDays.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}</SelectContent>
-                      </Select>
+                  <div>
+                    <Label>Grace Time (min)</Label>
+                    <Input type="number" value={shiftForm.grace_minutes} onChange={e => setShiftForm(p => ({ ...p, grace_minutes: Number(e.target.value) }))} />
+                  </div>
+                  <div>
+                    <Label>Weekly Off Type</Label>
+                    <Select value={shiftForm.weekly_off_type} onValueChange={v => setShiftForm(p => ({ ...p, weekly_off_type: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixed">Fixed</SelectItem>
+                        <SelectItem value="rotational">Rotational</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Weekly Off Days *</Label>
+                    <div className="flex flex-wrap gap-3 mt-2">
+                      {weekDays.map(d => (
+                        <label key={d.value} className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={shiftForm.weekly_off.includes(d.value)}
+                            onCheckedChange={() => toggleWeeklyOff(d.value)}
+                          />
+                          <span className="text-sm">{d.label}</span>
+                        </label>
+                      ))}
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><Label>Late Penalty (₹)</Label><Input type="number" value={shiftForm.late_penalty_amount} onChange={e => setShiftForm(p => ({ ...p, late_penalty_amount: Number(e.target.value) }))} /></div>
-                    <div><Label>Late After (min)</Label><Input type="number" value={shiftForm.late_penalty_after_minutes} onChange={e => setShiftForm(p => ({ ...p, late_penalty_after_minutes: Number(e.target.value) }))} /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><Label>OT Multiplier</Label><Input type="number" step="0.1" value={shiftForm.overtime_rate_multiplier} onChange={e => setShiftForm(p => ({ ...p, overtime_rate_multiplier: Number(e.target.value) }))} /></div>
-                    <div><Label>OT After (hours)</Label><Input type="number" value={shiftForm.overtime_after_hours} onChange={e => setShiftForm(p => ({ ...p, overtime_after_hours: Number(e.target.value) }))} /></div>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 mt-4">
@@ -142,9 +203,8 @@ export default function ShiftsPoliciesPage() {
                   <CardContent className="space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-muted-foreground">Timing</span><span>{s.start_time} - {s.end_time}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Grace Time</span><span>{s.grace_minutes} min</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Weekly Off</span><span className="capitalize">{s.weekly_off}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Late Penalty</span><span>₹{s.late_penalty_amount} (after {s.late_penalty_after_minutes}min)</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Overtime</span><span>{s.overtime_rate_multiplier}x after {s.overtime_after_hours}h</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Weekly Off Type</span><span className="capitalize">{s.weekly_off_type || 'fixed'}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Weekly Off</span><span className="capitalize">{formatWeeklyOff(s.weekly_off)}</span></div>
                   </CardContent>
                 </Card>
               ))
@@ -152,6 +212,7 @@ export default function ShiftsPoliciesPage() {
           </div>
         </TabsContent>
 
+        {/* ASSIGNMENTS TAB */}
         <TabsContent value="assignments">
           <div className="flex justify-end mb-4">
             <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
@@ -162,8 +223,17 @@ export default function ShiftsPoliciesPage() {
                 <DialogHeader><DialogTitle>Assign Shift to Employee</DialogTitle></DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label>Employee ID *</Label>
-                    <Input value={assignForm.employee_id} onChange={e => setAssignForm(p => ({ ...p, employee_id: e.target.value }))} placeholder="Employee UUID" />
+                    <Label>Employee *</Label>
+                    <Select value={assignForm.employee_id} onValueChange={v => setAssignForm(p => ({ ...p, employee_id: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                      <SelectContent>
+                        {employees.map((e: any) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.name} {e.employee_id ? `(${e.employee_id})` : ''} {e.designation ? `- ${e.designation}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label>Shift *</Label>
@@ -189,36 +259,41 @@ export default function ShiftsPoliciesPage() {
 
           <Card>
             <CardContent className="p-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3">Employee</th>
-                    <th className="text-left p-3">Shift</th>
-                    <th className="text-left p-3">Timing</th>
-                    <th className="text-left p-3">Effective From</th>
-                    <th className="text-center p-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {assignments.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center p-8 text-muted-foreground">No shift assignments</td></tr>
-                  ) : (
-                    assignments.map((a: any) => (
-                      <tr key={a.id} className="border-b hover:bg-muted/30">
-                        <td className="p-3 font-medium">{a.profiles?.name || 'Unknown'}</td>
-                        <td className="p-3">{a.shifts?.name || '-'}</td>
-                        <td className="p-3">{a.shifts?.start_time} - {a.shifts?.end_time}</td>
-                        <td className="p-3">{a.effective_from}</td>
-                        <td className="text-center p-3"><Badge variant={a.status === 'active' ? 'default' : 'secondary'}>{a.status}</Badge></td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3">Employee</th>
+                      <th className="text-left p-3">Employee ID</th>
+                      <th className="text-left p-3">Shift</th>
+                      <th className="text-left p-3">Timing</th>
+                      <th className="text-left p-3">Effective From</th>
+                      <th className="text-center p-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assignments.length === 0 ? (
+                      <tr><td colSpan={6} className="text-center p-8 text-muted-foreground">No shift assignments</td></tr>
+                    ) : (
+                      assignments.map((a: any) => (
+                        <tr key={a.id} className="border-b hover:bg-muted/30">
+                          <td className="p-3 font-medium">{a.profiles?.name || 'Unknown'}</td>
+                          <td className="p-3">{a.profiles?.employee_id || '-'}</td>
+                          <td className="p-3">{a.shifts?.name || '-'}</td>
+                          <td className="p-3">{a.shifts?.start_time} - {a.shifts?.end_time}</td>
+                          <td className="p-3">{a.effective_from}</td>
+                          <td className="text-center p-3"><Badge variant={a.status === 'active' ? 'default' : 'secondary'}>{a.status}</Badge></td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* POLICIES TAB */}
         <TabsContent value="policies">
           <div className="flex justify-end mb-4">
             <Dialog open={showPolicyDialog} onOpenChange={setShowPolicyDialog}>
