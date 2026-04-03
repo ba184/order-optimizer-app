@@ -1,0 +1,1 @@
+ALTER TABLE public.shifts ADD COLUMN IF NOT EXISTS weekly_off_type TEXT NOT NULL DEFAULT 'fixed';

@@ -4045,6 +4045,7 @@ export type Database = {
           status: string
           updated_at: string
           weekly_off: string
+          weekly_off_type: string
         }
         Insert: {
           created_at?: string
@@ -4060,6 +4061,7 @@ export type Database = {
           status?: string
           updated_at?: string
           weekly_off?: string
+          weekly_off_type?: string
         }
         Update: {
           created_at?: string
@@ -4075,6 +4077,7 @@ export type Database = {
           status?: string
           updated_at?: string
           weekly_off?: string
+          weekly_off_type?: string
         }
         Relationships: []
       }
