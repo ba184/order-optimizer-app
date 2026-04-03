@@ -8,7 +8,7 @@ export function useSalaryStructures() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('salary_structures' as any)
-        .select('*, profiles:employee_id(name, email, employee_code)')
+        .select('*, profiles:employee_id(name, email, employee_id, working_city, working_state)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -61,7 +61,7 @@ export function usePayrollRuns(month?: number, year?: number) {
     queryFn: async () => {
       let query = supabase
         .from('payroll_runs' as any)
-        .select('*, profiles:employee_id(name, email, employee_code)')
+        .select('*, profiles:employee_id(name, email, employee_id, working_city, working_state, designation_code)')
         .order('created_at', { ascending: false });
       if (month) query = query.eq('month', month);
       if (year) query = query.eq('year', year);
@@ -76,7 +76,6 @@ export function useRunPayroll() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ employeeId, month, year }: { employeeId: string; month: number; year: number }) => {
-      // Get salary structure
       const { data: structure } = await supabase
         .from('salary_structures' as any)
         .select('*')
@@ -88,10 +87,9 @@ export function useRunPayroll() {
 
       if (!structure) throw new Error('No salary structure found for this employee');
 
-      // Get attendance for the month
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
       const endDate = new Date(year, month, 0).toISOString().split('T')[0];
-      
+
       const { data: attendance } = await supabase
         .from('attendance')
         .select('*')
@@ -100,10 +98,9 @@ export function useRunPayroll() {
         .lte('date', endDate);
 
       const presentDays = (attendance || []).filter((a: any) => a.status === 'present').length;
-      const totalWorkingDays = 26; // standard
+      const totalWorkingDays = 26;
       const absentDays = Math.max(0, totalWorkingDays - presentDays);
 
-      // Get leaves
       const { data: leaves } = await supabase
         .from('leaves')
         .select('*')
@@ -114,7 +111,6 @@ export function useRunPayroll() {
 
       const leaveDays = (leaves || []).reduce((sum: number, l: any) => sum + (l.days || 0), 0);
 
-      // Get orders for incentives
       const { data: orders } = await supabase
         .from('orders')
         .select('total_amount')
@@ -125,9 +121,8 @@ export function useRunPayroll() {
 
       const totalOrders = (orders || []).length;
       const totalOrderValue = (orders || []).reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0);
-      const incentiveAmount = totalOrders * 50; // ₹50 per order
+      const incentiveAmount = totalOrders * 50;
 
-      // Get approved expenses
       const { data: expenses } = await supabase
         .from('expense_claims')
         .select('total_amount')
@@ -138,7 +133,6 @@ export function useRunPayroll() {
 
       const reimbursementAmount = (expenses || []).reduce((sum: number, e: any) => sum + (e.total_amount || 0), 0);
 
-      // Get approved travel claims
       const { data: travelClaims } = await supabase
         .from('travel_claims' as any)
         .select('total_amount')
@@ -160,29 +154,15 @@ export function useRunPayroll() {
       const { data: result, error } = await supabase
         .from('payroll_runs' as any)
         .insert({
-          employee_id: employeeId,
-          month,
-          year,
-          basic_salary: s.basic_salary,
-          total_allowances: totalAllowances,
-          incentive_amount: incentiveAmount,
-          reimbursement_amount: reimbursementAmount + travelReimbursement,
-          gross_salary: grossSalary,
-          leave_deduction: leaveDeduction,
-          late_deduction: 0,
-          tax_deduction: s.tax_deduction || 0,
-          pf_deduction: s.pf_deduction || 0,
-          esi_deduction: s.esi_deduction || 0,
-          other_deduction: 0,
-          total_deductions: totalDeductions,
-          net_salary: netSalary,
-          present_days: presentDays,
-          absent_days: absentDays,
-          leave_days: leaveDays,
-          late_days: 0,
-          total_orders: totalOrders,
-          total_order_value: totalOrderValue,
-          status: 'generated',
+          employee_id: employeeId, month, year,
+          basic_salary: s.basic_salary, total_allowances: totalAllowances,
+          incentive_amount: incentiveAmount, reimbursement_amount: reimbursementAmount + travelReimbursement,
+          gross_salary: grossSalary, leave_deduction: leaveDeduction, late_deduction: 0,
+          tax_deduction: s.tax_deduction || 0, pf_deduction: s.pf_deduction || 0,
+          esi_deduction: s.esi_deduction || 0, other_deduction: 0, total_deductions: totalDeductions,
+          net_salary: netSalary, present_days: presentDays, absent_days: absentDays,
+          leave_days: leaveDays, late_days: 0, total_orders: totalOrders,
+          total_order_value: totalOrderValue, status: 'generated',
         })
         .select()
         .single();
@@ -220,10 +200,15 @@ export function useApprovePayroll() {
 export function useMarkPayrollPaid() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, reference }: { id: string; reference?: string }) => {
+    mutationFn: async ({ id, reference, paymentMode }: { id: string; reference?: string; paymentMode?: string }) => {
       const { error } = await supabase
         .from('payroll_runs' as any)
-        .update({ payment_status: 'paid', payment_date: new Date().toISOString().split('T')[0], payment_reference: reference || '' })
+        .update({
+          payment_status: 'paid',
+          payment_date: new Date().toISOString().split('T')[0],
+          payment_reference: reference || '',
+          payment_mode: paymentMode || 'bank',
+        })
         .eq('id', id);
       if (error) throw error;
     },
@@ -232,5 +217,20 @@ export function useMarkPayrollPaid() {
       toast.success('Marked as paid');
     },
     onError: (e: any) => toast.error('Failed: ' + e.message),
+  });
+}
+
+export function useEmployeesForPayroll() {
+  return useQuery({
+    queryKey: ['employees-for-payroll'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, email, employee_id, working_city, working_state, designation_code')
+        .eq('status', 'active')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
   });
 }
