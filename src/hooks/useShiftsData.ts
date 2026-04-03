@@ -60,7 +60,7 @@ export function useShiftAssignments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('shift_assignments' as any)
-        .select('*, profiles:employee_id(name, email, employee_code), shifts:shift_id(name, start_time, end_time)')
+        .select('*, profiles:employee_id(name, email, employee_id), shifts:shift_id(name, start_time, end_time)')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
       if (error) throw error;
