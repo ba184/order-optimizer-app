@@ -8,7 +8,7 @@ export function useLifecycleEvents(employeeId?: string) {
     queryFn: async () => {
       let query = supabase
         .from('employee_lifecycle' as any)
-        .select('*, employee:profiles!employee_lifecycle_employee_id_fkey(name, email, employee_code)')
+        .select('*, employee:profiles!employee_lifecycle_employee_id_fkey(name, email, employee_id)')
         .order('event_date', { ascending: false });
       if (employeeId) query = query.eq('employee_id', employeeId);
       const { data, error } = await query;
