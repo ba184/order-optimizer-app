@@ -2351,6 +2351,7 @@ export type Database = {
           notes: string | null
           other_deduction: number
           payment_date: string | null
+          payment_mode: string | null
           payment_reference: string | null
           payment_status: string
           pf_deduction: number
@@ -2386,6 +2387,7 @@ export type Database = {
           notes?: string | null
           other_deduction?: number
           payment_date?: string | null
+          payment_mode?: string | null
           payment_reference?: string | null
           payment_status?: string
           pf_deduction?: number
@@ -2421,6 +2423,7 @@ export type Database = {
           notes?: string | null
           other_deduction?: number
           payment_date?: string | null
+          payment_mode?: string | null
           payment_reference?: string | null
           payment_status?: string
           pf_deduction?: number
