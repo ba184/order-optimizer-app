@@ -253,7 +253,7 @@ function AppRoutes() {
       {/* HRMS */}
       <Route path="/hrms/payroll" element={<ProtectedRoute><PayrollPage /></ProtectedRoute>} />
       <Route path="/hrms/incentives" element={<ProtectedRoute><IncentiveCommissionPage /></ProtectedRoute>} />
-      <Route path="/hrms/travel-allowance" element={<ProtectedRoute><TravelAllowancePage /></ProtectedRoute>} />
+      
       <Route path="/hrms/shifts-policies" element={<ProtectedRoute><ShiftsPoliciesPage /></ProtectedRoute>} />
       <Route path="/hrms/holidays" element={<ProtectedRoute><HolidayCalendarPage /></ProtectedRoute>} />
       <Route path="/hrms/performance" element={<ProtectedRoute><PerformanceManagementPage /></ProtectedRoute>} />
