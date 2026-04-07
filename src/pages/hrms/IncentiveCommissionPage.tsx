@@ -165,7 +165,16 @@ export default function IncentiveCommissionPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><Label>Rule Name *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Q1 Revenue Incentive" /></div>
               <div><Label>Incentive Type *</Label>
-                <Select value={form.type} onValueChange={v => setForm(p => ({ ...p, type: v }))}>
+                <Select value={form.type} onValueChange={v => {
+                  const metricMap: Record<string, string> = {
+                    revenue_based: 'total_revenue',
+                    target_based: 'target_percentage',
+                    conversion_based: 'conversion_rate',
+                    deal_size_based: 'avg_deal_size',
+                    order_based: 'order_count',
+                  };
+                  setForm(p => ({ ...p, type: v, metric: metricMap[v] || 'total_revenue' }));
+                }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="revenue_based">Revenue Based</SelectItem>
@@ -173,9 +182,6 @@ export default function IncentiveCommissionPage() {
                     <SelectItem value="conversion_based">Conversion Rate Based</SelectItem>
                     <SelectItem value="deal_size_based">Deal Size Based</SelectItem>
                     <SelectItem value="order_based">Order Count Based</SelectItem>
-                    <SelectItem value="scheme_based">Scheme Linked</SelectItem>
-                    <SelectItem value="product_based">Product Based</SelectItem>
-                    <SelectItem value="category_based">Category Based</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -185,12 +191,31 @@ export default function IncentiveCommissionPage() {
                 <Select value={form.metric} onValueChange={v => setForm(p => ({ ...p, metric: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="total_revenue">Total Revenue</SelectItem>
-                    <SelectItem value="order_count">Order Count</SelectItem>
-                    <SelectItem value="target_percentage">Target %</SelectItem>
-                    <SelectItem value="conversion_rate">Conversion Rate</SelectItem>
-                    <SelectItem value="avg_deal_size">Avg Deal Size</SelectItem>
-                    <SelectItem value="new_outlets">New Outlets Added</SelectItem>
+                    {form.type === 'revenue_based' && <>
+                      <SelectItem value="total_revenue">Total Revenue</SelectItem>
+                      <SelectItem value="monthly_revenue">Monthly Revenue</SelectItem>
+                      <SelectItem value="quarterly_revenue">Quarterly Revenue</SelectItem>
+                    </>}
+                    {form.type === 'target_based' && <>
+                      <SelectItem value="target_percentage">Target Achievement %</SelectItem>
+                      <SelectItem value="target_units">Target Units Achieved</SelectItem>
+                      <SelectItem value="target_value">Target Value Achieved</SelectItem>
+                    </>}
+                    {form.type === 'conversion_based' && <>
+                      <SelectItem value="conversion_rate">Lead Conversion Rate %</SelectItem>
+                      <SelectItem value="leads_converted">Leads Converted Count</SelectItem>
+                      <SelectItem value="visit_to_order">Visit to Order Ratio</SelectItem>
+                    </>}
+                    {form.type === 'deal_size_based' && <>
+                      <SelectItem value="avg_deal_size">Avg Deal Size</SelectItem>
+                      <SelectItem value="max_deal_value">Max Deal Value</SelectItem>
+                      <SelectItem value="total_deal_value">Total Deal Value</SelectItem>
+                    </>}
+                    {form.type === 'order_based' && <>
+                      <SelectItem value="order_count">Total Order Count</SelectItem>
+                      <SelectItem value="new_outlets">New Outlets Ordered</SelectItem>
+                      <SelectItem value="repeat_orders">Repeat Order Count</SelectItem>
+                    </>}
                   </SelectContent>
                 </Select>
               </div>
